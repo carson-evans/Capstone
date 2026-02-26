@@ -1,0 +1,1 @@
+console.log("CommonMASS loaded successfully");
