@@ -1,16 +1,16 @@
 #
-def mbta_result(status, reason, missing_feild=None, program_id="mbta"):
+def mbta_result(status, reason, missing_fields=None, program_id="mbta"):
     return {
-        "progam_id": program_id,
-        "program_name": "MBTA"
+        "program_id": program_id,
+        "program_name": "MBTA",
         "status": status,
         "reason": reason,
-        "missing_feilds": missing_feilds or []
+        "missing_feilds": missing_fields or []
     }
 
 def check_mbta(profile):
 
-    if "selected_benefits" in profile and "mbta" not in profile ["selected_benefits"]:
+    if "selected_benefits" in profile and "mbta" not in profile["selected_benefits"]:
         return None
 
 mbta = profile.get("mbta")
@@ -29,7 +29,7 @@ free_access = ["blind",
     "firefighter",
     "government_official"
 ]
-if any(mbta.get(x)is True for x in free_access)
+if any(mbta.get(x)is True for x in free_access):
     return{
         "program_id": "mbta_free",
         "status": "eligible",
@@ -46,8 +46,9 @@ if mbta.get("medicare") or mbta.get("disability"):
 }
 #
 if 18 <= profile["age"] <= 64:
-    qprograms = {
+    return qprograms = {
         "EAEDC", "MASSGrant", "MassHealth CarePlus",
         "MassHealth Family Assistance", "MassHealth Limited",
         "MassHealth Standard", "SNAP", "TAFDC"
         }
+
