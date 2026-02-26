@@ -13,16 +13,16 @@ def process_data():
         return jsonify({"error": "Must send Json"}), 400
     errors = []
 
-    Required_feilds = [
+    required_fields = [
         "ma_resident",
         "age", 
         "household_size",
-        "income_frequencyy",
-        "income_amount"
+        "income_frequency",
+        "income_amount",
         "employement_status"
     ]
-    missing = [f for f in required_feilds if f not in data]
-    if mssing:
+    missing = [f for f in required_fields if f not in data]
+    if missing:
         return jsonify({"error": "Missing fields", "missing": missing}), 400
 
     if errors:
@@ -67,7 +67,7 @@ def process_data():
     #Mbta
     mbta_outcome = check_mbta(data)
     if mbta_outcome:
-        matches.append({check_outcome})
+        matches.append({mbta_outcome})
 
     #Massheath
     #if data["ma_resident"] and income_annual <= 30000:
@@ -77,5 +77,6 @@ def process_data():
     }), 200
 
 #
-if __name__ = "__main__":
+if __name__ == "__main__":
+
     app.run(debug=True)
