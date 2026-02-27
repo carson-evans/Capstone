@@ -23,6 +23,7 @@ body {
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   line-height: 1.5;
+  overflow-x: hidden;
 }
 
 .container {
@@ -61,6 +62,8 @@ body {
 .navbar {
   background: var(--bg-white);
   border-bottom: 1px solid var(--border);
+  position: relative;
+  z-index: 100;
 }
 
 .navbar-inner {
@@ -75,12 +78,33 @@ body {
   text-decoration: none;
 }
 
-/* BUMPED SIZE UP HERE */
 .logo-img {
-  height: 85px; /* Increased from 64px so the words are much more readable */
+  height: 85px; 
   width: auto;
   display: block;
   mix-blend-mode: multiply; 
+}
+
+/* ====== Mobile Hamburger Icon ====== */
+.mobile-toggle {
+  display: none; /* Strictly hides on desktop */
+  background: transparent;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  color: var(--navy-deep); /* Your deep blue color */
+  cursor: pointer;
+  padding: 8px;
+  -webkit-tap-highlight-color: transparent; 
+}
+
+/* Removes any browser focus outlines when clicked */
+.mobile-toggle:focus,
+.mobile-toggle:active {
+  outline: none;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 nav {
@@ -226,7 +250,7 @@ footer {
   background: var(--bg-white);
 }
 
-/* ====== Responsive ====== */
+/* ====== Responsive Mobile Styles ====== */
 @media (max-width: 850px) {
   .features-grid {
     grid-template-columns: 1fr;
@@ -235,5 +259,45 @@ footer {
   .hero h1 {
     font-size: 42px;
   }
-  nav { display: none; }
+  
+  /* Show hamburger button only on mobile */
+  .mobile-toggle {
+    display: block;
+  }
+
+  /* Transform nav into a mobile dropdown */
+  nav {
+    position: absolute;
+    top: 104px;
+    left: 0;
+    width: 100%;
+    background: var(--bg-white);
+    flex-direction: column;
+    padding: 30px 40px 40px;
+    gap: 24px;
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+    
+    transform: translateY(-150%);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 90;
+  }
+
+  nav.active {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  nav a {
+    font-size: 18px; 
+  }
+
+  .btn-secondary {
+    width: 100%;
+    text-align: center;
+    padding: 14px 22px;
+  }
 }
