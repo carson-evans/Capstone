@@ -1,29 +1,31 @@
 import React from 'react';
 import { Link } from 'react-router';
-import { Button } from '@/app/components/ui/button';
+import { Button } from '@/app/components/ui/button'; // Added this back
+import logo from '../../../assets/logo.png'; 
 
 export function Navbar() {
   return (
     <nav className="border-b border-gray-200 bg-white">
-      <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+      {/* Keeping our adjusted padding for that perfect optical alignment */}
+      <div className="container mx-auto pl-2 pr-8 h-24 flex items-center justify-between">
+        
         <Link to="/" className="text-xl font-bold tracking-tight text-[#1e3a5f] flex items-center gap-2">
-          <div className="w-8 h-8 bg-[#1e3a5f] rounded-full flex items-center justify-center text-white font-serif italic">
-            C
-          </div>
-          <span>CommonMASS</span>
+          <img 
+            src={logo} 
+            alt="CommonMASS Logo" 
+            className="h-20 w-auto" 
+          />
         </Link>
-        <div className="flex items-center gap-4">
+
+        {/* FAQ now styled as a button matching the old 'Sign Up' look */}
+        <div className="flex items-center">
           <Link to="/faq">
-            <Button variant="ghost" className="text-sm font-medium text-gray-600 hover:text-[#1e3a5f]">
+            <Button 
+              className="bg-[#1e3a5f] text-white hover:bg-[#f97316] px-6 py-2 rounded-md font-medium transition-colors cursor-pointer"
+            >
               FAQ
             </Button>
           </Link>
-          <Button variant="ghost" className="text-sm font-medium text-gray-600 hover:text-[#1e3a5f]">
-            Log In
-          </Button>
-          <Button variant="default" className="bg-[#1e3a5f] text-white hover:bg-[#152a45]">
-            Sign Up
-          </Button>
         </div>
       </div>
     </nav>
