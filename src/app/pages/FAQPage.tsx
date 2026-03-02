@@ -181,7 +181,7 @@ export default function FAQPage() {
       {/* Footer */}
       <footer className="bg-white py-12 border-t border-gray-200">
         <div className="container mx-auto px-6 text-center text-gray-500 text-sm">
-          <p>© 2024 CommonMASS. All rights reserved.</p>
+          <p>© 2026 CommonMASS. All rights reserved.</p>
         </div>
       </footer>
     </div>
