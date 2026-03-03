@@ -34,7 +34,7 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
     
     const isFullTime = () => answers['student_status'] === 'full_time';
     
-    // ✅ Pell Grant (Federal)
+    // Pell Grant (Federal)
     // Show if: Enrolled AND Citizen/eligible non-citizen = Yes
     // Action status: "No action needed" if FAFSA completed, "Action needed" if not
     if (
@@ -52,7 +52,7 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
-    // ✅ MASSGrant (MA state aid)
+    // MASSGrant (MA state aid)
     // Show if: Enrolled AND MA resident = Yes AND Citizen/eligible non-citizen = Yes
     // Action status: "No action needed" if FAFSA completed, "Action needed" if not
     if (
@@ -71,7 +71,7 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
-    // ✅ MASSGrant Plus (extra MA support)
+    // MASSGrant Plus (extra MA support)
     // Show if: All MASSGrant rules AND Income = Below $20k AND Full-time
     // Action status: "No action needed" if FAFSA completed, "Action needed" if not
     if (
@@ -91,7 +91,7 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
-    // ✅ SNAP (Food Stamps)
+    // SNAP (Food Stamps)
     // Show if: MA resident = Yes AND Income below $40k AND (Work-Study = Yes OR Income = Below $20k)
     if (
       answers['ma_resident'] === 'yes' &&
@@ -102,7 +102,7 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
       if (benefit) matches.push(benefit);
     }
 
-    // ✅ MassHealth (MA Medicaid)
+    // MassHealth (MA Medicaid)
     // Show if: MA resident = Yes AND Citizen/eligible non-citizen = Yes AND Income below $40k
     if (
       answers['ma_resident'] === 'yes' &&
@@ -113,7 +113,7 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
       if (benefit) matches.push(benefit);
     }
 
-    // ✅ MBTA Student Pass
+    // MBTA Student Pass
     // Show if: Enrolled AND Public transport = Yes/Sometimes
     if (
       isEnrolled() &&
