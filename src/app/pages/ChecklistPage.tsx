@@ -15,9 +15,37 @@ export default function ChecklistPage() {
     window.print();
   };
 
-  const handleDownload = () => {
-    toast.success("Checklist PDF downloaded (simulated)");
-  };
+  const handleDownload = async () => {
+  try {
+    // Call our backend (via CloudFront behavior /api/*) to generate a packet
+    // The Lambda writes the PDF to the private packets bucket and returns a presigned download URL.
+    const res = await fetch("/api/packet", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      // Optional flag — we keep JSON so we can return run_id, expires_in, etc.
+      body: JSON.stringify({ return_plain_url: false }),
+    });
+
+    // If Lambda/API Gateway returns an error, show a friendly message instead of failing silently
+    if (!res.ok) {
+      const msg = await res.text().catch(() => "");
+      throw new Error(`Packet generator failed (${res.status}). ${msg}`);
+    }
+
+    // Expected response shape:
+    // { run_id, s3_key, expires_in, bucket_region_used, download_url }
+    const data = await res.json();
+
+    // Open the presigned URL in a new tab (temporary link, expires in a few minutes)
+    window.open(data.download_url, "_blank", "noopener,noreferrer");
+
+    // Optional UX feedback
+    toast.success("Your PDF is ready. Opening download link...");
+  } catch (err) {
+    console.error(err);
+    toast.error("Couldn't generate the PDF right now. Please try again.");
+  }
+};
 
   return (
     <div className="min-h-screen bg-white text-black font-sans print:bg-white">
