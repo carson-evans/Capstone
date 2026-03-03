@@ -1,3 +1,16 @@
+# =====================================
+# GENERAL
+# =====================================
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+*.swo
+
+# =====================================
+# PYTHON (Backend / Lambda)
+# =====================================
 ############################################################
 # OS
 ############################################################
@@ -36,6 +49,9 @@ __pycache__/
 *.egg
 *.egg-info/
 .eggs/
+dist/
+build/
+develop-eggs/
 build/
 develop-eggs/
 dist/
@@ -44,8 +60,19 @@ lib/
 lib64/
 parts/
 sdist/
-var/
 wheels/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Python tooling
 share/python-wheels/
 .installed.cfg
 MANIFEST
@@ -72,6 +99,70 @@ backend/packet_generator/dist/
 .coverage
 .coverage.*
 htmlcov/
+.mypy_cache/
+.pyre/
+.ruff_cache/
+.hypothesis/
+
+# =====================================
+# NODE / FRONTEND (Vite / React)
+# =====================================
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+vite.svg
+
+# =====================================
+# ENV FILES (CRITICAL)
+# =====================================
+.env
+.env.*
+!.env.example
+
+# =====================================
+# AWS / LAMBDA / DEPLOYMENT
+# =====================================
+layer/
+*.zip
+.aws-sam/
+.sam-cache/
+.serverless/
+
+# Local AWS config
+.aws/
+
+# =====================================
+# IDE / EDITORS
+# =====================================
+.vscode/
+.idea/
+.spyderproject
+.spyproject
+.ropeproject
+
+# =====================================
+# JUPYTER
+# =====================================
+.ipynb_checkpoints
+
+# =====================================
+# DATABASE FILES
+# =====================================
+*.sqlite3
+*.db
+
+# =====================================
+# LOGS
+# =====================================
+logs/
+*.log
+
+# =====================================
+# OS FILES
+# =====================================
+Desktop.ini
 .tox/
 .nox/
 .cache

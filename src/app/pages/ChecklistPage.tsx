@@ -15,38 +15,64 @@ export default function ChecklistPage() {
     window.print();
   };
 
-  const handleDownload = async () => {
+const handleDownload = async () => {
+  const apiUrl = import.meta.env.VITE_PACKET_API_URL as string | undefined;
+
+  if (!apiUrl) {
+    toast.error("Missing VITE_PACKET_API_URL in .env.development");
+    return;
+  }
+
+  // IMPORTANT: open the tab synchronously to avoid popup blockers
+  const newTab = window.open("", "_blank");
+
   try {
-    // Call our backend (via CloudFront behavior /api/*) to generate a packet
-    // The Lambda writes the PDF to the private packets bucket and returns a presigned download URL.
-    const res = await fetch("/api/packet", {
+    toast.loading("Generating PDF…", { id: "pdf" });
+
+    // TODO: replace payload with whatever your Lambda expects
+    const payload = {
+      // example fields
+      selectedBenefits: matchedBenefits.map(b => b.id),
+      // profile: {...},
+    };
+
+    const res = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      // Optional flag — we keep JSON so we can return run_id, expires_in, etc.
-      body: JSON.stringify({ return_plain_url: false }),
+      body: JSON.stringify(payload),
     });
 
-    // If Lambda/API Gateway returns an error, show a friendly message instead of failing silently
     if (!res.ok) {
-      const msg = await res.text().catch(() => "");
-      throw new Error(`Packet generator failed (${res.status}). ${msg}`);
+      const text = await res.text();
+      throw new Error(`API ${res.status}: ${text}`);
     }
 
-    // Expected response shape:
-    // { run_id, s3_key, expires_in, bucket_region_used, download_url }
     const data = await res.json();
 
-    // Open the presigned URL in a new tab (temporary link, expires in a few minutes)
-    window.open(data.download_url, "_blank", "noopener,noreferrer");
+    // Accept either "body" string JSON or direct JSON
+    const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
 
-    // Optional UX feedback
-    toast.success("Your PDF is ready. Opening download link...");
-  } catch (err) {
-    console.error(err);
-    toast.error("Couldn't generate the PDF right now. Please try again.");
+    const url =
+      parsed.url || parsed.presigned_url || parsed.download_url || parsed.location;
+
+    if (!url) throw new Error("No presigned URL returned from API");
+
+    toast.success("PDF ready — opening…", { id: "pdf" });
+
+    if (newTab) {
+      newTab.location.href = url;
+      newTab.focus();
+    } else {
+      // fallback if popup blocked
+      window.location.href = url;
+    }
+  } catch (err: any) {
+    toast.error(err?.message || "Failed to generate PDF", { id: "pdf" });
+
+    // clean up the blank tab if something broke
+    if (newTab) newTab.close();
   }
 };
-
   return (
     <div className="min-h-screen bg-white text-black font-sans print:bg-white">
       <div className="print:hidden">
