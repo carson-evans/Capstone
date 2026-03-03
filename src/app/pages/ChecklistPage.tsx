@@ -15,10 +15,64 @@ export default function ChecklistPage() {
     window.print();
   };
 
-  const handleDownload = () => {
-    toast.success("Checklist PDF downloaded (simulated)");
-  };
+const handleDownload = async () => {
+  const apiUrl = import.meta.env.VITE_PACKET_API_URL as string | undefined;
 
+  if (!apiUrl) {
+    toast.error("Missing VITE_PACKET_API_URL in .env.development");
+    return;
+  }
+
+  // IMPORTANT: open the tab synchronously to avoid popup blockers
+  const newTab = window.open("", "_blank");
+
+  try {
+    toast.loading("Generating PDF…", { id: "pdf" });
+
+    // TODO: replace payload with whatever your Lambda expects
+    const payload = {
+      // example fields
+      selectedBenefits: matchedBenefits.map(b => b.id),
+      // profile: {...},
+    };
+
+    const res = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`API ${res.status}: ${text}`);
+    }
+
+    const data = await res.json();
+
+    // Accept either "body" string JSON or direct JSON
+    const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+
+    const url =
+      parsed.url || parsed.presigned_url || parsed.download_url || parsed.location;
+
+    if (!url) throw new Error("No presigned URL returned from API");
+
+    toast.success("PDF ready — opening…", { id: "pdf" });
+
+    if (newTab) {
+      newTab.location.href = url;
+      newTab.focus();
+    } else {
+      // fallback if popup blocked
+      window.location.href = url;
+    }
+  } catch (err: any) {
+    toast.error(err?.message || "Failed to generate PDF", { id: "pdf" });
+
+    // clean up the blank tab if something broke
+    if (newTab) newTab.close();
+  }
+};
   return (
     <div className="min-h-screen bg-white text-black font-sans print:bg-white">
       <div className="print:hidden">
