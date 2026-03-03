@@ -86,6 +86,7 @@ def check_snap(profile):
                     ]
     
     missing = [f for f in required_fields if snap.get(f) is None]
+
     if missing:
         return snap_result(
             status="need_more_info",
@@ -93,29 +94,59 @@ def check_snap(profile):
             missing_fields=missing
         )
     
-    income_limit = 1696
-
+    #Federal Poverty Level
+    gross_income_limit = 1696
+    net_income_limit = 1252
 
     #Logic for Snap eligible 
+
+
+    # if older than 60 only calculate net income
+    
     if snap.get("ma_resident") and snap.get("lawful_presence"):
-        if snap.get("household_gross") < income_limit + (snap.get("household_size") * 596):
-            return snap_result(
-                program_id="snap",
-                status="Eligible",
-                reason="Low income eligible for snap",
-            )
-        else:
-            return snap_result(
-                program_id="snap",
-                status="Ineligible",
-                reason="Household gross income exceeds SNAP limits"
-            )
+
+         # if older than 60 only calculate net income
+        if profile.get("age") > 60:
+            if snap.get("household_net") < net_income_limit + (snap.get("household_size") * 438 ):
+                return snap_result(
+                    program_id="snap",
+                    status="Eligible",
+                    reason="Household net income eligible for snap",
+                )
+            else:
+                return snap_result(
+                    program_id="snap",
+                    status="Ineligible",
+                    reason="Household net income exceeds SNAP limits"
+                )
+
+
+        # check if student and if they meet the requirements
+        elif snap.get("is_student") and profile.get("age") >= 18 and profile.get("age") <= 49:
+            if snap.get("snap_student_rules") is False:
+                return snap_result(
+                    program_id="snap",
+                    status="ineligible",
+                    reason="Student did not meet the requirements",
+                )
+    
     else:
         return snap_result(
             program_id="snap",
             status="Ineligible",
             reason="Must be a MA resident and have lawful presence to be eligible for SNAP"
         )
-
-        
     
+    # Gross Income checker
+    if snap.get("household_gross") < gross_income_limit + (snap.get("household_size") * 596):
+        return snap_result(
+            program_id="snap",
+            status="Eligible",
+            reason="Household gross income eligible for snap",
+        )
+    else:
+        return snap_result(
+            program_id="snap",
+            status="Ineligible",
+            reason="Household gross income exceeds SNAP limits"
+        )
