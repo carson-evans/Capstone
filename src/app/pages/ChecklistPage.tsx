@@ -16,24 +16,16 @@ export default function ChecklistPage() {
   };
 
 const handleDownload = async () => {
-  const apiUrl = import.meta.env.VITE_PACKET_API_URL as string | undefined;
+  const apiUrl =
+    ((import.meta as any)?.env?.VITE_PACKET_API_URL as string | undefined) || "/api/packet";
 
-  if (!apiUrl) {
-    toast.error("Missing VITE_PACKET_API_URL in .env.development");
-    return;
-  }
-
-  // IMPORTANT: open the tab synchronously to avoid popup blockers
   const newTab = window.open("", "_blank");
 
   try {
     toast.loading("Generating PDF…", { id: "pdf" });
 
-    // TODO: replace payload with whatever your Lambda expects
     const payload = {
-      // example fields
-      selectedBenefits: matchedBenefits.map(b => b.id),
-      // profile: {...},
+      selectedBenefits: matchedBenefits.map((b) => b.id),
     };
 
     const res = await fetch(apiUrl, {
@@ -43,17 +35,15 @@ const handleDownload = async () => {
     });
 
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`API ${res.status}: ${text}`);
+      const text = await res.text().catch(() => "");
+      throw new Error(`Packet generator failed (${res.status}). ${text}`);
     }
 
     const data = await res.json();
-
-    // Accept either "body" string JSON or direct JSON
     const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
 
     const url =
-      parsed.url || parsed.presigned_url || parsed.download_url || parsed.location;
+      parsed.download_url || parsed.url || parsed.presigned_url || parsed.location;
 
     if (!url) throw new Error("No presigned URL returned from API");
 
@@ -63,13 +53,10 @@ const handleDownload = async () => {
       newTab.location.href = url;
       newTab.focus();
     } else {
-      // fallback if popup blocked
       window.location.href = url;
     }
   } catch (err: any) {
     toast.error(err?.message || "Failed to generate PDF", { id: "pdf" });
-
-    // clean up the blank tab if something broke
     if (newTab) newTab.close();
   }
 };
