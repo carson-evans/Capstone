@@ -19,15 +19,14 @@ export default defineConfig({
   // This does NOT affect production builds.
   server: {
     proxy: {
-      '/api': {
-        target: 'https://5zlqeedlcc.execute-api.us-east-1.amazonaws.com',
+      "/api": {
+        target: "https://5zlqeedlcc.execute-api.us-east-1.amazonaws.com",
         changeOrigin: true,
         secure: true,
-        // /api/packet -> /dev/api/packet
-        rewrite: (path) => path.replace(/^\/api/, '/dev/api'),
+        // /api/packet -> /dev/packet
+        rewrite: (path) => path.replace(/^\/api\/packet/, "/dev/packet"),
       },
     },
   },
-
   assetsInclude: ['**/*.svg', '**/*.csv'],
 })
