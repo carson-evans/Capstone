@@ -1,0 +1,16 @@
+{
+  "benefits": {
+    "massgrant": {
+      "title": "MASSGrant",
+      "category": "Education",
+      "description": "Need-based grant for Massachusetts residents attending college in-state.",
+      "checklist": [
+        "Complete the FAFSA",
+        "Be a Massachusetts resident",
+        "Enroll in a Massachusetts college",
+        "Maintain satisfactory academic progress",
+        "Check award notification from your school"
+      ]
+    }
+  }
+}
