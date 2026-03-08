@@ -121,7 +121,7 @@ export default function QuestionnairePage() {
             <Button 
               onClick={handleNext}
               disabled={!selectedOption}
-              className="bg-[#1e3a5f] text-white px-8 rounded-md hover:bg-[#152a45] disabled:opacity-50 transition-all"
+              className="bg-[#1e3a5f] text-white px-8 rounded-md hover:bg-[#f97316] disabled:opacity-50 transition-all"
             >
               {isLastStep ? 'See Results' : 'Next'}
               {!isLastStep && <ArrowRight className="ml-2 h-4 w-4" />}
@@ -132,3 +132,5 @@ export default function QuestionnairePage() {
     </div>
   );
 }
+
+

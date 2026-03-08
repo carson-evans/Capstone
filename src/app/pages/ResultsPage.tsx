@@ -57,7 +57,7 @@ export default function ResultsPage() {
                           </div>
                         )}
                       </div>
-                      <Button variant="outline" size="sm" className="hidden sm:flex border-black text-black hover:bg-gray-50">
+                      <Button variant="outline" size="sm" className="hidden sm:flex border-black text-black hover:bg-[#1e3a5f] hover:text-white">
                         Details
                       </Button>
                     </div>
@@ -68,7 +68,7 @@ export default function ResultsPage() {
                     </CardDescription>
                   </CardContent>
                   <CardFooter className="bg-gray-50/50 p-6 flex justify-end gap-3 border-t border-gray-100">
-                    <Button variant="outline" className="border-gray-300 text-gray-700 hover:text-black">
+                    <Button variant="outline" className="border-gray-300 text-gray-700 hover:text-white">
                       <ExternalLink className="mr-2 h-4 w-4" />
                       Visit Official Site
                     </Button>
@@ -103,3 +103,6 @@ export default function ResultsPage() {
     </div>
   );
 }
+
+
+
