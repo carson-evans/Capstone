@@ -54,14 +54,14 @@ export default function QuestionnairePage() {
       <Navbar />
 
       <div className="flex-1 container max-w-2xl mx-auto px-6 py-12 flex flex-col">
-        
+
         {/* Progress Bar */}
         <div className="mb-8 space-y-2">
           <div className="flex justify-between text-xs font-semibold tracking-wider text-gray-500 uppercase">
             <span>Step {currentStep + 1} of {questions.length}</span>
             <span>{Math.round(progress)}% Complete</span>
           </div>
-          <Progress value={progress} className="h-1 bg-gray-200" />
+          <Progress value={progress} className="h-2 bg-slate-200/90 shadow-inner" />
         </div>
 
         {/* Question Card */}
@@ -78,30 +78,36 @@ export default function QuestionnairePage() {
               <span className="inline-block px-2 py-1 rounded bg-gray-100 text-xs font-bold text-gray-500 mb-4 uppercase tracking-wider">
                 {currentQuestion.category}
               </span>
-              
+
               <h2 className="text-2xl font-bold mb-8 leading-tight">
                 {currentQuestion.text}
               </h2>
 
-              <RadioGroup 
-                value={selectedOption} 
+              <RadioGroup
+                value={selectedOption}
                 onValueChange={setSelectedOption}
                 className="space-y-3"
               >
                 {currentQuestion.options.map((option) => (
-                  <div key={option.value} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200 cursor-pointer" onClick={() => setSelectedOption(option.value)}>
-                    <RadioGroupItem 
-                      value={option.value} 
+                  <motion.div
+                    key={option.value}
+                    whileHover={{ y: -2 }}
+                    transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+                    className="flex items-start space-x-3 p-3 rounded-lg border border-transparent cursor-pointer transition-colors hover:bg-gray-50 hover:border-gray-200"
+                    onClick={() => setSelectedOption(option.value)}
+                  >
+                    <RadioGroupItem
+                      value={option.value}
                       id={option.value}
                       className="mt-1"
                     />
                     <Label
                       htmlFor={option.value}
-                      className="text-base font-medium cursor-pointer leading-relaxed flex-1"
+                      className="flex-1 cursor-pointer text-base font-medium leading-relaxed"
                     >
                       {option.label}
                     </Label>
-                  </div>
+                  </motion.div>
                 ))}
               </RadioGroup>
             </motion.div>
@@ -109,19 +115,19 @@ export default function QuestionnairePage() {
 
           {/* Navigation Buttons */}
           <div className="flex justify-between items-center mt-12 pt-8 border-t border-gray-100">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={handleBack}
               className="text-gray-500 hover:text-black hover:bg-gray-100"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Button>
-            
-            <Button 
+
+            <Button
               onClick={handleNext}
               disabled={!selectedOption}
-              className="bg-[#1e3a5f] text-white px-8 rounded-md hover:bg-[#152a45] disabled:opacity-50 transition-all"
+              className="bg-[#1e3a5f] text-white px-8 rounded-md hover:bg-[#f97316] disabled:opacity-50 transition-all"
             >
               {isLastStep ? 'See Results' : 'Next'}
               {!isLastStep && <ArrowRight className="ml-2 h-4 w-4" />}
@@ -132,3 +138,4 @@ export default function QuestionnairePage() {
     </div>
   );
 }
+

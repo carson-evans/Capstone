@@ -1,20 +1,26 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Download, Printer, ArrowLeft } from 'lucide-react';
+import { Download, ArrowLeft } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Checkbox } from '@/app/components/ui/checkbox';
-import { Separator } from '@/app/components/ui/separator';
 import { Navbar } from '@/app/components/layout/Navbar';
 import { useBenefits } from '@/app/context/BenefitsContext';
 import { toast } from 'sonner';
 
 export default function ChecklistPage() {
-  // CHANGE: pull answers too, not just matchedBenefits
-  const { matchedBenefits, answers } = useBenefits();
-
-  const handlePrint = () => {
-    window.print();
-  };
+  const { matchedBenefits, answers, checklistProgress, setChecklistItemChecked } = useBenefits();
+  const actionableBenefits = matchedBenefits.filter(
+    (benefit) => !benefit.actionStatus?.includes('No action needed')
+  );
+  const checklistItemTransition = { type: 'spring', stiffness: 420, damping: 34, mass: 0.45 };
+  const getOrderedChecklistItems = (benefitId: string, items: string[]) =>
+    items
+      .map((item, originalIndex) => ({
+        item,
+        originalIndex,
+        checked: checklistProgress[benefitId]?.[originalIndex] ?? false,
+      }))
+      .sort((a, b) => Number(a.checked) - Number(b.checked) || a.originalIndex - b.originalIndex);
 
   const handleDownload = async () => {
     const apiUrl =
@@ -23,12 +29,17 @@ export default function ChecklistPage() {
     const newTab = window.open('', '_blank');
 
     try {
-      toast.loading('Generating PDF…', { id: 'pdf' });
+      toast.loading('Generating PDF...', { id: 'pdf' });
 
-      // CHANGE: send profile answers to backend for server-side matching + PDF generation
       const payload = {
-        selectedBenefits: matchedBenefits.map((b) => b.id), // optional but fine to keep
-        profile: answers, // <-- REQUIRED
+        selectedBenefits: actionableBenefits.map((b) => b.id),
+        profile: answers,
+        checklistProgress: Object.fromEntries(
+          actionableBenefits.map((benefit) => [
+            benefit.id,
+            benefit.checklist.map((_, idx) => checklistProgress[benefit.id]?.[idx] ?? false),
+          ])
+        ),
       };
 
       const res = await fetch(apiUrl, {
@@ -49,7 +60,7 @@ export default function ChecklistPage() {
 
       if (!url) throw new Error('No presigned URL returned from API');
 
-      toast.success('PDF ready — opening…', { id: 'pdf' });
+      toast.success('PDF ready - opening...', { id: 'pdf' });
 
       if (newTab) {
         newTab.location.href = url;
@@ -91,8 +102,8 @@ export default function ChecklistPage() {
 
         {/* Checklist Groups */}
         <div className="space-y-12 print:space-y-8">
-          {matchedBenefits.length > 0 ? (
-            matchedBenefits.map((benefit, index) => (
+          {actionableBenefits.length > 0 ? (
+            actionableBenefits.map((benefit, index) => (
               <motion.div
                 key={benefit.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -107,51 +118,63 @@ export default function ChecklistPage() {
                   <h2 className="text-2xl font-bold">{benefit.title}</h2>
                 </div>
 
-                <div className="space-y-4 pl-0 md:pl-11 print:pl-0">
-                  {benefit.checklist.map((item, idx) => (
-                    <div key={idx} className="flex items-start space-x-3">
-                      <Checkbox
-                        id={`${benefit.id}-${idx}`}
-                        className="mt-1 border-gray-400 data-[state=checked]:bg-[#1e3a5f] data-[state=checked]:text-white"
-                      />
-                      <label
-                        htmlFor={`${benefit.id}-${idx}`}
-                        className="text-base font-medium leading-relaxed cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                <div className="space-y-3 pl-0 md:pl-11 print:pl-0">
+                  {getOrderedChecklistItems(benefit.id, benefit.checklist).map(
+                    ({ item, originalIndex, checked }) => (
+                      <motion.div
+                        key={originalIndex}
+                        layout
+                        transition={checklistItemTransition}
+                        className={`flex items-start gap-3 rounded-2xl border px-4 py-3 transition-all duration-300 print:border-none print:bg-white print:px-0 print:py-1 print:shadow-none ${
+                          checked
+                            ? 'border-slate-200 bg-slate-100/80 opacity-70'
+                            : 'border-white/90 bg-white shadow-[0_14px_36px_-28px_rgba(15,23,42,0.55)] hover:-translate-y-0.5 hover:border-[#355b8a]/20 hover:shadow-[0_20px_38px_-28px_rgba(30,58,95,0.45)]'
+                        }`}
                       >
-                        {item}
-                      </label>
-                    </div>
-                  ))}
+                        <Checkbox
+                          id={`${benefit.id}-${originalIndex}`}
+                          checked={checked}
+                          onCheckedChange={(nextChecked) =>
+                            setChecklistItemChecked(benefit.id, originalIndex, nextChecked === true)
+                          }
+                          className="mt-0.5 border-gray-400 bg-white data-[state=checked]:bg-[#1e3a5f] data-[state=checked]:text-white"
+                        />
+                        <label
+                          htmlFor={`${benefit.id}-${originalIndex}`}
+                          className={`flex-1 cursor-pointer text-base font-medium leading-relaxed transition-colors peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${
+                            checked ? 'text-slate-400 line-through' : 'text-slate-900'
+                          }`}
+                        >
+                          {item}
+                        </label>
+                      </motion.div>
+                    )
+                  )}
                 </div>
               </motion.div>
             ))
           ) : (
             <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-              <p className="text-gray-500">No benefits selected. Go back to screening.</p>
+              <p className="text-gray-500">
+                {matchedBenefits.length > 0
+                  ? 'You do not have any checklist steps left for your current matches.'
+                  : 'No benefits selected. Go back to screening.'}
+              </p>
             </div>
           )}
         </div>
-
-        {/* Actions */}
-        <div className="mt-12 flex gap-4 print:hidden">
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={handleDownload}
-            className="flex-1 border-[#1e3a5f] text-[#1e3a5f] hover:bg-gray-50"
-          >
-            <Download className="mr-2 h-5 w-5" />
-            Download PDF
-          </Button>
-          <Button
-            size="lg"
-            onClick={handlePrint}
-            className="flex-1 bg-[#1e3a5f] text-white hover:bg-[#152a45]"
-          >
-            <Printer className="mr-2 h-5 w-5" />
-            Print Checklist
-          </Button>
-        </div>
+        {actionableBenefits.length > 0 && (
+          <div className="mt-12 flex justify-center print:hidden">
+            <Button
+              size="lg"
+              onClick={handleDownload}
+              className="bg-[#1e3a5f] text-white hover:bg-[#152a45]"
+            >
+              <Download className="mr-2 h-5 w-5" />
+              Download PDF
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
