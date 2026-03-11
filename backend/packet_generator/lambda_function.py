@@ -219,7 +219,7 @@ def _match_benefits(profile: dict) -> list[dict]:
         matches.append({"id": "massgrant-plus", "actionStatus": action})
 
     # SNAP: ma_resident yes AND income low/medium AND (work_study yes OR income low)
-     if (
+    if (
         a.get("ma_resident") == "yes"
         and a.get("income_level") == 'low'
        #or (a.get("age") > 60 and a.get("income_level") == "medium")   #Later on if frontend add age
