@@ -4,6 +4,8 @@ export interface Benefit {
   description: string;
   category: string;
   checklist: string[];
+  officialUrl: string;
+  officialButtonLabel?: string;
   actionStatus?: string; // Optional status message (e.g., "Action needed" or "No action needed")
 }
 
@@ -20,6 +22,8 @@ export const benefits: Benefit[] = [
     title: 'Federal Pell Grant',
     description: 'A subsidy the U.S. federal government provides for students who need it to pay for college.',
     category: 'Education',
+    officialUrl: 'https://studentaid.gov/h/apply-for-aid/fafsa',
+    officialButtonLabel: 'Start Official Application',
     checklist: [
       'Create an FSA ID',
       'Gather tax documents',
@@ -32,6 +36,8 @@ export const benefits: Benefit[] = [
     title: 'MASSGrant',
     description: 'Need-based grant for Massachusetts residents attending college in-state. Awards range from $300 to $1,900 per year.',
     category: 'Education',
+    officialUrl: 'https://studentaid.gov/h/apply-for-aid/fafsa',
+    officialButtonLabel: 'Start Official Application',
     checklist: [
       'Complete the FAFSA',
       'Be a Massachusetts resident',
@@ -45,6 +51,8 @@ export const benefits: Benefit[] = [
     title: 'MASSGrant Plus',
     description: 'Additional need-based grant for Massachusetts residents with exceptional financial need, providing up to full tuition coverage.',
     category: 'Education',
+    officialUrl: 'https://studentaid.gov/h/apply-for-aid/fafsa',
+    officialButtonLabel: 'Start Official Application',
     checklist: [
       'Complete the FAFSA',
       'Demonstrate Expected Family Contribution (EFC) of $0',
@@ -58,6 +66,8 @@ export const benefits: Benefit[] = [
     title: 'MassHealth',
     description: 'Massachusetts Medicaid and CHIP program providing comprehensive health coverage for eligible residents.',
     category: 'Health',
+    officialUrl: 'https://www.mahix.org/individual/',
+    officialButtonLabel: 'Start Official Application',
     checklist: [
       'Verify Massachusetts residency',
       'Gather income documentation',
@@ -71,6 +81,8 @@ export const benefits: Benefit[] = [
     title: 'MBTA Student Pass',
     description: 'Discounted monthly passes for full-time students using MBTA services in the Greater Boston area.',
     category: 'Transport',
+    officialUrl: 'https://www.mbta.com/fares/college-student-semester-passes',
+    officialButtonLabel: 'Visit Official Site',
     checklist: [
       'Get current student ID',
       'Verify full-time enrollment status',
@@ -84,6 +96,8 @@ export const benefits: Benefit[] = [
     title: 'SNAP (Food Stamps)',
     description: 'Provides food purchasing assistance for low- and no-income people.',
     category: 'Food',
+    officialUrl: 'https://dtaconnect.eohhs.mass.gov/',
+    officialButtonLabel: 'Start Official Application',
     checklist: [
       'Check student eligibility requirements',
       'Gather proof of enrollment',
@@ -190,4 +204,6 @@ export const questions: Question[] = [
     ]
   }
 ];
+
+
 
