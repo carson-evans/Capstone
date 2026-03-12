@@ -219,58 +219,55 @@ def _match_benefits(profile: dict) -> list[dict]:
 
     def is_full_time():
         return a.get("student_status") == "full_time"
+        
+    #Fafsa shortcut
+    def fafsa_status(a):
+        return (
+            "No action needed (already applied to FAFSA)"
+            if a.get("fafsa_completed") == "yes"
+            else "Action needed - Complete FAFSA"
+        )
+    # shortcut for required field
+    student = a.get("student_status")
+    citizen = a.get("citizen_status")
+    resident = a.get("ma_resident")
+    income = a.get("income_level")
+    work_study = a.get("work_study")
+    transport = a.get("transportation")
+    fafsa = a.get("fafsa_completed")
+    dependent = a.get("dependent_status")
+    housing = a.get("Housing Status")
+    insurance = a.get("health_insurance")
 
     matches: list[dict] = []
-
-    if is_enrolled() and a.get("citizen_status") == "yes":
-        action = (
-            "No action needed (already applied to FAFSA)"
-            if a.get("fafsa_completed") == "yes"
-            else "Action needed - Complete FAFSA"
-        )
-        matches.append({"id": "pell-grant", "actionStatus": action})
-
-    if is_enrolled() and a.get("ma_resident") == "yes" and a.get("citizen_status") == "yes":
-        action = (
-            "No action needed (already applied to FAFSA)"
-            if a.get("fafsa_completed") == "yes"
-            else "Action needed - Complete FAFSA"
-        )
-        matches.append({"id": "massgrant", "actionStatus": action})
-
-    if (
-        is_full_time()
-        and a.get("ma_resident") == "yes"
-        and a.get("citizen_status") == "yes"
-        and a.get("income_level") == "low"
-    ):
-        action = (
-            "No action needed (already applied to FAFSA)"
-            if a.get("fafsa_completed") == "yes"
-            else "Action needed - Complete FAFSA"
-        )
-        matches.append({"id": "massgrant-plus", "actionStatus": action})
-
-    if (
-        a.get("ma_resident") == "yes"
-        and (
-            a.get("income_level") == "low"
-            or (a.get("work_study") == "yes" and a.get("income_level") == "medium")
-        )
-    ):
-        matches.append({
-            "id": "snap",
-            "actionStatus": "You likely qualify for SNAP. Apply through your state SNAP portal."
-        })
-
-    if (
-        a.get("ma_resident") == "yes"
-        and a.get("citizen_status") == "yes"
-        and a.get("income_level") in ("low", "medium")
-    ):
-        matches.append({"id": "masshealth"})
-
-    if is_enrolled() and a.get("transportation") in ("yes", "sometimes"):
+    # Pell Grant
+    if is_enrolled() and citizen == "yes":
+        matches.append({"id": "pell-grant", "actionStatus": fafsa_status(a)})
+    # Mass grant
+    if is_enrolled() and resident == "yes" and citizen == "yes":
+        matches.append({"id": "massgrant", "actionStatus": fafsa_status(a)})
+    # Mass grant plus
+    if is_full_time() and resident == "yes" and citizen == "yes" and income == "low":
+        matches.append({"id": "massgrant-plus", "actionStatus": fafsa_status(a)})
+    # Snap
+    if resident == "yes" and income in ("low", "medium"):
+        if student in ("full_time", "part_time"):
+            if work_study == "yes" or dependent == "yes":
+                matches.append({
+                    "id": "snap",
+                    "actionStatus": "You likely qualify for SNAP. Apply through your state SNAP portal."
+                })
+        elif income == "low":
+            matches.append({
+                    "id": "snap",
+                    "actionStatus": "You likely qualify for SNAP. Apply through your state SNAP portal."
+                })
+    # Masshealth
+    if resident == "yes" and income in ("low", "medium"):
+        if insurance == "no":
+            matches.append({"id": "masshealth"})
+    #MBTA pass
+    if is_enrolled() and transport in ("yes", "sometimes"):
         matches.append({"id": "mbta-pass"})
 
     seen = set()
