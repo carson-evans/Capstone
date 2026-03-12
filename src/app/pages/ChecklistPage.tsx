@@ -1,11 +1,23 @@
-import React from 'react';
-import { motion } from 'motion/react';
-import { Download, ArrowLeft } from 'lucide-react';
-import { Button } from '@/app/components/ui/button';
-import { Checkbox } from '@/app/components/ui/checkbox';
-import { Navbar } from '@/app/components/layout/Navbar';
-import { useBenefits } from '@/app/context/BenefitsContext';
-import { toast } from 'sonner';
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { benefits, type Benefit } from "../data/benefitsData";
+
+type MatchedBenefit = {
+  id: string;
+  actionStatus?: string;
+};
+
+type LocationStateShape = {
+  profile?: Record<string, unknown>;
+  selectedBenefits?: string[];
+  matchedBenefits?: MatchedBenefit[];
+};
+
+type ChecklistState = Record<string, Record<string, boolean>>;
+
+const CHECKLIST_STORAGE_KEY = "commonmass_checklist_state";
+const PROFILE_STORAGE_KEY = "commonmass_profile";
+const MATCHES_STORAGE_KEY = "commonmass_matched_benefits";
 
 export default function ChecklistPage() {
   const { matchedBenefits, answers, checklistProgress, setChecklistItemChecked } = useBenefits();
@@ -36,19 +48,23 @@ export default function ChecklistPage() {
 
     const newTab = window.open('', '_blank');
 
-    try {
-      toast.loading('Generating PDF...', { id: 'pdf' });
+    return [];
+  }, [state.selectedBenefits, matchedBenefits]);
 
-      const payload = {
-        selectedBenefits: actionableBenefits.map((b) => b.id),
-        profile: answers,
-        checklistProgress: Object.fromEntries(
-          actionableBenefits.map((benefit) => [
-            benefit.id,
-            benefit.checklist.map((_, idx) => checklistProgress[benefit.id]?.[idx] ?? false),
-          ])
-        ),
-      };
+  const visibleBenefits: Benefit[] = useMemo(() => {
+    const idSet = new Set(matchedBenefitIds);
+    return benefits.filter((benefit) => idSet.has(benefit.id));
+  }, [matchedBenefitIds]);
+
+  const [checklistState, setChecklistState] = useState<ChecklistState>({});
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CHECKLIST_STORAGE_KEY);
+      const saved = raw ? JSON.parse(raw) : {};
+
+      const nextState: ChecklistState = {};
 
       console.log('PDF payload:', payload);
 
@@ -60,9 +76,9 @@ export default function ChecklistPage() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error(`Packet generator failed (${res.status}). ${text}`);
+        for (const step of benefit.checklist) {
+          nextState[benefit.id][step] = Boolean(existing[step]);
+        }
       }
 
       const data = await res.json();
@@ -73,17 +89,22 @@ export default function ChecklistPage() {
         throw new Error('No presigned URL returned from API');
       }
 
-      toast.success('PDF ready - opening...', { id: 'pdf' });
-
-      if (newTab) {
-        newTab.location.href = url;
-        newTab.focus();
-      } else {
-        window.location.href = url;
+      if (!response.ok) {
+        console.error("Packet generation failed:", data);
+        alert(data?.error || "Failed to generate PDF packet.");
+        return;
       }
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to generate PDF', { id: 'pdf' });
-      if (newTab) newTab.close();
+
+      if (data?.download_url) {
+        window.open(data.download_url, "_blank", "noopener,noreferrer");
+      } else {
+        alert("PDF generated, but no download URL was returned.");
+      }
+    } catch (error) {
+      console.error("Packet generation error:", error);
+      alert("Something went wrong while generating the PDF packet.");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -100,7 +121,6 @@ export default function ChecklistPage() {
             onClick={() => window.history.back()}
             className="text-gray-500 hover:text-black hover:bg-transparent px-0 mb-4 print:hidden"
           >
-            <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Results
           </Button>
 
@@ -112,6 +132,9 @@ export default function ChecklistPage() {
             Complete these steps to apply for your identified benefits.
           </p>
         </div>
+      </div>
+    );
+  }
 
         <div className="space-y-12 print:space-y-8">
           {actionableBenefits.length > 0 ? (
@@ -164,17 +187,31 @@ export default function ChecklistPage() {
                     )
                   )}
                 </div>
-              </motion.div>
-            ))
-          ) : (
-            <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-              <p className="text-gray-500">
-                {matchedBenefits.length > 0
-                  ? 'You do not have any checklist steps left for your current matches.'
-                  : 'No benefits selected. Go back to screening.'}
-              </p>
-            </div>
-          )}
+                <h2 className="text-2xl font-bold text-slate-900">{benefit.title}</h2>
+              </div>
+
+              <div className="mt-6 space-y-3">
+                {benefit.checklist.map((step) => {
+                  const checked = Boolean(checklistState?.[benefit.id]?.[step]);
+
+                  return (
+                    <label
+                      key={step}
+                      className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-4 text-slate-900"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleStep(benefit.id, step)}
+                        className="h-5 w-5"
+                      />
+                      <span className={checked ? "line-through opacity-60" : ""}>{step}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
         </div>
 
         {actionableBenefits.length > 0 && (

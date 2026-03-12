@@ -1,5 +1,17 @@
 {
   "benefits": {
+    "pell-grant": {
+      "title": "Federal Pell Grant",
+      "category": "Education",
+      "description": "A subsidy the U.S. federal government provides for students who need it to pay for college.",
+      "officialUrl": "https://studentaid.gov/h/apply-for-aid/fafsa",
+      "checklist": [
+        "Create an FSA ID",
+        "Gather tax documents",
+        "Complete the FAFSA form",
+        "Review your Student Aid Report (SAR)"
+      ]
+    },
     "massgrant": {
       "title": "MASSGrant",
       "category": "Education",
@@ -11,29 +23,57 @@
         "Enroll in a Massachusetts college",
         "Maintain satisfactory academic progress",
         "Check award notification from your school"
-      ],
-      "faq": [
-        {
-          "question": "How do I apply?",
-          "answer": "Complete the FAFSA and review your financial aid notice from your Massachusetts institution."
-        },
-        {
-          "question": "Who may qualify?",
-          "answer": "Massachusetts residents attending college in-state with financial need may qualify."
-        },
-        {
-          "question": "What documents do I need?",
-          "answer": "You typically need FAFSA-related financial information and school enrollment records."
-        }
-      ],
-      "keywords": [
-        "apply",
-        "application",
-        "eligibility",
-        "qualify",
-        "documents",
-        "deadline",
-        "fafsa"
+      ]
+    },
+    "massgrant-plus": {
+      "title": "MASSGrant Plus",
+      "category": "Education",
+      "description": "Additional need-based grant for Massachusetts residents with exceptional financial need.",
+      "officialUrl": "https://studentaid.gov/h/apply-for-aid/fafsa",
+      "checklist": [
+        "Complete the FAFSA",
+        "Demonstrate exceptional financial need",
+        "Enroll full-time at a Massachusetts public college",
+        "Maintain good academic standing",
+        "Review eligibility with your financial aid office"
+      ]
+    },
+    "masshealth": {
+      "title": "MassHealth",
+      "category": "Health",
+      "description": "Massachusetts Medicaid and CHIP program providing health coverage for eligible residents.",
+      "officialUrl": "https://www.mahealthconnector.org/",
+      "checklist": [
+        "Verify Massachusetts residency",
+        "Gather income documentation",
+        "Collect proof of identity and citizenship",
+        "Apply online at MAhealthconnector.org",
+        "Choose a MassHealth plan"
+      ]
+    },
+    "mbta-pass": {
+      "title": "MBTA Student Pass",
+      "category": "Transport",
+      "description": "Discounted monthly passes for eligible students using MBTA services.",
+      "officialUrl": "https://www.mbta.com/",
+      "checklist": [
+        "Get current student ID",
+        "Verify full-time enrollment status",
+        "Visit school transportation office or MBTA.com",
+        "Purchase discounted semester or monthly pass",
+        "Carry student ID when using the pass"
+      ]
+    },
+    "snap": {
+      "title": "SNAP (Food Stamps)",
+      "category": "Food",
+      "description": "Provides food purchasing assistance for low- and no-income people.",
+      "officialUrl": "https://www.mass.gov/orgs/department-of-transitional-assistance",
+      "checklist": [
+        "Check student eligibility requirements",
+        "Gather proof of enrollment",
+        "Gather proof of income",
+        "Submit application through state portal"
       ]
     }
   }

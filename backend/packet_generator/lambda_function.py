@@ -29,6 +29,23 @@ SHARED_SECRET_VALUE = os.environ.get("SHARED_SECRET_VALUE", "")
 
 
 # -----------------------------
+# Friendly labels
+# -----------------------------
+FIELD_LABELS = {
+    "student_status": "Student Status",
+    "citizen_status": "Citizen Status",
+    "ma_resident": "Massachusetts Resident",
+    "fafsa_completed": "FAFSA Completed",
+    "work_study": "Work Study",
+    "income_level": "Income Level",
+    "transportation": "Transportation Need",
+    "housing_status": "Housing Status",
+    "dependent_status": "Dependent Status",
+    "health_insurance": "Health Insurance",
+}
+
+
+# -----------------------------
 # HTTP helpers
 # -----------------------------
 def _resp(status_code: int, body, content_type: str = "application/json", extra_headers: dict | None = None):
@@ -145,7 +162,7 @@ FALLBACK_CATALOG = {
         "officialButtonLabel": "Start Official Application",
         "checklist": [
             "Complete the FAFSA",
-            "Demonstrate Expected Family Contribution (EFC) of $0",
+            "Demonstrate exceptional financial need",
             "Enroll full-time at a Massachusetts public college",
             "Maintain good academic standing",
             "Review eligibility with financial aid office",
@@ -576,7 +593,7 @@ def _build_pdf_bytes(
         c.drawString(margin_x, y, "No matched benefits based on the submitted profile.")
         y -= 14
     else:
-        for m in matches:
+        for i, m in enumerate(matches, start=1):
             bid = m["id"]
             item = catalog.get(bid, {})
             title = item.get("title", bid)
@@ -711,10 +728,14 @@ def lambda_handler(event, context):
 
     if not isinstance(profile, dict):
         return _resp(400, {"error": "profile must be an object"})
+
     if selected is not None and not isinstance(selected, list):
         return _resp(400, {"error": "selectedBenefits must be a list if provided"})
     if checklist_progress is not None and not isinstance(checklist_progress, dict):
         return _resp(400, {"error": "checklistProgress must be an object if provided"})
+
+    if checklist_state is not None and not isinstance(checklist_state, dict):
+        return _resp(400, {"error": "checklistState must be an object if provided"})
 
     region = _detect_bucket_region(PACKETS_BUCKET)
 
