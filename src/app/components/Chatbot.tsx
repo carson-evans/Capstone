@@ -1,10 +1,16 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, Bot, User, Minimize2, Maximize2 } from 'lucide-react';
-import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
-import { ScrollArea } from '@/app/components/ui/scroll-area';
-
+import {
+  Send,
+  Bot,
+  User,
+  Minimize2,
+  Maximize2,
+  ExternalLink,
+} from 'lucide-react';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { benefits } from '../data/benefitsData';
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -12,65 +18,285 @@ interface Message {
   timestamp: Date;
 }
 
-const mockResponses = [
-  {
-    keywords: ['pell', 'grant', 'federal'],
-    response: 'The Federal Pell Grant is a need-based grant for undergraduate students. The maximum Pell Grant award for the 2025-2026 award year is $7,395. You must complete the FAFSA to be considered for this grant. Eligibility is based on your Expected Family Contribution (EFC), cost of attendance, and enrollment status.'
-  },
-  {
-    keywords: ['massgrant', 'mass grant', 'massachusetts grant'],
-    response: 'MASSGrant is a state-funded grant program for Massachusetts residents attending college in-state. Award amounts range from $300 to $1,900 per year. You must complete the FAFSA, be a Massachusetts resident for at least one year, and maintain satisfactory academic progress. MASSGrant Plus provides enhanced funding for students with exceptional financial need (EFC of $0) and can cover up to full tuition at Massachusetts public colleges.'
-  },
-  {
-    keywords: ['masshealth', 'mass health', 'medicaid massachusetts'],
-    response: 'MassHealth is Massachusetts\' Medicaid and CHIP program providing comprehensive health coverage. You can apply at MAhealthconnector.org. You\'ll need proof of Massachusetts residency, identity, citizenship or immigration status, and income documentation. MassHealth covers doctor visits, hospital care, prescription drugs, and preventive services. Students may qualify based on income, age, disability, or other factors.'
-  },
-  {
-    keywords: ['mbta', 'transit', 'subway', 'bus', 'transportation massachusetts'],
-    response: 'Full-time students can purchase discounted MBTA passes through the Student LinkPass program. This offers unlimited travel on subway, bus, and local routes at a reduced rate. You must verify your full-time enrollment status through your school\'s transportation office or the MBTA website. Some schools offer semester pass programs with additional savings. Always carry your student ID when using the discounted pass.'
-  },
-  {
-    keywords: ['fafsa', 'apply', 'application'],
-    response: 'To apply for federal student aid, you need to complete the Free Application for Federal Student Aid (FAFSA). You can file the FAFSA online at fafsa.gov. You\'ll need your FSA ID, Social Security number, federal tax information, and records of untaxed income. The FAFSA opens on October 1st each year.'
-  },
-  {
-    keywords: ['work study', 'work-study', 'job'],
-    response: 'Federal Work-Study provides part-time jobs for undergraduate and graduate students with financial need. The program encourages community service work and work related to your course of study. You can work on-campus or off-campus with approved employers. Check with your school\'s financial aid office to apply.'
-  },
-  {
-    keywords: ['loan', 'borrow', 'student loan'],
-    response: 'Federal student loans include Direct Subsidized Loans (for undergraduate students with financial need), Direct Unsubsidized Loans (available to all students), and Direct PLUS Loans (for graduate students and parents). Interest rates and loan limits vary by loan type and dependency status. Always borrow only what you need.'
-  },
-  {
-    keywords: ['eligibility', 'qualify', 'eligible'],
-    response: 'To be eligible for federal student aid, you must: be a U.S. citizen or eligible noncitizen, have a valid Social Security number, be enrolled in an eligible program, maintain satisfactory academic progress, and not be in default on federal student loans. You must also complete the FAFSA each year.'
-  },
-  {
-    keywords: ['deadline', 'when', 'date'],
-    response: 'FAFSA deadlines vary by state and school. The federal deadline is June 30th of the award year. However, many states and schools have earlier deadlines. It\'s recommended to submit your FAFSA as soon as possible after October 1st to maximize your aid opportunities.'
-  },
-  {
-    keywords: ['snap', 'food', 'assistance'],
-    response: 'Students may qualify for SNAP (Supplemental Nutrition Assistance Program) if they meet certain criteria, such as working at least 20 hours per week, participating in work-study, caring for a dependent, or receiving TANF benefits. In Massachusetts, apply through the Department of Transitional Assistance (DTA). Contact your local SNAP office to verify your eligibility.'
-  },
-  {
-    keywords: ['scholarship', 'scholarships'],
-    response: 'Scholarships are free money for college that you don\'t have to repay. Look for scholarships through your school\'s financial aid office, community organizations, employers, and online scholarship databases. Massachusetts also offers the Adams Scholarship for high MCAS scorers. Be sure to watch for application deadlines and never pay to apply for scholarships.'
-  }
+type Intent =
+  | 'apply'
+  | 'eligibility'
+  | 'documents'
+  | 'checklist'
+  | 'official-link'
+  | 'deadline'
+  | 'overview'
+  | 'unknown';
+
+const SUGGESTED_PROMPTS = [
+  'What is MASSGrant?',
+  'How do I apply for Pell Grant?',
+  'Who qualifies for SNAP?',
+  'What documents do I need for MassHealth?',
+  'Where is the official MBTA pass link?',
 ];
+
+const STOP_WORDS = new Set([
+  'the',
+  'a',
+  'an',
+  'and',
+  'or',
+  'for',
+  'to',
+  'of',
+  'is',
+  'are',
+  'i',
+  'me',
+  'my',
+  'you',
+  'your',
+  'about',
+  'what',
+  'how',
+  'do',
+  'does',
+  'can',
+  'where',
+  'when',
+  'who',
+  'tell',
+  'more',
+  'with',
+  'please',
+]);
+
+function normalize(text: string): string {
+  return text.toLowerCase().replace(/[^\w\s-]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function tokenize(text: string): string[] {
+  return normalize(text)
+    .split(' ')
+    .map((t) => t.trim())
+    .filter((t) => t && !STOP_WORDS.has(t));
+}
+
+function detectIntent(input: string): Intent {
+  const text = normalize(input);
+
+  if (
+    text.includes('how do i apply') ||
+    text.includes('apply') ||
+    text.includes('application') ||
+    text.includes('start')
+  ) {
+    return 'apply';
+  }
+
+  if (
+    text.includes('eligible') ||
+    text.includes('eligibility') ||
+    text.includes('qualify') ||
+    text.includes('qualified') ||
+    text.includes('who gets')
+  ) {
+    return 'eligibility';
+  }
+
+  if (
+    text.includes('document') ||
+    text.includes('documents') ||
+    text.includes('paperwork') ||
+    text.includes('proof') ||
+    text.includes('what do i need')
+  ) {
+    return 'documents';
+  }
+
+  if (
+    text.includes('checklist') ||
+    text.includes('steps') ||
+    text.includes('what should i do first') ||
+    text.includes('what do i do first')
+  ) {
+    return 'checklist';
+  }
+
+  if (
+    text.includes('official link') ||
+    text.includes('website') ||
+    text.includes('site') ||
+    text.includes('url') ||
+    text.includes('link')
+  ) {
+    return 'official-link';
+  }
+
+  if (
+    text.includes('deadline') ||
+    text.includes('due date') ||
+    text.includes('when is it due') ||
+    text.includes('when due') ||
+    text.includes('when')
+  ) {
+    return 'deadline';
+  }
+
+  if (
+    text.includes('what is') ||
+    text.includes('tell me about') ||
+    text.includes('overview') ||
+    text.includes('explain')
+  ) {
+    return 'overview';
+  }
+
+  return 'unknown';
+}
+
+function getBenefitAliases(benefitId: string, title: string): string[] {
+  const base = [title.toLowerCase(), benefitId.toLowerCase()];
+
+  switch (benefitId) {
+    case 'pell-grant':
+      return [...base, 'pell', 'federal pell grant', 'pell grant'];
+    case 'massgrant':
+      return [...base, 'massgrant', 'mass grant', 'massachusetts grant'];
+    case 'massgrant-plus':
+      return [...base, 'massgrant plus', 'mass grant plus', 'massachusetts grant plus'];
+    case 'masshealth':
+      return [...base, 'mass health', 'medicaid', 'ma medicaid'];
+    case 'mbta-pass':
+      return [...base, 'mbta', 'student pass', 'mbta pass', 'transit pass'];
+    case 'snap':
+      return [...base, 'food stamps', 'snap benefits', 'food assistance'];
+    default:
+      return base;
+  }
+}
+
+function scoreBenefit(userInput: string, benefit: (typeof benefits)[number]): number {
+  const text = normalize(userInput);
+  const tokens = tokenize(userInput);
+  const haystack = normalize(
+    [
+      benefit.id,
+      benefit.title,
+      benefit.category,
+      benefit.description,
+      benefit.checklist.join(' '),
+    ].join(' ')
+  );
+
+  const aliases = getBenefitAliases(benefit.id, benefit.title);
+
+  let score = 0;
+
+  for (const alias of aliases) {
+    if (text.includes(alias)) score += 8;
+  }
+
+  for (const token of tokens) {
+    if (haystack.includes(token)) score += 2;
+  }
+
+  if (text.includes(benefit.category.toLowerCase())) score += 2;
+
+  return score;
+}
+
+function buildBenefitResponse(
+  benefit: (typeof benefits)[number],
+  intent: Intent
+): string {
+  switch (intent) {
+    case 'apply':
+      return [
+        `${benefit.title}:`,
+        `To get started, use the official application page: ${benefit.officialUrl}`,
+        benefit.checklist.length
+          ? `Suggested first steps: ${benefit.checklist.slice(0, 3).join('; ')}.`
+          : '',
+      ]
+        .filter(Boolean)
+        .join(' ');
+
+    case 'eligibility':
+      return [
+        `${benefit.title}:`,
+        benefit.description,
+        `CommonMASS can help screen for likely eligibility, but the final decision comes from the official program or agency.`,
+      ].join(' ');
+
+    case 'documents':
+      return [
+        `${benefit.title}:`,
+        benefit.checklist.length
+          ? `Based on our checklist, you may need items such as: ${benefit.checklist.join('; ')}.`
+          : `Please review the official program page for required documents: ${benefit.officialUrl}`,
+      ].join(' ');
+
+    case 'checklist':
+      return [
+        `${benefit.title} checklist:`,
+        benefit.checklist.length
+          ? benefit.checklist.map((item, index) => `${index + 1}. ${item}`).join(' ')
+          : 'No checklist steps are currently available for this benefit.',
+      ].join(' ');
+
+    case 'official-link':
+      return `${benefit.title} official link: ${benefit.officialUrl}`;
+
+    case 'deadline':
+      return `${benefit.title}: deadlines can vary by program, school, or agency. Please confirm the latest deadline on the official page: ${benefit.officialUrl}`;
+
+    case 'overview':
+    case 'unknown':
+    default:
+      return [
+        `${benefit.title}:`,
+        benefit.description,
+        benefit.checklist.length
+          ? `Main steps include: ${benefit.checklist.slice(0, 3).join('; ')}.`
+          : '',
+        `Official page: ${benefit.officialUrl}`,
+      ]
+        .filter(Boolean)
+        .join(' ');
+  }
+}
+
+function buildGeneralResponse(input: string): string {
+  const text = normalize(input);
+  const intent = detectIntent(text);
+
+  if (intent === 'apply') {
+    return 'I can help with CommonMASS-listed benefits only. Try asking how to apply for Pell Grant, MASSGrant, MASSGrant Plus, MassHealth, MBTA Student Pass, or SNAP.';
+  }
+
+  if (intent === 'eligibility') {
+    return 'I can only answer questions about benefits listed in CommonMASS. Try asking who qualifies for Pell Grant, MASSGrant, MassHealth, MBTA Student Pass, or SNAP.';
+  }
+
+  if (intent === 'documents') {
+    return 'Try asking about documents for a specific benefit, such as MassHealth, SNAP, or Pell Grant.';
+  }
+
+  return 'I can only answer questions about CommonMASS-listed benefits. Try asking about Pell Grant, MASSGrant, MASSGrant Plus, MassHealth, MBTA Student Pass, or SNAP.';
+}
 
 export function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'assistant',
-      content: 'Hello! I\'m here to help answer your questions about student benefits. What would you like to know?',
-      timestamp: new Date()
-    }
+      content:
+        "Hi — I'm the CommonMASS Benefits Assistant. I only answer questions about the benefits listed on this site, such as Pell Grant, MASSGrant, MassHealth, MBTA Student Pass, and SNAP.",
+      timestamp: new Date(),
+    },
   ]);
   const [input, setInput] = useState('');
   const [isMinimized, setIsMinimized] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const quickPrompts = useMemo(() => SUGGESTED_PROMPTS, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -79,49 +305,57 @@ export function Chatbot() {
   }, [messages]);
 
   const generateResponse = (userMessage: string): string => {
-    const lowercaseMessage = userMessage.toLowerCase();
-    
-    // Find matching response based on keywords
-    for (const responseData of mockResponses) {
-      if (responseData.keywords.some(keyword => lowercaseMessage.includes(keyword))) {
-        return responseData.response;
-      }
+    const intent = detectIntent(userMessage);
+
+    const scoredBenefits = benefits
+      .map((benefit) => ({
+        benefit,
+        score: scoreBenefit(userMessage, benefit),
+      }))
+      .sort((a, b) => b.score - a.score);
+
+    const bestMatch = scoredBenefits[0];
+
+    if (bestMatch && bestMatch.score >= 4) {
+      return buildBenefitResponse(bestMatch.benefit, intent);
     }
-    
-    // Default response if no match found
-    return 'I understand you\'re asking about student benefits. For specific questions about Pell Grants, FAFSA applications, work-study programs, student loans, SNAP benefits, or scholarships, please try rephrasing your question with those terms. You can also check our FAQ section above for more information.';
+
+    return buildGeneralResponse(userMessage);
+  };
+
+  const submitMessage = (rawMessage: string) => {
+    const trimmed = rawMessage.trim();
+    if (!trimmed) return;
+
+    const userMessage: Message = {
+      id: `${Date.now()}-user`,
+      role: 'user',
+      content: trimmed,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
+
+    setTimeout(() => {
+      const assistantMessage: Message = {
+        id: `${Date.now()}-assistant`,
+        role: 'assistant',
+        content: generateResponse(trimmed),
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    }, 250);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
-
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: input,
-      timestamp: new Date()
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-
-    // Simulate AI response after a short delay
-    setTimeout(() => {
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: generateResponse(input),
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, assistantMessage]);
-    }, 500);
+    submitMessage(input);
   };
 
   return (
     <div className="w-full max-w-2xl mx-auto border border-gray-300 rounded-lg bg-white shadow-sm">
-      {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-300 bg-gray-50">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-[#1e3a5f] rounded-full flex items-center justify-center">
@@ -129,9 +363,12 @@ export function Chatbot() {
           </div>
           <div>
             <h3 className="font-bold text-black">Benefits Assistant</h3>
-            <p className="text-sm text-gray-600">Ask me anything about student benefits</p>
+            <p className="text-sm text-gray-600">
+              Answers only from CommonMASS benefit content
+            </p>
           </div>
         </div>
+
         <Button
           variant="ghost"
           size="icon"
@@ -154,8 +391,22 @@ export function Chatbot() {
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
-            {/* Messages */}
-            <div 
+            <div className="border-b border-gray-200 bg-white px-4 py-3">
+              <div className="flex flex-wrap gap-2">
+                {quickPrompts.map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    onClick={() => submitMessage(prompt)}
+                    className="rounded-full border border-gray-300 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-[#1e3a5f] hover:text-[#1e3a5f]"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div
               ref={scrollRef}
               className="h-96 overflow-y-auto p-4 space-y-4 bg-white"
             >
@@ -171,15 +422,27 @@ export function Chatbot() {
                       <Bot className="h-4 w-4 text-gray-700" />
                     </div>
                   )}
+
                   <div
-                    className={`max-w-[70%] rounded-lg p-3 ${
+                    className={`max-w-[78%] rounded-lg p-3 ${
                       message.role === 'user'
                         ? 'bg-[#1e3a5f] text-white'
                         : 'bg-gray-100 text-black border border-gray-200'
                     }`}
                   >
-                    <p className="text-sm leading-relaxed">{message.content}</p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                      {message.content}
+                    </p>
+
+                    {message.role === 'assistant' &&
+                      message.content.includes('http') && (
+                        <div className="mt-2 flex items-center gap-1 text-xs text-gray-600">
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Official program link included above
+                        </div>
+                      )}
                   </div>
+
                   {message.role === 'user' && (
                     <div className="w-8 h-8 bg-[#f97316] rounded-full flex items-center justify-center flex-shrink-0">
                       <User className="h-4 w-4 text-white" />
@@ -189,13 +452,12 @@ export function Chatbot() {
               ))}
             </div>
 
-            {/* Input */}
             <div className="p-4 border-t border-gray-300 bg-gray-50">
               <form onSubmit={handleSubmit} className="flex gap-2">
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Type your question here..."
+                  placeholder="Ask about Pell Grant, MassHealth, SNAP, MBTA pass..."
                   className="flex-1 bg-white border-gray-300 focus:border-[#1e3a5f] focus:ring-[#1e3a5f]"
                 />
                 <Button
