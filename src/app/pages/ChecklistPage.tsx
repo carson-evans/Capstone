@@ -9,10 +9,18 @@ import { toast } from 'sonner';
 
 export default function ChecklistPage() {
   const { matchedBenefits, answers, checklistProgress, setChecklistItemChecked } = useBenefits();
+
   const actionableBenefits = matchedBenefits.filter(
     (benefit) => !benefit.actionStatus?.includes('No action needed')
   );
-  const checklistItemTransition = { type: 'spring', stiffness: 420, damping: 34, mass: 0.45 };
+
+  const checklistItemTransition = {
+    type: 'spring',
+    stiffness: 420,
+    damping: 34,
+    mass: 0.45,
+  };
+
   const getOrderedChecklistItems = (benefitId: string, items: string[]) =>
     items
       .map((item, originalIndex) => ({
@@ -42,9 +50,13 @@ export default function ChecklistPage() {
         ),
       };
 
+      console.log('PDF payload:', payload);
+
       const res = await fetch(apiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(payload),
       });
 
@@ -55,10 +67,11 @@ export default function ChecklistPage() {
 
       const data = await res.json();
       const parsed = typeof data.body === 'string' ? JSON.parse(data.body) : data;
-
       const url = parsed.download_url || parsed.url || parsed.presigned_url || parsed.location;
 
-      if (!url) throw new Error('No presigned URL returned from API');
+      if (!url) {
+        throw new Error('No presigned URL returned from API');
+      }
 
       toast.success('PDF ready - opening...', { id: 'pdf' });
 
@@ -81,7 +94,6 @@ export default function ChecklistPage() {
       </div>
 
       <div className="container max-w-3xl mx-auto px-6 py-12 print:py-0 print:max-w-none">
-        {/* Header */}
         <div className="mb-12 print:mb-8">
           <Button
             variant="ghost"
@@ -95,12 +107,12 @@ export default function ChecklistPage() {
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">
             Your Personalized Application Checklist
           </h1>
+
           <p className="text-gray-600 print:text-black">
             Complete these steps to apply for your identified benefits.
           </p>
         </div>
 
-        {/* Checklist Groups */}
         <div className="space-y-12 print:space-y-8">
           {actionableBenefits.length > 0 ? (
             actionableBenefits.map((benefit, index) => (
@@ -139,9 +151,10 @@ export default function ChecklistPage() {
                           }
                           className="mt-0.5 border-gray-400 bg-white data-[state=checked]:bg-[#1e3a5f] data-[state=checked]:text-white"
                         />
+
                         <label
                           htmlFor={`${benefit.id}-${originalIndex}`}
-                          className={`flex-1 cursor-pointer text-base font-medium leading-relaxed transition-colors peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${
+                          className={`flex-1 cursor-pointer text-base font-medium leading-relaxed transition-colors ${
                             checked ? 'text-slate-400 line-through' : 'text-slate-900'
                           }`}
                         >
@@ -163,6 +176,7 @@ export default function ChecklistPage() {
             </div>
           )}
         </div>
+
         {actionableBenefits.length > 0 && (
           <div className="mt-12 flex justify-center print:hidden">
             <Button
