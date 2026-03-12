@@ -4,12 +4,36 @@
       "title": "MASSGrant",
       "category": "Education",
       "description": "Need-based grant for Massachusetts residents attending college in-state.",
+      "officialUrl": "https://studentaid.gov/h/apply-for-aid/fafsa",
       "checklist": [
         "Complete the FAFSA",
         "Be a Massachusetts resident",
         "Enroll in a Massachusetts college",
         "Maintain satisfactory academic progress",
         "Check award notification from your school"
+      ],
+      "faq": [
+        {
+          "question": "How do I apply?",
+          "answer": "Complete the FAFSA and review your financial aid notice from your Massachusetts institution."
+        },
+        {
+          "question": "Who may qualify?",
+          "answer": "Massachusetts residents attending college in-state with financial need may qualify."
+        },
+        {
+          "question": "What documents do I need?",
+          "answer": "You typically need FAFSA-related financial information and school enrollment records."
+        }
+      ],
+      "keywords": [
+        "apply",
+        "application",
+        "eligibility",
+        "qualify",
+        "documents",
+        "deadline",
+        "fafsa"
       ]
     }
   }
