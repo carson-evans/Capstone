@@ -10,6 +10,7 @@ from botocore.exceptions import ClientError
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
+from reportlab.lib import colors
 
 
 # -----------------------------
@@ -106,19 +107,30 @@ def _parse_payload(event) -> dict:
 def _get_header(event: dict, name: str) -> str | None:
     headers = event.get("headers") or {}
     for k, v in headers.items():
-        if k.lower() == name.lower():
+        if str(k).lower() == name.lower():
             return v
     return None
 
 
+def _get_http_method(event: dict) -> str:
+    return (
+        event.get("httpMethod")
+        or event.get("requestContext", {}).get("http", {}).get("method")
+        or ""
+    ).upper()
+
+
 # -----------------------------
-# Benefits catalog
+# Fallback catalog
 # -----------------------------
 FALLBACK_CATALOG = {
     "pell-grant": {
+        "id": "pell-grant",
         "title": "Federal Pell Grant",
         "category": "Education",
         "description": "A subsidy the U.S. federal government provides for students who need it to pay for college.",
+        "officialUrl": "https://studentaid.gov/h/apply-for-aid/fafsa",
+        "officialButtonLabel": "Start Official Application",
         "checklist": [
             "Create an FSA ID",
             "Gather tax documents",
@@ -127,9 +139,12 @@ FALLBACK_CATALOG = {
         ],
     },
     "massgrant": {
+        "id": "massgrant",
         "title": "MASSGrant",
         "category": "Education",
         "description": "Need-based grant for Massachusetts residents attending college in-state.",
+        "officialUrl": "https://studentaid.gov/h/apply-for-aid/fafsa",
+        "officialButtonLabel": "Start Official Application",
         "checklist": [
             "Complete the FAFSA",
             "Be a Massachusetts resident",
@@ -139,9 +154,12 @@ FALLBACK_CATALOG = {
         ],
     },
     "massgrant-plus": {
+        "id": "massgrant-plus",
         "title": "MASSGrant Plus",
         "category": "Education",
         "description": "Additional need-based grant for Massachusetts residents with exceptional financial need.",
+        "officialUrl": "https://studentaid.gov/h/apply-for-aid/fafsa",
+        "officialButtonLabel": "Start Official Application",
         "checklist": [
             "Complete the FAFSA",
             "Demonstrate exceptional financial need",
@@ -151,9 +169,12 @@ FALLBACK_CATALOG = {
         ],
     },
     "masshealth": {
+        "id": "masshealth",
         "title": "MassHealth",
         "category": "Health",
-        "description": "Massachusetts Medicaid and CHIP program providing health coverage for eligible residents.",
+        "description": "Massachusetts Medicaid and CHIP program providing comprehensive health coverage for eligible residents.",
+        "officialUrl": "https://www.mahix.org/individual/",
+        "officialButtonLabel": "Start Official Application",
         "checklist": [
             "Verify Massachusetts residency",
             "Gather income documentation",
@@ -163,9 +184,12 @@ FALLBACK_CATALOG = {
         ],
     },
     "mbta-pass": {
+        "id": "mbta-pass",
         "title": "MBTA Student Pass",
         "category": "Transport",
-        "description": "Discounted monthly passes for eligible students using MBTA services.",
+        "description": "Discounted monthly passes for full-time students using MBTA services in the Greater Boston area.",
+        "officialUrl": "https://www.mbta.com/fares/college-student-semester-passes",
+        "officialButtonLabel": "Visit Official Site",
         "checklist": [
             "Get current student ID",
             "Verify full-time enrollment status",
@@ -175,9 +199,12 @@ FALLBACK_CATALOG = {
         ],
     },
     "snap": {
+        "id": "snap",
         "title": "SNAP (Food Stamps)",
         "category": "Food",
         "description": "Provides food purchasing assistance for low- and no-income people.",
+        "officialUrl": "https://dtaconnect.eohhs.mass.gov/",
+        "officialButtonLabel": "Start Official Application",
         "checklist": [
             "Check student eligibility requirements",
             "Gather proof of enrollment",
@@ -188,24 +215,65 @@ FALLBACK_CATALOG = {
 }
 
 
-def _load_catalog(s3, bucket: str, key: str) -> dict:
-    if not bucket:
+def _normalize_catalog(data) -> dict:
+    if not data:
         return {}
+
+    if isinstance(data, dict) and "benefits" in data:
+        data = data["benefits"]
+
+    if isinstance(data, dict):
+        normalized = {}
+        for k, v in data.items():
+            if isinstance(v, dict):
+                benefit_id = v.get("id") or k
+                normalized[str(benefit_id)] = {
+                    **v,
+                    "id": benefit_id,
+                }
+        return normalized
+
+    if isinstance(data, list):
+        normalized = {}
+        for item in data:
+            if isinstance(item, dict) and item.get("id"):
+                normalized[str(item["id"])] = item
+        return normalized
+
+    return {}
+
+
+def _merge_catalogs(base: dict, override: dict) -> dict:
+    merged = dict(base)
+    for bid, item in override.items():
+        if bid in merged:
+            merged[bid] = {
+                **merged[bid],
+                **item,
+            }
+        else:
+            merged[bid] = item
+    return merged
+
+
+def _load_catalog(s3, bucket: str, key: str) -> dict:
+    final_catalog = dict(FALLBACK_CATALOG)
+
+    if not bucket:
+        return final_catalog
 
     try:
         obj = s3.get_object(Bucket=bucket, Key=key)
         raw = obj["Body"].read().decode("utf-8")
-        data = json.loads(raw)
+        parsed = json.loads(raw)
 
-        if isinstance(data, dict) and "benefits" in data and isinstance(data["benefits"], dict):
-            return data["benefits"]
+        normalized = _normalize_catalog(parsed)
+        if normalized:
+            final_catalog = _merge_catalogs(FALLBACK_CATALOG, normalized)
 
-        if isinstance(data, dict):
-            return data
-
-        return {}
+        return final_catalog
     except Exception:
-        return {}
+        return final_catalog
 
 
 # -----------------------------
@@ -253,10 +321,8 @@ def _match_benefits(profile: dict) -> list[dict]:
 
     if (
         a.get("ma_resident") == "yes"
-        and (
-            a.get("income_level") == "low"
-            or (a.get("work_study") == "yes" and a.get("income_level") == "medium")
-        )
+        and a.get("income_level") in ("low", "medium")
+        and (a.get("work_study") == "yes" or a.get("income_level") == "low")
     ):
         matches.append({
             "id": "snap",
@@ -284,8 +350,65 @@ def _match_benefits(profile: dict) -> list[dict]:
 
 
 # -----------------------------
+# Checklist progress normalization
+# -----------------------------
+def _normalize_checklist_progress(checklist_progress: dict, matches: list[dict], catalog: dict) -> dict[str, list[bool]]:
+    normalized: dict[str, list[bool]] = {}
+    incoming = checklist_progress if isinstance(checklist_progress, dict) else {}
+
+    for m in matches:
+        benefit_id = m["id"]
+        checklist = catalog.get(benefit_id, {}).get("checklist") or []
+        raw_progress = incoming.get(benefit_id, [])
+
+        if not isinstance(raw_progress, list):
+            raw_progress = []
+
+        normalized[benefit_id] = [
+            bool(raw_progress[i]) if i < len(raw_progress) else False
+            for i in range(len(checklist))
+        ]
+
+    return normalized
+
+
+# -----------------------------
 # PDF helpers
 # -----------------------------
+PROFILE_LABELS = {
+    "student_status": "Student status",
+    "citizen_status": "Citizen / eligible non-citizen",
+    "ma_resident": "Massachusetts resident",
+    "fafsa_completed": "FAFSA completed",
+    "work_study": "Federal work-study",
+    "income_level": "Estimated annual income",
+    "transportation": "Uses public transportation",
+    "housing_status": "Housing status",
+    "dependent_status": "Claimed as dependent",
+    "health_insurance": "Health insurance",
+}
+
+PROFILE_VALUE_LABELS = {
+    "student_status": {"full_time": "Yes, full-time", "part_time": "Yes, part-time", "no": "No"},
+    "citizen_status": {"yes": "Yes", "no": "No"},
+    "ma_resident": {"yes": "Yes", "no": "No"},
+    "fafsa_completed": {"yes": "Yes", "no": "No"},
+    "work_study": {"yes": "Yes", "no": "No"},
+    "income_level": {"low": "Below $20,000", "medium": "Between $20,000 and $40,000", "high": "Above $40,000"},
+    "transportation": {"yes": "Yes, regularly", "sometimes": "Sometimes", "no": "No"},
+    "housing_status": {"on_campus": "On-campus housing", "off_campus": "Off-campus (renting)", "family": "Living with family"},
+    "dependent_status": {"yes": "Yes", "no": "No"},
+    "health_insurance": {"parents": "Yes, through parents", "school": "Yes, through school", "no": "No"},
+}
+
+
+def _friendly_profile_value(key: str, value):
+    if value is None:
+        return ""
+    mapping = PROFILE_VALUE_LABELS.get(key, {})
+    return mapping.get(value, str(value))
+
+
 def _wrap_text(c, text: str, max_width: float, font_name="Helvetica", font_size=11) -> list[str]:
     c.setFont(font_name, font_size)
     words = (text or "").split()
@@ -309,34 +432,107 @@ def _wrap_text(c, text: str, max_width: float, font_name="Helvetica", font_size=
 
 def _new_page(c):
     c.showPage()
-    width, height = letter
-    return height - 0.9 * inch
 
 
-def _draw_heading(c, x, y, text):
-    c.setFont("Helvetica-Bold", 18)
+def _ensure_space(c, y, height, needed=50):
+    if y < 0.9 * inch + needed:
+        _new_page(c)
+        _draw_header_band(c, letter[0], letter[1])
+        return height - 1.15 * inch
+    return y
+
+
+def _draw_header_band(c, width, height):
+    c.setFillColor(colors.HexColor("#1e3a5f"))
+    c.rect(0, height - 0.85 * inch, width, 0.85 * inch, stroke=0, fill=1)
+
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica-Bold", 20)
+    c.drawString(0.75 * inch, height - 0.52 * inch, "CommonMASS Packet")
+
+    c.setFont("Helvetica", 9)
+    c.drawRightString(width - 0.75 * inch, height - 0.52 * inch, "Generated Benefit Summary")
+
+    c.setFillColor(colors.black)
+
+
+def _draw_section_title(c, x, y, text):
+    c.setFillColor(colors.HexColor("#1e3a5f"))
+    c.setFont("Helvetica-Bold", 14)
     c.drawString(x, y, text)
-    return y - 22
+    c.setStrokeColor(colors.HexColor("#d9e2ec"))
+    c.setLineWidth(1)
+    c.line(x, y - 4, 7.75 * inch, y - 4)
+    c.setFillColor(colors.black)
+    return y - 18
 
 
-def _draw_subheading(c, x, y, text):
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(x, y, text)
-    return y - 16
+def _draw_small_meta(c, x, y, left_text, right_text=None):
+    c.setFont("Helvetica", 9)
+    c.setFillColor(colors.HexColor("#4b5563"))
+    c.drawString(x, y, left_text)
+    if right_text:
+        c.drawRightString(7.75 * inch, y, right_text)
+    c.setFillColor(colors.black)
+    return y - 12
 
 
-def _draw_divider(c, x1, x2, y):
-    c.line(x1, y, x2, y)
-    return y - 14
+def _draw_bullet_text(c, x, y, label, value, max_label_width=155):
+    c.setFont("Helvetica-Bold", 10)
+    label_text = f"{label}:"
+    c.drawString(x, y, label_text)
+
+    label_width = c.stringWidth(label_text, "Helvetica-Bold", 10)
+    value_x = x + max(max_label_width, label_width + 12)
+
+    c.setFont("Helvetica", 10)
+    c.drawString(value_x, y, value)
+
+    return y - 15
+
+
+def _draw_status_pill(c, x, y, text, good=False):
+    pad_x = 6
+    pill_height = 14
+    c.setFont("Helvetica", 8)
+    text_width = c.stringWidth(text, "Helvetica", 8)
+    pill_width = text_width + (pad_x * 2)
+
+    if good:
+        fill = colors.HexColor("#dcfce7")
+        stroke = colors.HexColor("#86efac")
+        text_color = colors.HexColor("#166534")
+    else:
+        fill = colors.HexColor("#dbeafe")
+        stroke = colors.HexColor("#93c5fd")
+        text_color = colors.HexColor("#1d4ed8")
+
+    c.setFillColor(fill)
+    c.setStrokeColor(stroke)
+    c.roundRect(x, y - 10, pill_width, pill_height, 4, stroke=1, fill=1)
+
+    c.setFillColor(text_color)
+    c.drawString(x + pad_x, y - 6, text)
+
+    c.setFillColor(colors.black)
+    c.setStrokeColor(colors.black)
 
 
 def _draw_checkbox(c, x, y, checked: bool):
-    c.rect(x, y - 9, 9, 9, stroke=1, fill=0)
+    size = 10
     if checked:
-        c.setLineWidth(1.2)
-        c.line(x + 2, y - 5, x + 4, y - 8)
-        c.line(x + 4, y - 8, x + 8, y - 2)
-        c.setLineWidth(1)
+        c.setFillColor(colors.HexColor("#1e3a5f"))
+        c.setStrokeColor(colors.HexColor("#1e3a5f"))
+        c.rect(x, y - size, size, size, stroke=1, fill=1)
+        c.setFillColor(colors.white)
+        c.setFont("Helvetica-Bold", 8)
+        c.drawString(x + 2, y - 8, "✓")
+        c.setFillColor(colors.black)
+    else:
+        c.setStrokeColor(colors.HexColor("#6b7280"))
+        c.rect(x, y - size, size, size, stroke=1, fill=0)
+
+    c.setStrokeColor(colors.black)
 
 
 def _build_pdf_bytes(
@@ -344,28 +540,30 @@ def _build_pdf_bytes(
     profile: dict,
     matches: list[dict],
     catalog: dict,
-    checklist_state: dict | None = None
+    checklist_progress: dict[str, list[bool]],
 ) -> bytes:
-    checklist_state = checklist_state or {}
-
     buf = BytesIO()
     c = canvas.Canvas(buf, pagesize=letter)
     width, height = letter
 
     margin_x = 0.75 * inch
-    y = height - 0.9 * inch
 
-    y = _draw_heading(c, margin_x, y, "CommonMASS Benefit Application Packet")
-    y = _draw_divider(c, margin_x, width - margin_x, y)
+    # -----------------------------
+    # Page 1
+    # -----------------------------
+    _draw_header_band(c, width, height)
+    y = height - 1.15 * inch
 
-    c.setFont("Helvetica", 10)
-    c.drawString(margin_x, y, f"Run ID: {run_id}")
-    y -= 12
-    c.drawString(margin_x, y, f"Generated (UTC): {datetime.now(timezone.utc).isoformat()}")
-    y -= 20
+    y = _draw_small_meta(
+        c,
+        margin_x,
+        y,
+        f"Run ID: {run_id}",
+        f"UTC: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}"
+    )
 
-    y = _draw_subheading(c, margin_x, y, "Profile Summary")
-    c.setFont("Helvetica", 10)
+    y -= 8
+    y = _draw_section_title(c, margin_x, y, "Profile Summary")
 
     ordered_keys = [
         "student_status",
@@ -381,124 +579,125 @@ def _build_pdf_bytes(
     ]
 
     for k in ordered_keys:
-        if k in (profile or {}):
-            v = profile.get(k)
-            label = FIELD_LABELS.get(k, k.replace("_", " ").title())
-            c.drawString(margin_x, y, f"- {label}: {v}")
-            y -= 12
-            if y < 1.0 * inch:
-                y = _new_page(c)
+        if k in profile:
+            y = _ensure_space(c, y, height, 22)
+            label = PROFILE_LABELS.get(k, k)
+            value = _friendly_profile_value(k, profile.get(k))
+            y = _draw_bullet_text(c, margin_x, y, label, value)
 
-    y -= 8
+    y -= 14
+    y = _draw_section_title(c, margin_x, y, "Matched Benefits")
 
-    y = _draw_subheading(c, margin_x, y, "Matched Benefits")
     if not matches:
-        c.setFont("Helvetica", 11)
-        c.drawString(margin_x, y, "No matches based on the provided profile.")
-        y -= 16
+        c.setFont("Helvetica", 10)
+        c.drawString(margin_x, y, "No matched benefits based on the submitted profile.")
+        y -= 14
     else:
         for i, m in enumerate(matches, start=1):
             bid = m["id"]
-            item = catalog.get(bid, {"title": bid})
+            item = catalog.get(bid, {})
             title = item.get("title", bid)
-            action = m.get("actionStatus")
+            desc = item.get("description", "")
+            action = m.get("actionStatus", "")
+
+            y = _ensure_space(c, y, height, 82)
 
             c.setFont("Helvetica-Bold", 11)
-            c.drawString(margin_x, y, f"{i}. {title}")
-            y -= 14
+            c.setFillColor(colors.HexColor("#111827"))
+            c.drawString(margin_x, y, title)
 
             if action:
-                c.setFont("Helvetica", 10)
-                for line in _wrap_text(
+                pill_x = margin_x + 170
+                max_pill_width = width - margin_x - pill_x
+                shortened_action = action
+                if c.stringWidth(shortened_action, "Helvetica", 8) + 12 > max_pill_width:
+                    words = shortened_action.split()
+                    truncated = ""
+                    for word in words:
+                        candidate = (truncated + " " + word).strip()
+                        if c.stringWidth(candidate + "...", "Helvetica", 8) + 12 <= max_pill_width:
+                            truncated = candidate
+                        else:
+                            break
+                    if truncated and truncated != shortened_action:
+                        shortened_action = truncated + "..."
+                _draw_status_pill(
                     c,
-                    f"Status: {action}",
-                    max_width=width - 2 * margin_x - 14,
-                    font_size=10
-                ):
-                    c.drawString(margin_x + 14, y, line)
-                    y -= 12
-                    if y < 1.0 * inch:
-                        y = _new_page(c)
+                    pill_x,
+                    y + 2,
+                    shortened_action,
+                    good=("No action needed" in action),
+                )
 
-            desc = item.get("description") or ""
-            if desc:
-                c.setFont("Helvetica", 10)
-                for line in _wrap_text(
-                    c,
-                    desc,
-                    max_width=width - 2 * margin_x - 14,
-                    font_size=10
-                ):
-                    c.drawString(margin_x + 14, y, line)
-                    y -= 12
-                    if y < 1.0 * inch:
-                        y = _new_page(c)
+            y -= 17
 
-            y -= 8
-            if y < 1.0 * inch:
-                y = _new_page(c)
+            c.setFont("Helvetica", 9)
+            c.setFillColor(colors.HexColor("#374151"))
+            for line in _wrap_text(c, desc, width - 2 * margin_x - 12, font_size=9):
+                c.drawString(margin_x + 12, y, line)
+                y -= 12
 
-    if matches:
-        y = _new_page(c)
-        y = _draw_heading(c, margin_x, y, "Application Checklists")
-        y = _draw_divider(c, margin_x, width - margin_x, y)
+            y -= 10
 
-        rendered_any = False
+    # -----------------------------
+    # Page 2+
+    # -----------------------------
+    _new_page(c)
+    _draw_header_band(c, width, height)
+    y = height - 1.15 * inch
+    y = _draw_section_title(c, margin_x, y, "Application Checklists")
 
-        for i, m in enumerate(matches, start=1):
+    if not matches:
+        c.setFont("Helvetica", 10)
+        c.drawString(margin_x, y, "No checklist items available.")
+    else:
+        for m in matches:
             bid = m["id"]
-            item = catalog.get(bid)
-            if not item:
-                continue
-
+            item = catalog.get(bid, {})
             title = item.get("title", bid)
             checklist = item.get("checklist") or []
-            benefit_checks = checklist_state.get(bid, {})
-
-            y = _draw_subheading(c, margin_x, y, f"{i}. {title}")
-            c.setFont("Helvetica", 11)
+            progress = checklist_progress.get(bid, [False] * len(checklist))
 
             if not checklist:
-                c.drawString(margin_x, y, "No checklist available.")
-                y -= 16
-            else:
-                rendered_any = True
-                for idx, step in enumerate(checklist):
-                    wrapped = _wrap_text(
-                        c,
-                        step,
-                        max_width=width - 2 * margin_x - 18,
-                        font_size=11
-                    )
+                continue
 
-                    if y < 1.2 * inch:
-                        y = _new_page(c)
-                        c.setFont("Helvetica", 11)
+            completed = sum(1 for x in progress if x)
+            total = len(checklist)
 
-                    checked = False
-                    if isinstance(benefit_checks, dict):
-                        checked = bool(benefit_checks.get(step, False))
-                    elif isinstance(benefit_checks, list) and idx < len(benefit_checks):
-                        checked = bool(benefit_checks[idx])
+            y = _ensure_space(c, y, height, 80)
 
-                    _draw_checkbox(c, margin_x, y, checked)
+            c.setFont("Helvetica-Bold", 12)
+            c.setFillColor(colors.HexColor("#111827"))
+            c.drawString(margin_x, y, title)
+            _draw_status_pill(
+                c,
+                margin_x + 220,
+                y + 2,
+                f"{completed}/{total} complete",
+                good=(completed == total),
+            )
+            y -= 20
 
-                    for line in wrapped:
-                        c.drawString(margin_x + 14, y - 7, line)
-                        y -= 14
-                        if y < 1.0 * inch:
-                            y = _new_page(c)
-                            c.setFont("Helvetica", 11)
+            for idx, step in enumerate(checklist):
+                checked = progress[idx] if idx < len(progress) else False
 
-                    y -= 4
+                wrapped = _wrap_text(c, step, width - 2 * margin_x - 24, font_size=10)
+                needed_height = max(18, len(wrapped) * 12) + 8
+                y = _ensure_space(c, y, height, needed_height + 18)
 
-            y -= 12
-            if y < 1.0 * inch:
-                y = _new_page(c)
+                _draw_checkbox(c, margin_x, y, checked)
 
-        if not rendered_any:
-            c.setFont("Helvetica", 11)
-            c.drawString(margin_x, y, "No checklist data available for the matched benefits.")
+                text_y = y - 8
+                c.setFillColor(colors.HexColor("#6b7280") if checked else colors.HexColor("#111827"))
+                c.setFont("Helvetica", 10)
+
+                for line in wrapped:
+                    c.drawString(margin_x + 18, text_y, line)
+                    text_y -= 12
+
+                y = text_y - 5
+
+            y -= 14
 
     c.setTitle("CommonMASS Packet")
     c.save()
@@ -509,7 +708,8 @@ def _build_pdf_bytes(
 # Lambda entry
 # -----------------------------
 def lambda_handler(event, context):
-    if isinstance(event, dict) and event.get("requestContext") and event.get("httpMethod") == "OPTIONS":
+    method = _get_http_method(event or {})
+    if method == "OPTIONS":
         return _resp(200, "", content_type="text/plain")
 
     if not PACKETS_BUCKET:
@@ -521,15 +721,18 @@ def lambda_handler(event, context):
             return _resp(403, {"error": "Forbidden"})
 
     payload = _parse_payload(event)
+
     profile = payload.get("profile") or {}
     selected = payload.get("selectedBenefits") or payload.get("selected_benefits") or []
-    checklist_state = payload.get("checklistState") or payload.get("checklist_state") or {}
+    checklist_progress = payload.get("checklistProgress") or payload.get("checklist_progress") or {}
 
     if not isinstance(profile, dict):
         return _resp(400, {"error": "profile must be an object"})
 
     if selected is not None and not isinstance(selected, list):
         return _resp(400, {"error": "selectedBenefits must be a list if provided"})
+    if checklist_progress is not None and not isinstance(checklist_progress, dict):
+        return _resp(400, {"error": "checklistProgress must be an object if provided"})
 
     if checklist_state is not None and not isinstance(checklist_state, dict):
         return _resp(400, {"error": "checklistState must be an object if provided"})
@@ -542,9 +745,7 @@ def lambda_handler(event, context):
         config=Config(signature_version="s3v4", retries={"max_attempts": 2}),
     )
 
-    loaded_catalog = _load_catalog(s3, RULES_BUCKET, BENEFITS_CATALOG_KEY)
-    catalog = FALLBACK_CATALOG.copy()
-    catalog.update(loaded_catalog)
+    catalog = _load_catalog(s3, RULES_BUCKET, BENEFITS_CATALOG_KEY)
 
     matches = _match_benefits(profile)
 
@@ -552,11 +753,19 @@ def lambda_handler(event, context):
         selected_set = {str(x) for x in selected}
         matches = [m for m in matches if m["id"] in selected_set]
 
+    normalized_progress = _normalize_checklist_progress(checklist_progress, matches, catalog)
+
     run_id = str(uuid.uuid4())
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     key = f"{PACKETS_PREFIX}{ts}-{run_id}.pdf"
 
-    pdf_bytes = _build_pdf_bytes(run_id, profile, matches, catalog, checklist_state)
+    pdf_bytes = _build_pdf_bytes(
+        run_id=run_id,
+        profile=profile,
+        matches=matches,
+        catalog=catalog,
+        checklist_progress=normalized_progress,
+    )
 
     try:
         s3.put_object(

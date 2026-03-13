@@ -6,7 +6,7 @@ export interface Benefit {
   checklist: string[];
   officialUrl: string;
   officialButtonLabel?: string;
-  actionStatus?: string; // Optional status message (e.g., "Action needed" or "No action needed")
+  actionStatus?: string;
 }
 
 export interface Question {
@@ -28,8 +28,8 @@ export const benefits: Benefit[] = [
       'Create an FSA ID',
       'Gather tax documents',
       'Complete the FAFSA form',
-      'Review your Student Aid Report (SAR)'
-    ]
+      'Review your Student Aid Report (SAR)',
+    ],
   },
   {
     id: 'massgrant',
@@ -43,8 +43,8 @@ export const benefits: Benefit[] = [
       'Be a Massachusetts resident',
       'Enroll in a Massachusetts college',
       'Maintain satisfactory academic progress',
-      'Check award notification from your school'
-    ]
+      'Check award notification from your school',
+    ],
   },
   {
     id: 'massgrant-plus',
@@ -58,8 +58,8 @@ export const benefits: Benefit[] = [
       'Demonstrate Expected Family Contribution (EFC) of $0',
       'Enroll full-time at a Massachusetts public college',
       'Maintain good academic standing',
-      'Review eligibility with financial aid office'
-    ]
+      'Review eligibility with financial aid office',
+    ],
   },
   {
     id: 'masshealth',
@@ -73,8 +73,8 @@ export const benefits: Benefit[] = [
       'Gather income documentation',
       'Collect proof of identity and citizenship',
       'Apply online at MAhealthconnector.org',
-      'Choose a MassHealth plan'
-    ]
+      'Choose a MassHealth plan',
+    ],
   },
   {
     id: 'mbta-pass',
@@ -86,10 +86,10 @@ export const benefits: Benefit[] = [
     checklist: [
       'Get current student ID',
       'Verify full-time enrollment status',
-      'Visit school\'s transportation office or MBTA.com',
+      "Visit school's transportation office or MBTA.com",
       'Purchase discounted semester or monthly pass',
-      'Carry student ID when using pass'
-    ]
+      'Carry student ID when using pass',
+    ],
   },
   {
     id: 'snap',
@@ -102,9 +102,9 @@ export const benefits: Benefit[] = [
       'Check student eligibility requirements',
       'Gather proof of enrollment',
       'Gather proof of income',
-      'Submit application through state portal'
-    ]
-  }
+      'Submit application through state portal',
+    ],
+  },
 ];
 
 export const questions: Question[] = [
@@ -115,8 +115,8 @@ export const questions: Question[] = [
     options: [
       { label: 'Yes, full-time', value: 'full_time' },
       { label: 'Yes, part-time', value: 'part_time' },
-      { label: 'No', value: 'no' }
-    ]
+      { label: 'No', value: 'no' },
+    ],
   },
   {
     id: 'citizen_status',
@@ -124,8 +124,8 @@ export const questions: Question[] = [
     category: 'General',
     options: [
       { label: 'Yes', value: 'yes' },
-      { label: 'No', value: 'no' }
-    ]
+      { label: 'No', value: 'no' },
+    ],
   },
   {
     id: 'ma_resident',
@@ -133,8 +133,8 @@ export const questions: Question[] = [
     category: 'General',
     options: [
       { label: 'Yes', value: 'yes' },
-      { label: 'No', value: 'no' }
-    ]
+      { label: 'No', value: 'no' },
+    ],
   },
   {
     id: 'fafsa_completed',
@@ -142,17 +142,17 @@ export const questions: Question[] = [
     category: 'Financial',
     options: [
       { label: 'Yes', value: 'yes' },
-      { label: 'No', value: 'no' }
-    ]
+      { label: 'No', value: 'no' },
+    ],
   },
   {
     id: 'dependent_status',
-    text: 'Are you claimed as a dependent on someone else\'s tax return?',
+    text: "Are you claimed as a dependent on someone else's tax return?",
     category: 'Financial',
     options: [
       { label: 'Yes', value: 'yes' },
-      { label: 'No', value: 'no' }
-    ]
+      { label: 'No', value: 'no' },
+    ],
   },
   {
     id: 'work_study',
@@ -160,8 +160,8 @@ export const questions: Question[] = [
     category: 'Financial',
     options: [
       { label: 'Yes', value: 'yes' },
-      { label: 'No', value: 'no' }
-    ]
+      { label: 'No', value: 'no' },
+    ],
   },
   {
     id: 'income_level',
@@ -170,8 +170,8 @@ export const questions: Question[] = [
     options: [
       { label: 'Below $20,000', value: 'low' },
       { label: 'Between $20,000 and $40,000', value: 'medium' },
-      { label: 'Above $40,000', value: 'high' }
-    ]
+      { label: 'Above $40,000', value: 'high' },
+    ],
   },
   {
     id: 'housing_status',
@@ -180,8 +180,8 @@ export const questions: Question[] = [
     options: [
       { label: 'On-campus housing', value: 'on_campus' },
       { label: 'Off-campus (renting)', value: 'off_campus' },
-      { label: 'Living with family', value: 'family' }
-    ]
+      { label: 'Living with family', value: 'family' },
+    ],
   },
   {
     id: 'transportation',
@@ -190,8 +190,8 @@ export const questions: Question[] = [
     options: [
       { label: 'Yes, regularly', value: 'yes' },
       { label: 'Sometimes', value: 'sometimes' },
-      { label: 'No', value: 'no' }
-    ]
+      { label: 'No', value: 'no' },
+    ],
   },
   {
     id: 'health_insurance',
@@ -200,10 +200,7 @@ export const questions: Question[] = [
     options: [
       { label: 'Yes, through parents', value: 'parents' },
       { label: 'Yes, through school', value: 'school' },
-      { label: 'No', value: 'no' }
-    ]
-  }
+      { label: 'No', value: 'no' },
+    ],
+  },
 ];
-
-
-

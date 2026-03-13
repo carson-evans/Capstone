@@ -13,6 +13,7 @@ import { questions } from '@/app/data/benefitsData';
 export default function QuestionnairePage() {
   const navigate = useNavigate();
   const { setAnswer, answers } = useBenefits();
+
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string>('');
 
@@ -20,10 +21,9 @@ export default function QuestionnairePage() {
   const isLastStep = currentStep === questions.length - 1;
   const progress = ((currentStep + 1) / questions.length) * 100;
 
-  // Sync local state with context when step changes
   useEffect(() => {
     if (currentQuestion) {
-        setSelectedOption(answers[currentQuestion.id] || '');
+      setSelectedOption(answers[currentQuestion.id] || '');
     }
   }, [currentStep, currentQuestion, answers]);
 
@@ -54,17 +54,16 @@ export default function QuestionnairePage() {
       <Navbar />
 
       <div className="flex-1 container max-w-2xl mx-auto px-6 py-12 flex flex-col">
-
-        {/* Progress Bar */}
         <div className="mb-8 space-y-2">
           <div className="flex justify-between text-xs font-semibold tracking-wider text-gray-500 uppercase">
-            <span>Step {currentStep + 1} of {questions.length}</span>
+            <span>
+              Step {currentStep + 1} of {questions.length}
+            </span>
             <span>{Math.round(progress)}% Complete</span>
           </div>
           <Progress value={progress} className="h-2 bg-slate-200/90 shadow-inner" />
         </div>
 
-        {/* Question Card */}
         <div className="bg-white p-8 md:p-10 rounded-xl shadow-sm border border-gray-200 flex flex-col flex-1">
           <AnimatePresence mode="wait">
             <motion.div
@@ -79,9 +78,7 @@ export default function QuestionnairePage() {
                 {currentQuestion.category}
               </span>
 
-              <h2 className="text-2xl font-bold mb-8 leading-tight">
-                {currentQuestion.text}
-              </h2>
+              <h2 className="text-2xl font-bold mb-8 leading-tight">{currentQuestion.text}</h2>
 
               <RadioGroup
                 value={selectedOption}
@@ -96,11 +93,7 @@ export default function QuestionnairePage() {
                     className="flex items-start space-x-3 p-3 rounded-lg border border-transparent cursor-pointer transition-colors hover:bg-gray-50 hover:border-gray-200"
                     onClick={() => setSelectedOption(option.value)}
                   >
-                    <RadioGroupItem
-                      value={option.value}
-                      id={option.value}
-                      className="mt-1"
-                    />
+                    <RadioGroupItem value={option.value} id={option.value} className="mt-1" />
                     <Label
                       htmlFor={option.value}
                       className="flex-1 cursor-pointer text-base font-medium leading-relaxed"
@@ -113,7 +106,6 @@ export default function QuestionnairePage() {
             </motion.div>
           </AnimatePresence>
 
-          {/* Navigation Buttons */}
           <div className="flex justify-between items-center mt-12 pt-8 border-t border-gray-100">
             <Button
               variant="ghost"
@@ -138,4 +130,3 @@ export default function QuestionnairePage() {
     </div>
   );
 }
-

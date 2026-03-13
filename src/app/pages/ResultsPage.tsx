@@ -3,17 +3,25 @@ import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { ExternalLink, CheckSquare } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/app/components/ui/card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardDescription,
+  CardFooter,
+} from '@/app/components/ui/card';
 import { Navbar } from '@/app/components/layout/Navbar';
 import { useBenefits } from '@/app/context/BenefitsContext';
 
 const FAFSA_MANAGED_BENEFIT_IDS = new Set(['pell-grant', 'massgrant', 'massgrant-plus']);
-const FAFSA_STATUS_URL = 'https://studentaid.gov/fsa-id/sign-in/landing?redirectTo=%2Fmy-activity';
+const FAFSA_STATUS_URL =
+  'https://studentaid.gov/fsa-id/sign-in/landing?redirectTo=%2Fmy-activity';
 
 export default function ResultsPage() {
   const { matchedBenefits } = useBenefits();
-
   const hasMatches = matchedBenefits.length > 0;
+
   const getBenefitAction = (benefit: (typeof matchedBenefits)[number]) => {
     const hasNoActionNeeded = benefit.actionStatus?.includes('No action needed');
 
@@ -43,7 +51,8 @@ export default function ResultsPage() {
         >
           <h1 className="text-4xl font-bold tracking-tight mb-4">Your Results</h1>
           <p className="text-lg text-gray-600">
-            Based on your answers, you may qualify for the following {matchedBenefits.length} benefits.
+            Based on your answers, you may qualify for the following {matchedBenefits.length}{' '}
+            benefits.
           </p>
         </motion.div>
 
@@ -66,29 +75,44 @@ export default function ResultsPage() {
                           <span className="inline-block px-2 py-1 bg-gray-100 text-xs font-bold text-gray-500 rounded mb-2 uppercase tracking-wide">
                             {benefit.category}
                           </span>
+
                           <CardTitle className="text-2xl font-bold">{benefit.title}</CardTitle>
+
                           {benefit.actionStatus && (
-                            <div className={`mt-2 inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                              benefit.actionStatus.includes('No action needed')
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-700'
-                            }`}>
+                            <div
+                              className={`mt-2 inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                                benefit.actionStatus.includes('No action needed')
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-red-100 text-red-700'
+                              }`}
+                            >
                               {benefit.actionStatus}
                             </div>
                           )}
                         </div>
-                        <Button variant="outline" size="sm" className="hidden sm:flex border-black text-black hover:bg-[#1e3a5f] hover:text-white">
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="hidden sm:flex border-black text-black hover:bg-[#1e3a5f] hover:text-white"
+                        >
                           Details
                         </Button>
                       </div>
                     </CardHeader>
+
                     <CardContent>
                       <CardDescription className="text-base text-gray-600 leading-relaxed">
                         {benefit.description}
                       </CardDescription>
                     </CardContent>
+
                     <CardFooter className="bg-gray-50/50 p-6 flex justify-end gap-3 border-t border-gray-100">
-                      <Button asChild variant="outline" className="border-gray-300 text-gray-700 hover:text-white">
+                      <Button
+                        asChild
+                        variant="outline"
+                        className="border-gray-300 text-gray-700 hover:text-white"
+                      >
                         <a href={action.href} target="_blank" rel="noopener noreferrer">
                           <ExternalLink className="mr-2 h-4 w-4" />
                           {action.label}
@@ -102,8 +126,12 @@ export default function ResultsPage() {
           </div>
         ) : (
           <div className="text-center py-20 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-            <p className="text-gray-500 mb-4">We couldn't find any specific benefits matching your profile at this time.</p>
-            <Button variant="outline" onClick={() => window.location.href = '/'}>Start Over</Button>
+            <p className="text-gray-500 mb-4">
+              We couldn't find any specific benefits matching your profile at this time.
+            </p>
+            <Button variant="outline" onClick={() => (window.location.href = '/')}>
+              Start Over
+            </Button>
           </div>
         )}
 
@@ -115,7 +143,10 @@ export default function ResultsPage() {
             className="mt-12 flex justify-center"
           >
             <Link to="/checklist">
-              <Button size="lg" className="bg-[#f97316] text-white hover:bg-[#ea580c] text-lg px-8 py-6 rounded-full group transition-all duration-200 shadow-[0_4px_14px_0_rgba(249,115,22,0.3)] hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_20px_25px_-5px_rgba(249,115,22,0.4)] cursor-pointer">
+              <Button
+                size="lg"
+                className="bg-[#f97316] text-white hover:bg-[#ea580c] text-lg px-8 py-6 rounded-full group transition-all duration-200 shadow-[0_4px_14px_0_rgba(249,115,22,0.3)] hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_20px_25px_-5px_rgba(249,115,22,0.4)] cursor-pointer"
+              >
                 <CheckSquare className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
                 Get Personalized Checklist
               </Button>
@@ -126,5 +157,3 @@ export default function ResultsPage() {
     </div>
   );
 }
-
-
