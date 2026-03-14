@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
@@ -13,9 +13,11 @@ import { questions } from '@/app/data/benefitsData';
 export default function QuestionnairePage() {
   const navigate = useNavigate();
   const { setAnswer, answers } = useBenefits();
+  const measurementRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string>('');
+  const [desktopContentHeight, setDesktopContentHeight] = useState<number | null>(null);
 
   const currentQuestion = questions[currentStep];
   const isLastStep = currentStep === questions.length - 1;
@@ -26,6 +28,36 @@ export default function QuestionnairePage() {
       setSelectedOption(answers[currentQuestion.id] || '');
     }
   }, [currentStep, currentQuestion, answers]);
+
+  useLayoutEffect(() => {
+    let frameId = 0;
+
+    const measureDesktopContentHeight = () => {
+      if (window.innerWidth < 768) {
+        setDesktopContentHeight(null);
+        return;
+      }
+
+      frameId = window.requestAnimationFrame(() => {
+        const tallestHeight = questions.reduce((maxHeight, question) => {
+          const element = measurementRefs.current[question.id];
+          return element ? Math.max(maxHeight, element.offsetHeight) : maxHeight;
+        }, 0);
+
+        if (tallestHeight > 0) {
+          setDesktopContentHeight(tallestHeight);
+        }
+      });
+    };
+
+    measureDesktopContentHeight();
+    window.addEventListener('resize', measureDesktopContentHeight);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', measureDesktopContentHeight);
+    };
+  }, []);
 
   const handleNext = () => {
     if (!selectedOption) return;
@@ -50,21 +82,21 @@ export default function QuestionnairePage() {
   if (!currentQuestion) return <div>Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-black">
+    <div className="min-h-screen bg-gray-50 font-sans text-black">
       <Navbar />
 
-      <div className="flex-1 container max-w-2xl mx-auto px-6 py-12 flex flex-col">
-        <div className="mb-8 space-y-2">
-          <div className="flex justify-between text-xs font-semibold tracking-wider text-gray-500 uppercase">
+      <div className="container mx-auto max-w-3xl flex-1 px-6 py-10 md:py-14">
+        <div className="mb-8 space-y-3 md:mb-10">
+          <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-gray-500 md:text-sm">
             <span>
               Step {currentStep + 1} of {questions.length}
             </span>
             <span>{Math.round(progress)}% Complete</span>
           </div>
-          <Progress value={progress} className="h-2 bg-slate-200/90 shadow-inner" />
+          <Progress value={progress} className="h-2 bg-slate-200/90 shadow-inner md:h-2.5" />
         </div>
 
-        <div className="bg-white p-8 md:p-10 rounded-xl shadow-sm border border-gray-200 flex flex-col flex-1">
+        <div className="flex min-h-[calc(100dvh-19rem)] flex-col rounded-xl border border-gray-200 bg-white p-6 shadow-sm md:min-h-0 md:p-12">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
@@ -72,45 +104,52 @@ export default function QuestionnairePage() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
-              className="flex-1"
+              className="min-w-0 flex-1 md:flex-none"
+              style={desktopContentHeight ? { height: desktopContentHeight } : undefined}
             >
-              <span className="inline-block px-2 py-1 rounded bg-gray-100 text-xs font-bold text-gray-500 mb-4 uppercase tracking-wider">
+              <span className="mb-4 inline-block rounded bg-gray-100 px-2 py-1 text-xs font-bold uppercase tracking-wider text-gray-500 md:px-3 md:py-1.5 md:text-sm">
                 {currentQuestion.category}
               </span>
 
-              <h2 className="text-2xl font-bold mb-8 leading-tight">{currentQuestion.text}</h2>
+              <h2 className="mb-8 max-w-2xl text-2xl font-bold leading-tight md:mb-10 md:text-[2.35rem] md:leading-[1.05]">
+                {currentQuestion.text}
+              </h2>
 
               <RadioGroup
                 value={selectedOption}
                 onValueChange={setSelectedOption}
-                className="space-y-3"
+                className="space-y-3 md:space-y-4"
               >
-                {currentQuestion.options.map((option) => (
-                  <motion.div
-                    key={option.value}
-                    whileHover={{ y: -2 }}
-                    transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-                    className="flex items-start space-x-3 p-3 rounded-lg border border-transparent cursor-pointer transition-colors hover:bg-gray-50 hover:border-gray-200"
-                    onClick={() => setSelectedOption(option.value)}
-                  >
-                    <RadioGroupItem value={option.value} id={option.value} className="mt-1" />
-                    <Label
-                      htmlFor={option.value}
-                      className="flex-1 cursor-pointer text-base font-medium leading-relaxed"
+                {currentQuestion.options.map((option) => {
+                  const optionId = `${currentQuestion.id}-${option.value}`;
+
+                  return (
+                    <motion.div
+                      key={option.value}
+                      whileHover={{ y: -2 }}
+                      transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+                      className="flex cursor-pointer items-start space-x-3 rounded-lg border border-transparent p-3 transition-colors hover:border-gray-200 hover:bg-gray-50 md:p-4"
+                      onClick={() => setSelectedOption(option.value)}
                     >
-                      {option.label}
-                    </Label>
-                  </motion.div>
-                ))}
+                      <RadioGroupItem value={option.value} id={optionId} className="mt-1" />
+                      <Label
+                        htmlFor={optionId}
+                        className="flex-1 cursor-pointer text-base font-medium leading-relaxed md:text-lg"
+                      >
+                        {option.label}
+                      </Label>
+                    </motion.div>
+                  );
+                })}
               </RadioGroup>
             </motion.div>
           </AnimatePresence>
 
-          <div className="flex justify-between items-center mt-12 pt-8 border-t border-gray-100">
+          <div className="mt-10 flex items-center justify-between border-t border-gray-100 pt-6 md:mt-12 md:pt-8">
             <Button
               variant="ghost"
               onClick={handleBack}
-              className="text-gray-500 hover:text-black hover:bg-gray-100"
+              className="text-gray-500 hover:bg-gray-100 hover:text-black md:text-base"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
@@ -119,12 +158,47 @@ export default function QuestionnairePage() {
             <Button
               onClick={handleNext}
               disabled={!selectedOption}
-              className="bg-[#1e3a5f] text-white px-8 rounded-md hover:bg-[#f97316] disabled:opacity-50 transition-all"
+              className="rounded-md bg-[#1e3a5f] px-8 text-white transition-all hover:bg-[#f97316] disabled:opacity-50 md:text-base"
             >
               {isLastStep ? 'See Results' : 'Next'}
               {!isLastStep && <ArrowRight className="ml-2 h-4 w-4" />}
             </Button>
           </div>
+        </div>
+      </div>
+
+      <div aria-hidden="true" className="pointer-events-none invisible fixed inset-x-0 top-0 -z-10 hidden md:block">
+        <div className="container mx-auto max-w-3xl px-6 py-14">
+          {questions.map((question) => (
+            <div key={question.id} className="rounded-xl border border-transparent bg-white p-12 shadow-sm">
+              <div
+                ref={(element) => {
+                  measurementRefs.current[question.id] = element;
+                }}
+                className="min-w-0"
+              >
+                <span className="mb-4 inline-block rounded bg-gray-100 px-3 py-1.5 text-sm font-bold uppercase tracking-wider text-gray-500">
+                  {question.category}
+                </span>
+
+                <h2 className="mb-10 max-w-2xl text-[2.35rem] font-bold leading-[1.05]">
+                  {question.text}
+                </h2>
+
+                <div className="space-y-4">
+                  {question.options.map((option) => (
+                    <div
+                      key={option.value}
+                      className="flex items-start space-x-3 rounded-lg border border-transparent p-4"
+                    >
+                      <div className="mt-1 h-4 w-4 rounded-full border border-slate-300" />
+                      <div className="flex-1 text-lg font-medium leading-relaxed">{option.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
