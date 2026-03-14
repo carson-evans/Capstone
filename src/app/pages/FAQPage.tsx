@@ -1,6 +1,6 @@
-import React from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle, Search } from 'lucide-react';
 import { Navbar } from '@/app/components/layout/Navbar';
 import { Chatbot } from '@/app/components/Chatbot';
 import {
@@ -9,81 +9,196 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/app/components/ui/accordion';
+import { Input } from '@/app/components/ui/input';
 
-const faqData = [
+type FAQItem = {
+  id: string;
+  question: string;
+  answer: string;
+  keywords: string[];
+};
+
+const faqData: FAQItem[] = [
   {
     id: '1',
     question: 'What is the Federal Pell Grant?',
-    answer: 'The Federal Pell Grant is a need-based grant for undergraduate students who have not earned a bachelor\'s, graduate, or professional degree. Unlike loans, Pell Grants do not need to be repaid except under certain circumstances. The maximum Pell Grant award for 2025-2026 is $7,395. The amount you receive depends on your financial need, cost of attendance, enrollment status (full-time or part-time), and plans to attend school for a full academic year.'
+    answer:
+      'The Federal Pell Grant is federal gift aid for undergraduate students with financial need. It usually does not need to be repaid, and award amounts depend on factors such as your financial need, cost of attendance, and whether you attend full time or part time.',
+    keywords: ['pell', 'federal grant', 'gift aid', 'tuition', 'full-time', 'part-time', 'sai'],
   },
   {
     id: '2',
     question: 'What is MASSGrant and how do I qualify?',
-    answer: 'MASSGrant is a state-funded grant program for Massachusetts residents with financial need who are attending college in Massachusetts. Award amounts range from $300 to $1,900 per year. To qualify, you must complete the FAFSA, be a Massachusetts resident for at least one year, be enrolled in an eligible Massachusetts institution, demonstrate financial need, and maintain satisfactory academic progress. Awards are made by your school\'s financial aid office.'
+    answer:
+      'MASSGrant is Massachusetts need-based aid for eligible undergraduate students. In general, you must be a Massachusetts resident, file the FAFSA or MASFA each year by the applicable deadline, attend an eligible school, enroll full time in an eligible program, show financial need, and meet satisfactory academic progress requirements.',
+    keywords: ['massgrant', 'state grant', 'resident', 'full-time', 'osfa', 'massachusetts aid'],
   },
   {
     id: '3',
     question: 'What is MASSGrant Plus?',
-    answer: 'MASSGrant Plus is an enhanced state grant for Massachusetts students with exceptional financial need (Expected Family Contribution of $0). This program can cover up to the full cost of tuition and mandatory fees at Massachusetts public colleges and universities. You must complete the FAFSA, be enrolled full-time, maintain good academic standing, and attend a participating public institution in Massachusetts. This grant significantly reduces or eliminates tuition costs for eligible students.'
+    answer:
+      'MASSGrant Plus is Massachusetts aid designed to reduce tuition and fee costs for eligible students at public four-year colleges and universities. Eligibility depends on factors such as Massachusetts residency, financial need, school type, enrollment, and academic progress.',
+    keywords: ['massgrant plus', 'public college', 'umass', 'state university', 'tuition and fees'],
   },
   {
     id: '4',
     question: 'How do I apply for MassHealth?',
-    answer: 'MassHealth is Massachusetts\' Medicaid and Children\'s Health Insurance Program (CHIP). To apply, visit MAhealthconnector.org or call the MassHealth Customer Service Center. You\'ll need proof of Massachusetts residency, identity, citizenship or immigration status, and income documentation. Students may qualify based on income, age, disability, or other factors. MassHealth provides comprehensive health coverage including doctor visits, hospital care, prescription drugs, and preventive services.'
+    answer:
+      'Most applicants can apply for or manage coverage online through the Massachusetts Health Connector, and MassHealth can also help by phone. Be ready to provide information about your household, Massachusetts residency, income, and any other health coverage.',
+    keywords: ['masshealth', 'medicaid', 'health insurance', 'health connector', 'apply'],
   },
   {
     id: '5',
     question: 'What MBTA discounts are available for students?',
-    answer: 'Full-time students can purchase discounted MBTA passes. The Student LinkPass offers unlimited travel on subway, bus, and local bus routes at a reduced rate compared to regular monthly passes. To get this discount, you must verify your full-time enrollment status through your school\'s transportation office or the MBTA website. Some schools participate in semester pass programs that offer even greater savings. You must carry your student ID when using the discounted pass.'
+    answer:
+      'The MBTA offers institution-based pass programs, including semester and university programs, but availability depends on whether your school participates. Check your campus transportation, commuter, or student affairs office to see which discounted pass options are available to you.',
+    keywords: ['mbta', 't pass', 'semester pass', 'charliecard', 'transportation', 'commuter'],
   },
   {
     id: '6',
     question: 'How do I apply for federal student aid?',
-    answer: 'To apply for federal student aid, you must complete the Free Application for Federal Student Aid (FAFSA). You can file the FAFSA online at fafsa.gov starting October 1st each year. You will need your FSA ID, Social Security number, federal income tax returns, W-2s, and records of untaxed income. It\'s recommended to submit your FAFSA as early as possible because some aid is awarded on a first-come, first-served basis.'
+    answer:
+      'Complete the FAFSA through StudentAid.gov. The FAFSA is the starting point for federal aid and is also used by many states and schools to determine eligibility for grants, loans, and work-study.',
+    keywords: ['fafsa', 'student aid', 'financial aid', 'apply', 'studentaid'],
   },
   {
     id: '7',
     question: 'What types of federal student loans are available?',
-    answer: 'There are several types of federal student loans: Direct Subsidized Loans (for undergraduate students with financial need; the government pays interest while you\'re in school), Direct Unsubsidized Loans (available to undergraduate and graduate students; you are responsible for all interest), Direct PLUS Loans (for graduate students and parents of dependent undergraduate students), and Direct Consolidation Loans (to combine multiple federal student loans into one loan).'
+    answer:
+      'Main federal loan types include Direct Subsidized Loans, Direct Unsubsidized Loans, Direct PLUS Loans, and Direct Consolidation Loans. Subsidized loans are based on financial need, while unsubsidized loans are not.',
+    keywords: ['loans', 'subsidized', 'unsubsidized', 'plus', 'consolidation', 'borrow'],
   },
   {
     id: '8',
     question: 'What is Federal Work-Study?',
-    answer: 'Federal Work-Study provides part-time employment opportunities for students with financial need, allowing them to earn money to help pay education expenses. The program encourages community service work and work related to the student\'s course of study. You can work on-campus or off-campus with approved employers. Not all schools participate in this program, so check with your school\'s financial aid office.'
+    answer:
+      'Federal Work-Study can help students with financial need earn money through part-time jobs. You usually indicate interest on the FAFSA, then check with your school to see whether it participates and how work-study jobs are assigned.',
+    keywords: ['work-study', 'job', 'campus job', 'part-time work', 'earn money'],
   },
   {
     id: '9',
     question: 'Can college students in Massachusetts qualify for SNAP?',
-    answer: 'Yes, college students in Massachusetts can qualify for SNAP (Supplemental Nutrition Assistance Program) benefits if they meet certain criteria. Students enrolled at least half-time may be eligible if they: work at least 20 hours per week, participate in a state or federally financed work-study program, care for a dependent household member, receive TANF benefits, or are enrolled in certain career and technical education programs. Apply through the Massachusetts Department of Transitional Assistance (DTA).'
+    answer:
+      'Yes, some college students can qualify for SNAP. Eligibility depends on household circumstances, income, and program rules, and students enrolled at least half time may need to meet an additional student exemption. You can apply through DTA Connect, and DTA will tell you if more information is needed.',
+    keywords: ['snap', 'food stamps', 'dta', 'dta connect', 'ebt', 'student exemption', 'half-time'],
   },
   {
     id: '10',
     question: 'What is the difference between grants and scholarships?',
-    answer: 'Both grants and scholarships are forms of gift aid that do not need to be repaid. Grants are typically need-based and awarded by the federal government, state governments, or colleges based on your financial situation. Scholarships are typically merit-based and awarded based on academic achievement, athletic ability, artistic talent, or other criteria. Scholarships can come from schools, private organizations, employers, or community groups.'
+    answer:
+      'Both are types of aid that usually do not need to be repaid. Grants are often based on financial need, while scholarships are often based on academics, talent, athletics, service, identity, or other criteria.',
+    keywords: ['grant', 'scholarship', 'gift aid', 'merit aid', 'need-based'],
   },
   {
     id: '11',
     question: 'Who is eligible for federal student aid?',
-    answer: 'To be eligible for federal student aid, you must: be a U.S. citizen or eligible noncitizen; have a valid Social Security number; be enrolled or accepted for enrollment in an eligible degree or certificate program; maintain satisfactory academic progress; not be in default on a federal student loan or owe money on a federal grant; register with Selective Service if you are male between 18-25; and not have a conviction for the possession or sale of illegal drugs for an offense that occurred while receiving federal student aid.'
+    answer:
+      'Federal student aid eligibility depends on factors such as citizenship or eligible noncitizen status, enrollment in an eligible program, satisfactory academic progress, and other federal requirements. Completing the FAFSA is the main way to be considered.',
+    keywords: ['eligible', 'citizenship', 'noncitizen', 'sap', 'federal aid'],
   },
   {
     id: '12',
     question: 'When are FAFSA deadlines?',
-    answer: 'The federal deadline to submit the FAFSA is June 30 of the award year (for example, June 30, 2026, for the 2025-2026 award year). However, many states and colleges have earlier deadlines. Some state deadlines can be as early as January or February. It\'s important to check your state\'s deadline and your school\'s priority deadline to ensure you don\'t miss out on any aid opportunities.'
+    answer:
+      'The federal FAFSA deadline is later than many school and state priority deadlines, so it is best to file as early as you can. Check both your school financial aid deadlines and current Massachusetts aid deadlines so you do not miss grant consideration.',
+    keywords: ['deadline', 'priority deadline', 'late', 'when', 'state deadline', 'school deadline'],
   },
   {
     id: '13',
     question: 'Are there other Massachusetts-specific benefits for students?',
-    answer: 'Yes! Massachusetts offers several programs including: the Massachusetts Gilbert Grant for students at private institutions, Tuition Waiver programs for certain categories like National Guard members and foster care youth, the Adams Scholarship for high MCAS scorers, and various institutional grants at state colleges and universities. Contact your school\'s financial aid office to learn about all available Massachusetts programs.'
-  }
+    answer:
+      'Yes. Massachusetts has additional grants, tuition waivers, and state aid programs beyond MASSGrant, and many schools also offer institution-specific support. Your financial aid office can help you identify programs that fit your residency, enrollment level, and family circumstances.',
+    keywords: ['massachusetts benefits', 'state aid', 'tuition waiver', 'additional aid', 'local programs'],
+  },
+  {
+    id: '14',
+    question: 'Do I need to submit the FAFSA every year?',
+    answer:
+      'Yes. Federal Student Aid says you complete the FAFSA once per academic year, and Massachusetts state programs such as MASSGrant also require students to apply again each year to be considered.',
+    keywords: ['renew fafsa', 'each year', 'reapply', 'annual application', 'yearly'],
+  },
+  {
+    id: '15',
+    question: 'Can I correct my FAFSA after I submit it?',
+    answer:
+      'Usually yes. After your FAFSA is processed, you can make certain corrections online, such as fixing typos, updating contact information, or adding schools. Some financial changes must be handled through your school financial aid office instead.',
+    keywords: ['edit fafsa', 'change fafsa', 'correction', 'add school', 'fix mistake'],
+  },
+  {
+    id: '16',
+    question: 'What if I cannot complete the FAFSA because of my immigration or citizenship status?',
+    answer:
+      'Massachusetts offers the MASFA for students who are ineligible or unable to complete the FAFSA but may still qualify for in-state tuition rates and state financial aid. Students should complete only one application, FAFSA or MASFA, depending on eligibility.',
+    keywords: ['masfa', 'immigration', 'citizenship', 'noncitizen', 'undocumented', 'state financial aid'],
+  },
+  {
+    id: '17',
+    question: 'Do parents or other contributors need their own FAFSA accounts?',
+    answer:
+      'Yes. Federal Student Aid says each contributor on the FAFSA needs their own StudentAid.gov account to access and complete their section. Students should not share accounts with parents or spouses.',
+    keywords: ['contributors', 'parents', 'fsa id', 'studentaid account', 'separate account', 'invite'],
+  },
+  {
+    id: '18',
+    question: 'Do I need to renew MassHealth or report changes after I enroll?',
+    answer:
+      'Yes. MassHealth reviews coverage regularly, and members must report changes such as address, phone number, email, or income as soon as possible and no later than 10 days after the change. If you receive a renewal notice, respond by the deadline to avoid losing coverage.',
+    keywords: ['renew masshealth', 'report changes', 'income change', 'address change', 'coverage renewal'],
+  },
+  {
+    id: '19',
+    question: 'Can I manage my SNAP case online after I apply?',
+    answer:
+      'Yes. DTA Connect lets many Massachusetts residents check case status, upload documents, read notices, update contact information, request an EBT card, and complete required check-ins online.',
+    keywords: ['manage snap', 'dta connect', 'upload documents', 'case status', 'ebt card', 'notices'],
+  },
+  {
+    id: '20',
+    question: 'Can I get Massachusetts state aid if I attend college outside Massachusetts?',
+    answer:
+      'Sometimes. Massachusetts says some state aid programs, including MASSGrant, may transfer to approved schools in states that have reciprocity agreements with Massachusetts. Check with OSFA and your school financial aid office before assuming you qualify.',
+    keywords: ['out-of-state', 'reciprocity', 'vermont', 'pennsylvania', 'district of columbia', 'transfer aid'],
+  },
+  {
+    id: '21',
+    question: 'What if my financial situation changes after I file the FAFSA?',
+    answer:
+      'If your family finances change significantly after filing, contact your school financial aid office. Federal Student Aid explains that some changes are not handled directly through the FAFSA correction flow and may need to be reviewed by the school.',
+    keywords: ['special circumstances', 'income change', 'job loss', 'appeal', 'professional judgment'],
+  },
+  {
+    id: '22',
+    question: 'Can part-time students still get aid?',
+    answer:
+      'Yes, but eligibility depends on the program. Some aid, such as Pell, can depend on enrollment status, while some Massachusetts programs have full-time requirements and others may not. Review your aid offer and ask your financial aid office which programs match your enrollment level.',
+    keywords: ['part-time', 'half-time', 'less than full-time', 'enrollment status', 'reduced course load'],
+  },
 ];
 
 export default function FAQPage() {
+  const [query, setQuery] = useState('');
+
+  const filteredFaqs = useMemo(() => {
+    const tokens = query
+      .toLowerCase()
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+
+    if (!tokens.length) {
+      return faqData;
+    }
+
+    return faqData.filter((faq) => {
+      const searchableText = [faq.question, faq.answer, ...faq.keywords].join(' ').toLowerCase();
+      return tokens.every((token) => searchableText.includes(token));
+    });
+  }, [query]);
+
   return (
     <div className="min-h-screen bg-white text-black">
       <Navbar />
-      
-      {/* Hero Section */}
+
       <section className="bg-gray-50 border-b border-gray-200 py-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <motion.div
@@ -96,7 +211,7 @@ export default function FAQPage() {
               <HelpCircle className="h-8 w-8 text-white" />
             </div>
           </motion.div>
-          
+
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -105,7 +220,7 @@ export default function FAQPage() {
           >
             Frequently Asked Questions
           </motion.h1>
-          
+
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -117,41 +232,68 @@ export default function FAQPage() {
         </div>
       </section>
 
-      {/* FAQ Section */}
       <section className="py-16 px-4">
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
+            className="mb-8 rounded-2xl border border-gray-200 bg-gray-50 p-4 md:p-5"
           >
-            <Accordion type="single" collapsible className="space-y-4">
-              {faqData.map((faq, index) => (
-                <motion.div
-                  key={faq.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.1 * index }}
-                >
-                  <AccordionItem 
-                    value={faq.id} 
-                    className="border border-gray-200 rounded-lg px-6 bg-white hover:shadow-sm transition-shadow"
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+              <Input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search FAQ"
+                className="h-12 rounded-xl border-gray-200 bg-white pl-11 text-base shadow-none"
+              />
+            </div>
+
+
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.35 }}
+          >
+            {filteredFaqs.length ? (
+              <Accordion type="single" collapsible className="space-y-4">
+                {filteredFaqs.map((faq, index) => (
+                  <motion.div
+                    key={faq.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.06 * index }}
                   >
-                    <AccordionTrigger className="text-left hover:no-underline py-5">
-                      <span className="font-medium text-black pr-4">{faq.question}</span>
-                    </AccordionTrigger>
-                    <AccordionContent className="text-gray-700 leading-relaxed pb-5">
-                      {faq.answer}
-                    </AccordionContent>
-                  </AccordionItem>
-                </motion.div>
-              ))}
-            </Accordion>
+                    <AccordionItem
+                      value={faq.id}
+                      className="border border-gray-200 rounded-lg px-6 bg-white hover:shadow-sm transition-shadow"
+                    >
+                      <AccordionTrigger className="text-left hover:no-underline py-5">
+                        <span className="font-medium text-black pr-4">{faq.question}</span>
+                      </AccordionTrigger>
+                      <AccordionContent className="text-gray-700 leading-relaxed pb-5">
+                        {faq.answer}
+                      </AccordionContent>
+                    </AccordionItem>
+                  </motion.div>
+                ))}
+              </Accordion>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center">
+                <h2 className="text-xl font-semibold text-black">No matching questions found</h2>
+                <p className="mt-2 text-gray-600">
+                  Try a broader keyword like FAFSA, SNAP, MassHealth, MBTA, loans, or deadlines.
+                </p>
+              </div>
+            )}
           </motion.div>
         </div>
       </section>
 
-      {/* AI Chatbot Section */}
       <section className="py-16 px-4 bg-gray-50 border-t border-gray-200">
         <div className="max-w-4xl mx-auto">
           <motion.div
@@ -166,7 +308,7 @@ export default function FAQPage() {
               Chat with our AI assistant for personalized answers to your questions.
             </p>
           </motion.div>
-          
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -178,12 +320,14 @@ export default function FAQPage() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="bg-white py-12 border-t border-gray-200">
         <div className="container mx-auto px-6 text-center text-gray-500 text-sm">
-          <p>© 2026 CommonMASS. All rights reserved.</p>
+          <p>Copyright 2026 CommonMASS. All rights reserved.</p>
         </div>
       </footer>
     </div>
   );
 }
+
+
+

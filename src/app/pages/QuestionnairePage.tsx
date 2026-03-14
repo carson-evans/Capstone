@@ -111,7 +111,7 @@ export default function QuestionnairePage() {
                 {currentQuestion.category}
               </span>
 
-              <h2 className="mb-8 max-w-2xl text-2xl font-bold leading-tight md:mb-10 md:text-[2.35rem] md:leading-[1.05]">
+              <h2 className="mb-8 max-w-2xl text-[1.9rem] font-bold leading-tight md:mb-10 md:text-[2.15rem] md:leading-[1.08]">
                 {currentQuestion.text}
               </h2>
 
@@ -181,7 +181,7 @@ export default function QuestionnairePage() {
                   {question.category}
                 </span>
 
-                <h2 className="mb-10 max-w-2xl text-[2.35rem] font-bold leading-[1.05]">
+                <h2 className="mb-10 max-w-2xl text-[2.15rem] font-bold leading-[1.08]">
                   {question.text}
                 </h2>
 
@@ -204,3 +204,4 @@ export default function QuestionnairePage() {
     </div>
   );
 }
+
