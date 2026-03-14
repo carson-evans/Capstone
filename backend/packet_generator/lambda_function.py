@@ -561,91 +561,12 @@ def _build_pdf_bytes(
         f"Run ID: {run_id}",
         f"UTC: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}"
     )
-
     y -= 8
-    y = _draw_section_title(c, margin_x, y, "Profile Summary")
-
-    ordered_keys = [
-        "student_status",
-        "citizen_status",
-        "ma_resident",
-        "fafsa_completed",
-        "work_study",
-        "income_level",
-        "transportation",
-        "housing_status",
-        "dependent_status",
-        "health_insurance",
-    ]
-
-    for k in ordered_keys:
-        if k in profile:
-            y = _ensure_space(c, y, height, 22)
-            label = PROFILE_LABELS.get(k, k)
-            value = _friendly_profile_value(k, profile.get(k))
-            y = _draw_bullet_text(c, margin_x, y, label, value)
-
-    y -= 14
-    y = _draw_section_title(c, margin_x, y, "Matched Benefits")
-
-    if not matches:
-        c.setFont("Helvetica", 10)
-        c.drawString(margin_x, y, "No matched benefits based on the submitted profile.")
-        y -= 14
-    else:
-        for i, m in enumerate(matches, start=1):
-            bid = m["id"]
-            item = catalog.get(bid, {})
-            title = item.get("title", bid)
-            desc = item.get("description", "")
-            action = m.get("actionStatus", "")
-
-            y = _ensure_space(c, y, height, 82)
-
-            c.setFont("Helvetica-Bold", 11)
-            c.setFillColor(colors.HexColor("#111827"))
-            c.drawString(margin_x, y, title)
-
-            if action:
-                pill_x = margin_x + 170
-                max_pill_width = width - margin_x - pill_x
-                shortened_action = action
-                if c.stringWidth(shortened_action, "Helvetica", 8) + 12 > max_pill_width:
-                    words = shortened_action.split()
-                    truncated = ""
-                    for word in words:
-                        candidate = (truncated + " " + word).strip()
-                        if c.stringWidth(candidate + "...", "Helvetica", 8) + 12 <= max_pill_width:
-                            truncated = candidate
-                        else:
-                            break
-                    if truncated and truncated != shortened_action:
-                        shortened_action = truncated + "..."
-                _draw_status_pill(
-                    c,
-                    pill_x,
-                    y + 2,
-                    shortened_action,
-                    good=("No action needed" in action),
-                )
-
-            y -= 17
-
-            c.setFont("Helvetica", 9)
-            c.setFillColor(colors.HexColor("#374151"))
-            for line in _wrap_text(c, desc, width - 2 * margin_x - 12, font_size=9):
-                c.drawString(margin_x + 12, y, line)
-                y -= 12
-
-            y -= 10
+    y = _draw_section_title(c, margin_x, y, "Application Checklists")
 
     # -----------------------------
     # Page 2+
     # -----------------------------
-    _new_page(c)
-    _draw_header_band(c, width, height)
-    y = height - 1.15 * inch
-    y = _draw_section_title(c, margin_x, y, "Application Checklists")
 
     if not matches:
         c.setFont("Helvetica", 10)
@@ -657,6 +578,7 @@ def _build_pdf_bytes(
             title = item.get("title", bid)
             checklist = item.get("checklist") or []
             progress = checklist_progress.get(bid, [False] * len(checklist))
+            ordered_items = list(zip(checklist, progress))
 
             if not checklist:
                 continue
@@ -678,8 +600,7 @@ def _build_pdf_bytes(
             )
             y -= 20
 
-            for idx, step in enumerate(checklist):
-                checked = progress[idx] if idx < len(progress) else False
+            for step, checked in ordered_items:
 
                 wrapped = _wrap_text(c, step, width - 2 * margin_x - 24, font_size=10)
                 needed_height = max(18, len(wrapped) * 12) + 8
@@ -702,6 +623,7 @@ def _build_pdf_bytes(
     c.setTitle("CommonMASS Packet")
     c.save()
     return buf.getvalue()
+
 
 
 # -----------------------------
