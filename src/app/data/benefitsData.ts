@@ -2,6 +2,7 @@ export interface Benefit {
   id: string;
   title: string;
   description: string;
+  details: string;
   category: string;
   checklist: string[];
   officialUrl: string;
@@ -21,6 +22,8 @@ export const benefits: Benefit[] = [
     id: 'pell-grant',
     title: 'Federal Pell Grant',
     description: 'A subsidy the U.S. federal government provides for students who need it to pay for college.',
+    details:
+      'The Pell Grant is federal gift aid, which means it usually does not need to be repaid. Your school determines the final amount based on your FAFSA information, enrollment status, and cost of attendance. You can start and manage the form through [StudentAid.gov](https://studentaid.gov/h/apply-for-aid/fafsa).',
     category: 'Education',
     officialUrl: 'https://studentaid.gov/h/apply-for-aid/fafsa',
     officialButtonLabel: 'Start Official Application',
@@ -35,6 +38,8 @@ export const benefits: Benefit[] = [
     id: 'massgrant',
     title: 'MASSGrant',
     description: 'Need-based grant for Massachusetts residents attending college in-state. Awards range from $300 to $1,900 per year.',
+    details:
+      'MASSGrant is state financial aid for eligible Massachusetts residents enrolled at approved in-state colleges. Schools typically use your FAFSA information to review eligibility, so it is important to complete the federal form and follow any requests from your financial aid office. You can review the application entry point through [StudentAid.gov](https://studentaid.gov/h/apply-for-aid/fafsa).',
     category: 'Education',
     officialUrl: 'https://studentaid.gov/h/apply-for-aid/fafsa',
     officialButtonLabel: 'Start Official Application',
@@ -50,6 +55,8 @@ export const benefits: Benefit[] = [
     id: 'massgrant-plus',
     title: 'MASSGrant Plus',
     description: 'Additional need-based grant for Massachusetts residents with exceptional financial need, providing up to full tuition coverage.',
+    details:
+      'MASSGrant Plus is an additional state grant for students with very high financial need who attend eligible Massachusetts public colleges full-time. Eligibility is generally reviewed through the FAFSA and your school\'s aid process, so the most important next step is keeping your federal aid application and school records up to date through [StudentAid.gov](https://studentaid.gov/h/apply-for-aid/fafsa).',
     category: 'Education',
     officialUrl: 'https://studentaid.gov/h/apply-for-aid/fafsa',
     officialButtonLabel: 'Start Official Application',
@@ -65,6 +72,8 @@ export const benefits: Benefit[] = [
     id: 'masshealth',
     title: 'MassHealth',
     description: 'Massachusetts Medicaid and CHIP program providing comprehensive health coverage for eligible residents.',
+    details:
+      'MassHealth provides low-cost or no-cost health coverage for eligible Massachusetts residents. Many applicants complete the process through the [Massachusetts Health Connector](https://www.mahix.org/individual/), where you may also be routed to the correct MassHealth program based on your household and income information.',
     category: 'Health',
     officialUrl: 'https://www.mahix.org/individual/',
     officialButtonLabel: 'Start Official Application',
@@ -80,6 +89,8 @@ export const benefits: Benefit[] = [
     id: 'mbta-pass',
     title: 'MBTA Student Pass',
     description: 'Discounted monthly passes for full-time students using MBTA services in the Greater Boston area.',
+    details:
+      'The MBTA student pass is usually coordinated through participating colleges, not just through an individual checkout page. Your school may have its own process or transportation office instructions, so check the [official MBTA student pass page](https://www.mbta.com/fares/college-student-semester-passes) and confirm the steps your campus requires.',
     category: 'Transport',
     officialUrl: 'https://www.mbta.com/fares/college-student-semester-passes',
     officialButtonLabel: 'Visit Official Site',
@@ -95,6 +106,8 @@ export const benefits: Benefit[] = [
     id: 'snap',
     title: 'SNAP (Food Stamps)',
     description: 'Provides food purchasing assistance for low- and no-income people.',
+    details:
+      'SNAP can help eligible students and households pay for groceries, but college students sometimes need to meet extra student-specific rules. In Massachusetts, applications and case updates are commonly handled through [DTA Connect](https://dtaconnect.eohhs.mass.gov/), where you can submit documents, check notices, and track your case.',
     category: 'Food',
     officialUrl: 'https://dtaconnect.eohhs.mass.gov/',
     officialButtonLabel: 'Start Official Application',

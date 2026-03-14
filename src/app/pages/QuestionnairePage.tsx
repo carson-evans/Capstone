@@ -82,21 +82,21 @@ export default function QuestionnairePage() {
   if (!currentQuestion) return <div>Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-black">
+    <div className="min-h-screen bg-gray-50 font-sans text-black dark:bg-slate-950 dark:text-slate-100">
       <Navbar />
 
       <div className="container mx-auto max-w-3xl flex-1 px-6 py-10 md:py-14">
         <div className="mb-8 space-y-3 md:mb-10">
-          <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-gray-500 md:text-sm">
+          <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400 md:text-sm">
             <span>
               Step {currentStep + 1} of {questions.length}
             </span>
             <span>{Math.round(progress)}% Complete</span>
           </div>
-          <Progress value={progress} className="h-2 bg-slate-200/90 shadow-inner md:h-2.5" />
+          <Progress value={progress} className="h-2 bg-slate-200/90 shadow-inner dark:bg-slate-800/90 md:h-2.5" />
         </div>
 
-        <div className="flex min-h-[calc(100dvh-19rem)] flex-col rounded-xl border border-gray-200 bg-white p-6 shadow-sm md:min-h-0 md:p-12">
+        <div className="flex min-h-[calc(100dvh-19rem)] flex-col rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80 dark:shadow-[0_28px_80px_-40px_rgba(2,6,23,0.95)] md:min-h-0 md:p-12">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
@@ -107,7 +107,7 @@ export default function QuestionnairePage() {
               className="min-w-0 flex-1 md:flex-none"
               style={desktopContentHeight ? { height: desktopContentHeight } : undefined}
             >
-              <span className="mb-4 inline-block rounded bg-gray-100 px-2 py-1 text-xs font-bold uppercase tracking-wider text-gray-500 md:px-3 md:py-1.5 md:text-sm">
+              <span className="mb-4 inline-block rounded bg-gray-100 px-2 py-1 text-xs font-bold uppercase tracking-wider text-gray-500 dark:bg-slate-800 dark:text-slate-300 md:px-3 md:py-1.5 md:text-sm">
                 {currentQuestion.category}
               </span>
 
@@ -128,7 +128,7 @@ export default function QuestionnairePage() {
                       key={option.value}
                       whileHover={{ y: -2 }}
                       transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-                      className="flex cursor-pointer items-start space-x-3 rounded-lg border border-transparent p-3 transition-colors hover:border-gray-200 hover:bg-gray-50 md:p-4"
+                      className="flex cursor-pointer items-start space-x-3 rounded-lg border border-transparent p-3 transition-colors hover:border-gray-200 hover:bg-gray-50 dark:hover:border-slate-700 dark:hover:bg-slate-800/70 md:p-4"
                       onClick={() => setSelectedOption(option.value)}
                     >
                       <RadioGroupItem value={option.value} id={optionId} className="mt-1" />
@@ -145,11 +145,11 @@ export default function QuestionnairePage() {
             </motion.div>
           </AnimatePresence>
 
-          <div className="mt-10 flex items-center justify-between border-t border-gray-100 pt-6 md:mt-12 md:pt-8">
+          <div className="mt-10 flex items-center justify-between border-t border-gray-100 pt-6 dark:border-white/10 md:mt-12 md:pt-8">
             <Button
               variant="ghost"
               onClick={handleBack}
-              className="text-gray-500 hover:bg-gray-100 hover:text-black md:text-base"
+              className="text-gray-500 hover:bg-gray-100 hover:text-black dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 md:text-base"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
@@ -158,7 +158,7 @@ export default function QuestionnairePage() {
             <Button
               onClick={handleNext}
               disabled={!selectedOption}
-              className="rounded-md bg-[#1e3a5f] px-8 text-white transition-all hover:bg-[#f97316] disabled:opacity-50 md:text-base"
+              className="rounded-md bg-[#1e3a5f] px-8 text-white transition-all hover:bg-[#f97316] dark:shadow-[0_18px_36px_-24px_rgba(15,23,42,0.95)] disabled:opacity-50 md:text-base"
             >
               {isLastStep ? 'See Results' : 'Next'}
               {!isLastStep && <ArrowRight className="ml-2 h-4 w-4" />}
