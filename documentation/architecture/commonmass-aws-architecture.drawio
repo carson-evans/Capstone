@@ -1,0 +1,100 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36" version="29.5.1">
+  <diagram name="CommonMass Serverless MVP" id="OW8ZB-ihcS-rnaDdltj9">
+    <mxGraphModel dx="1345" dy="788" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-1" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=16;fontStyle=1;" value="CommonMass MVP – Serverless Architecture (Sensitive Data Safe Pattern)" vertex="1">
+          <mxGeometry height="40" width="940" x="80" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#5B5B5B;fontSize=12;" value="User Browser&#xa;(HTTPS)" vertex="1">
+          <mxGeometry height="70" width="160" x="60" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#5B5B5B;fontSize=12;" value="CloudFront&#xa;CDN + TLS + HSTS" vertex="1">
+          <mxGeometry height="90" width="190" x="290" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFDE7;strokeColor=#5B5B5B;fontSize=12;" value="(Optional) AWS WAF&#xa;Rate/Geo Rules" vertex="1">
+          <mxGeometry height="70" width="190" x="365" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#5B5B5B;fontSize=12;" value="S3 Static Site Bucket&#xa;(frontend build)&#xa;OAC / private origin" vertex="1">
+          <mxGeometry height="90" width="220" x="620" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EAF6;strokeColor=#5B5B5B;fontSize=12;" value="API Gateway&#xa;POST /eligibility/check&#xa;POST /packet/generate&#xa;CORS locked to CloudFront" vertex="1">
+          <mxGeometry height="110" width="220" x="40" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#5B5B5B;fontSize=12;" value="Lambda: EligibilityCheck&#xa;Rules-based evaluator&#xa;(no SSN/DL stored)" vertex="1">
+          <mxGeometry height="90" width="200" x="1030" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#5B5B5B;fontSize=12;" value="Lambda: PacketGenerator&#xa;Generates HTML/PDF&#xa;Uploads to S3&#xa;Returns presigned URL" vertex="1">
+          <mxGeometry height="100" width="200" x="950" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#5B5B5B;fontSize=12;" value="S3 Rules/Templates&#xa;rules.json + packet template" vertex="1">
+          <mxGeometry height="90" width="220" x="430" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#5B5B5B;fontSize=12;" value="S3 Packets Bucket (Private)&#xa;SSE at rest&#xa;Lifecycle delete (e.g., 7 days)&#xa;Download via presigned URL only" vertex="1">
+          <mxGeometry height="110" width="220" x="750" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1F5FE;strokeColor=#5B5B5B;fontSize=12;" value="(Optional) DynamoDB&#xa;Run metadata (no SSN/DL)&#xa;run_id, timestamps, statuses" vertex="1">
+          <mxGeometry height="90" width="200" x="1110" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE4EC;strokeColor=#5B5B5B;fontSize=12;" value="CloudWatch Logs/Metrics&#xa;No request-body logging&#xa;Alarms on 4xx/5xx spikes" vertex="1">
+          <mxGeometry height="100" width="220" x="70" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE4EC;strokeColor=#5B5B5B;fontSize=12;" value="CloudTrail (Mgmt Events)&#xa;Who changed what" vertex="1">
+          <mxGeometry height="80" width="220" x="50" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-14" edge="1" parent="1" source="Gspthz5h2O9Ytvt9REvy-2" style="endArrow=block;html=1;rounded=0;strokeColor=#5B5B5B;" target="Gspthz5h2O9Ytvt9REvy-3" value="1) Load site / submit form">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-15" edge="1" parent="1" source="Gspthz5h2O9Ytvt9REvy-3" style="endArrow=block;html=1;rounded=0;strokeColor=#5B5B5B;" target="Gspthz5h2O9Ytvt9REvy-5" value="2) Serve static frontend">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-16" edge="1" parent="1" source="Gspthz5h2O9Ytvt9REvy-2" style="endArrow=block;html=1;rounded=0;strokeColor=#5B5B5B;" target="Gspthz5h2O9Ytvt9REvy-6" value="3) Submit answers (HTTPS)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-17" edge="1" parent="1" source="Gspthz5h2O9Ytvt9REvy-6" style="endArrow=block;html=1;rounded=0;strokeColor=#5B5B5B;" target="Gspthz5h2O9Ytvt9REvy-7" value="4) Invoke eligibility">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-18" edge="1" parent="1" source="Gspthz5h2O9Ytvt9REvy-7" style="endArrow=block;html=1;rounded=0;strokeColor=#5B5B5B;" target="Gspthz5h2O9Ytvt9REvy-6" value="5) Return results JSON">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-19" edge="1" parent="1" source="Gspthz5h2O9Ytvt9REvy-6" style="endArrow=block;html=1;rounded=0;strokeColor=#5B5B5B;" target="Gspthz5h2O9Ytvt9REvy-8" value="6) Generate packet">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-20" edge="1" parent="1" source="Gspthz5h2O9Ytvt9REvy-8" style="endArrow=block;html=1;rounded=0;strokeColor=#5B5B5B;" target="Gspthz5h2O9Ytvt9REvy-10" value="7) Upload packet file">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-21" edge="1" parent="1" source="Gspthz5h2O9Ytvt9REvy-8" style="endArrow=block;html=1;rounded=0;strokeColor=#5B5B5B;" target="Gspthz5h2O9Ytvt9REvy-6" value="8) Return presigned URL">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-22" edge="1" parent="1" source="Gspthz5h2O9Ytvt9REvy-7" style="endArrow=block;html=1;rounded=0;strokeColor=#5B5B5B;" target="Gspthz5h2O9Ytvt9REvy-9" value="Read rules/template">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-23" edge="1" parent="1" source="Gspthz5h2O9Ytvt9REvy-8" style="endArrow=block;html=1;rounded=0;strokeColor=#5B5B5B;" target="Gspthz5h2O9Ytvt9REvy-9" value="Read templates">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-24" edge="1" parent="1" source="Gspthz5h2O9Ytvt9REvy-7" style="endArrow=block;html=1;rounded=0;strokeColor=#5B5B5B;" target="Gspthz5h2O9Ytvt9REvy-11" value="Write run metadata">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-25" edge="1" parent="1" source="Gspthz5h2O9Ytvt9REvy-8" style="endArrow=block;html=1;rounded=0;strokeColor=#5B5B5B;" target="Gspthz5h2O9Ytvt9REvy-11" value="Write packet metadata">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-26" edge="1" parent="1" source="Gspthz5h2O9Ytvt9REvy-7" style="endArrow=block;html=1;rounded=0;strokeColor=#5B5B5B;" target="Gspthz5h2O9Ytvt9REvy-12" value="Logs/metrics">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-27" edge="1" parent="1" source="Gspthz5h2O9Ytvt9REvy-8" style="endArrow=block;html=1;rounded=0;strokeColor=#5B5B5B;" target="Gspthz5h2O9Ytvt9REvy-12" value="Logs/metrics">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-28" edge="1" parent="1" source="Gspthz5h2O9Ytvt9REvy-6" style="endArrow=block;html=1;rounded=0;strokeColor=#5B5B5B;" target="Gspthz5h2O9Ytvt9REvy-12" value="Access logs (redacted)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-29" edge="1" parent="1" source="Gspthz5h2O9Ytvt9REvy-3" style="endArrow=block;html=1;rounded=0;strokeColor=#5B5B5B;" target="Gspthz5h2O9Ytvt9REvy-12" value="CDN logs (optional)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Gspthz5h2O9Ytvt9REvy-30" edge="1" parent="1" source="Gspthz5h2O9Ytvt9REvy-4" style="endArrow=none;html=1;rounded=0;strokeColor=#9E9E9E;dashed=1;" target="Gspthz5h2O9Ytvt9REvy-3" value="Optional protection">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
