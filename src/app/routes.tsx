@@ -17,7 +17,7 @@ function RootLayout() {
 
 // 404 Not Found component
 function NotFound() {
-  return <div className="p-20 text-center">404 Not Found</div>;
+  return <div className="min-h-screen bg-white p-20 text-center text-black dark:bg-slate-950 dark:text-slate-100">404 Not Found</div>;
 }
 
 // Create browser router with all routes

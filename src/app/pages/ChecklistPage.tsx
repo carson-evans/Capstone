@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { motion } from "motion/react";
-import { Download } from "lucide-react";
+import { Download, ExternalLink } from "lucide-react";
 
 import { Navbar } from "@/app/components/layout/Navbar";
 import { Button } from "@/app/components/ui/button";
@@ -109,7 +109,7 @@ export default function ChecklistPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-black font-sans print:bg-white">
+    <div className="min-h-screen bg-white text-black font-sans print:bg-white dark:bg-slate-950 dark:text-slate-100">
       <div className="print:hidden">
         <Navbar />
       </div>
@@ -119,23 +119,39 @@ export default function ChecklistPage() {
           <Button
             asChild
             variant="ghost"
-            className="mb-4 px-0 text-gray-500 hover:bg-transparent hover:text-black print:hidden"
+            className="mb-4 px-0 text-gray-500 hover:bg-transparent hover:text-black print:hidden dark:text-slate-400 dark:hover:text-slate-100"
           >
             <Link to="/results">Back to Results</Link>
           </Button>
 
-          <h1 className="mb-2 text-3xl font-bold tracking-tight md:text-4xl">
+          <h1 className="mb-2 text-[2.5rem] font-bold tracking-tight md:text-[2.85rem]">
             Your Personalized Application Checklist
           </h1>
 
-          <p className="text-gray-600 print:text-black">
-            Complete these steps to apply for your identified benefits.
+          <p className="max-w-2xl text-gray-600 print:text-black dark:text-slate-300">
+            Use this checklist to keep track of the next steps for your matched benefits. You can
+            check off anything you have already finished, and your downloaded PDF will show those
+            items as completed.
           </p>
 
           {actionableBenefits.length > 0 && (
-            <p className="mt-4 text-sm font-medium text-slate-600">
+            <p className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-400">
               {completedChecklistItems} of {totalChecklistItems} checklist items completed.
             </p>
+          )}
+
+          {actionableBenefits.length > 0 && (
+            <div className="mt-6 flex justify-center print:hidden">
+              <Button
+                size="lg"
+                onClick={handleDownload}
+                disabled={isGenerating}
+                className="cursor-pointer bg-[#1e3a5f] text-white hover:bg-[#152a45] dark:bg-sky-300 dark:text-slate-950 dark:hover:bg-sky-200 dark:shadow-[0_18px_36px_-24px_rgba(125,211,252,0.55)]"
+              >
+                <Download className="h-5 w-5" />
+                {isGenerating ? "Generating PDF..." : "Download PDF"}
+              </Button>
+            </div>
           )}
         </div>
 
@@ -152,19 +168,32 @@ export default function ChecklistPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: index * 0.1 }}
-                    className="rounded-xl border border-gray-100 bg-gray-50 p-8 print:border-none print:bg-white print:p-0"
+                    className="rounded-xl border border-gray-100 bg-gray-50 p-8 dark:border-white/10 dark:bg-slate-900/75 print:border-none print:bg-white print:p-0"
                   >
-                    <div className="mb-6 flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] text-sm font-bold text-white print:hidden">
-                        {index + 1}
+                    <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] text-sm font-bold text-white print:hidden">
+                          {index + 1}
+                        </div>
+
+                        <div>
+                          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{benefit.title}</h2>
+                          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                            {completedSteps} of {benefit.checklist.length} steps completed
+                          </p>
+                        </div>
                       </div>
 
-                      <div>
-                        <h2 className="text-2xl font-bold text-slate-900">{benefit.title}</h2>
-                        <p className="mt-1 text-sm text-slate-500">
-                          {completedSteps} of {benefit.checklist.length} steps completed
-                        </p>
-                      </div>
+                      <Button
+                        asChild
+                        variant="outline"
+                        className="w-full border-gray-300 text-gray-700 hover:text-white md:w-auto print:hidden dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-[#f97316] dark:hover:bg-[#f97316] dark:hover:text-white dark:hover:shadow-[0_0_24px_rgba(249,115,22,0.28)]"
+                      >
+                        <a href={benefit.officialUrl} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          {benefit.officialButtonLabel ?? "Visit Official Site"}
+                        </a>
+                      </Button>
                     </div>
 
                     <div className="space-y-3 pl-0 md:pl-11 print:pl-0">
@@ -176,8 +205,8 @@ export default function ChecklistPage() {
                             transition={checklistItemTransition}
                             className={`flex items-start gap-3 rounded-2xl border px-4 py-3 transition-all duration-300 print:border-none print:bg-white print:px-0 print:py-1 print:shadow-none ${
                               checked
-                                ? "border-slate-200 bg-slate-100/80 opacity-70"
-                                : "border-white/90 bg-white shadow-[0_14px_36px_-28px_rgba(15,23,42,0.55)] hover:-translate-y-0.5 hover:border-[#355b8a]/20 hover:shadow-[0_20px_38px_-28px_rgba(30,58,95,0.45)]"
+                                ? "border-slate-200 bg-slate-100/80 opacity-70 dark:border-slate-800 dark:bg-slate-800/70"
+                                : "border-white/90 bg-white shadow-[0_14px_36px_-28px_rgba(15,23,42,0.55)] hover:-translate-y-0.5 hover:border-[#355b8a]/20 hover:shadow-[0_20px_38px_-28px_rgba(30,58,95,0.45)] dark:border-slate-800 dark:bg-slate-950/80 dark:shadow-[0_20px_44px_-30px_rgba(2,6,23,0.95)] dark:hover:border-slate-700 dark:hover:shadow-[0_24px_50px_-30px_rgba(2,6,23,1)]"
                             }`}
                           >
                             <Checkbox
@@ -186,13 +215,13 @@ export default function ChecklistPage() {
                               onCheckedChange={(nextChecked) =>
                                 setChecklistItemChecked(benefit.id, originalIndex, nextChecked === true)
                               }
-                              className="mt-0.5 border-gray-400 bg-white data-[state=checked]:bg-[#1e3a5f] data-[state=checked]:text-white"
+                              className="mt-0.5 border-gray-400 bg-white data-[state=checked]:bg-[#1e3a5f] data-[state=checked]:text-white dark:border-slate-500 dark:bg-slate-950 dark:data-[state=checked]:border-[#355b8a] dark:data-[state=checked]:bg-[#1e3a5f] dark:data-[state=checked]:text-white dark:data-[state=checked]:shadow-[0_0_18px_rgba(53,91,138,0.22)]"
                             />
 
                             <label
                               htmlFor={`${benefit.id}-${originalIndex}`}
                               className={`flex-1 cursor-pointer text-base font-medium leading-relaxed transition-colors ${
-                                checked ? "text-slate-400 line-through" : "text-slate-900"
+                                checked ? "text-slate-400 line-through dark:text-slate-500" : "text-slate-900 dark:text-slate-100"
                               }`}
                             >
                               {item}
@@ -205,22 +234,10 @@ export default function ChecklistPage() {
                 );
               })}
             </div>
-
-            <div className="mt-12 flex justify-center print:hidden">
-              <Button
-                size="lg"
-                onClick={handleDownload}
-                disabled={isGenerating}
-                className="bg-[#1e3a5f] text-white hover:bg-[#152a45]"
-              >
-                <Download className="h-5 w-5" />
-                {isGenerating ? "Generating PDF..." : "Download PDF"}
-              </Button>
-            </div>
           </>
         ) : (
-          <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 py-20 text-center">
-            <p className="mb-4 text-gray-500">
+          <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 py-20 text-center dark:border-slate-700 dark:bg-slate-900/70">
+            <p className="mb-4 text-gray-500 dark:text-slate-400">
               {matchedBenefits.length > 0
                 ? "Your current matches do not need any checklist steps right now."
                 : "Complete the screener first to generate a personalized checklist."}

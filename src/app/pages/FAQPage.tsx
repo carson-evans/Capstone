@@ -1,6 +1,6 @@
-import React from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle, Search } from 'lucide-react';
 import { Navbar } from '@/app/components/layout/Navbar';
 import { Chatbot } from '@/app/components/Chatbot';
 import {
@@ -9,82 +9,35 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/app/components/ui/accordion';
-
-const faqData = [
-  {
-    id: '1',
-    question: 'What is the Federal Pell Grant?',
-    answer: 'The Federal Pell Grant is a need-based grant for undergraduate students who have not earned a bachelor\'s, graduate, or professional degree. Unlike loans, Pell Grants do not need to be repaid except under certain circumstances. The maximum Pell Grant award for 2025-2026 is $7,395. The amount you receive depends on your financial need, cost of attendance, enrollment status (full-time or part-time), and plans to attend school for a full academic year.'
-  },
-  {
-    id: '2',
-    question: 'What is MASSGrant and how do I qualify?',
-    answer: 'MASSGrant is a state-funded grant program for Massachusetts residents with financial need who are attending college in Massachusetts. Award amounts range from $300 to $1,900 per year. To qualify, you must complete the FAFSA, be a Massachusetts resident for at least one year, be enrolled in an eligible Massachusetts institution, demonstrate financial need, and maintain satisfactory academic progress. Awards are made by your school\'s financial aid office.'
-  },
-  {
-    id: '3',
-    question: 'What is MASSGrant Plus?',
-    answer: 'MASSGrant Plus is an enhanced state grant for Massachusetts students with exceptional financial need (Expected Family Contribution of $0). This program can cover up to the full cost of tuition and mandatory fees at Massachusetts public colleges and universities. You must complete the FAFSA, be enrolled full-time, maintain good academic standing, and attend a participating public institution in Massachusetts. This grant significantly reduces or eliminates tuition costs for eligible students.'
-  },
-  {
-    id: '4',
-    question: 'How do I apply for MassHealth?',
-    answer: 'MassHealth is Massachusetts\' Medicaid and Children\'s Health Insurance Program (CHIP). To apply, visit MAhealthconnector.org or call the MassHealth Customer Service Center. You\'ll need proof of Massachusetts residency, identity, citizenship or immigration status, and income documentation. Students may qualify based on income, age, disability, or other factors. MassHealth provides comprehensive health coverage including doctor visits, hospital care, prescription drugs, and preventive services.'
-  },
-  {
-    id: '5',
-    question: 'What MBTA discounts are available for students?',
-    answer: 'Full-time students can purchase discounted MBTA passes. The Student LinkPass offers unlimited travel on subway, bus, and local bus routes at a reduced rate compared to regular monthly passes. To get this discount, you must verify your full-time enrollment status through your school\'s transportation office or the MBTA website. Some schools participate in semester pass programs that offer even greater savings. You must carry your student ID when using the discounted pass.'
-  },
-  {
-    id: '6',
-    question: 'How do I apply for federal student aid?',
-    answer: 'To apply for federal student aid, you must complete the Free Application for Federal Student Aid (FAFSA). You can file the FAFSA online at fafsa.gov starting October 1st each year. You will need your FSA ID, Social Security number, federal income tax returns, W-2s, and records of untaxed income. It\'s recommended to submit your FAFSA as early as possible because some aid is awarded on a first-come, first-served basis.'
-  },
-  {
-    id: '7',
-    question: 'What types of federal student loans are available?',
-    answer: 'There are several types of federal student loans: Direct Subsidized Loans (for undergraduate students with financial need; the government pays interest while you\'re in school), Direct Unsubsidized Loans (available to undergraduate and graduate students; you are responsible for all interest), Direct PLUS Loans (for graduate students and parents of dependent undergraduate students), and Direct Consolidation Loans (to combine multiple federal student loans into one loan).'
-  },
-  {
-    id: '8',
-    question: 'What is Federal Work-Study?',
-    answer: 'Federal Work-Study provides part-time employment opportunities for students with financial need, allowing them to earn money to help pay education expenses. The program encourages community service work and work related to the student\'s course of study. You can work on-campus or off-campus with approved employers. Not all schools participate in this program, so check with your school\'s financial aid office.'
-  },
-  {
-    id: '9',
-    question: 'Can college students in Massachusetts qualify for SNAP?',
-    answer: 'Yes, college students in Massachusetts can qualify for SNAP (Supplemental Nutrition Assistance Program) benefits if they meet certain criteria. Students enrolled at least half-time may be eligible if they: work at least 20 hours per week, participate in a state or federally financed work-study program, care for a dependent household member, receive TANF benefits, or are enrolled in certain career and technical education programs. Apply through the Massachusetts Department of Transitional Assistance (DTA).'
-  },
-  {
-    id: '10',
-    question: 'What is the difference between grants and scholarships?',
-    answer: 'Both grants and scholarships are forms of gift aid that do not need to be repaid. Grants are typically need-based and awarded by the federal government, state governments, or colleges based on your financial situation. Scholarships are typically merit-based and awarded based on academic achievement, athletic ability, artistic talent, or other criteria. Scholarships can come from schools, private organizations, employers, or community groups.'
-  },
-  {
-    id: '11',
-    question: 'Who is eligible for federal student aid?',
-    answer: 'To be eligible for federal student aid, you must: be a U.S. citizen or eligible noncitizen; have a valid Social Security number; be enrolled or accepted for enrollment in an eligible degree or certificate program; maintain satisfactory academic progress; not be in default on a federal student loan or owe money on a federal grant; register with Selective Service if you are male between 18-25; and not have a conviction for the possession or sale of illegal drugs for an offense that occurred while receiving federal student aid.'
-  },
-  {
-    id: '12',
-    question: 'When are FAFSA deadlines?',
-    answer: 'The federal deadline to submit the FAFSA is June 30 of the award year (for example, June 30, 2026, for the 2025-2026 award year). However, many states and colleges have earlier deadlines. Some state deadlines can be as early as January or February. It\'s important to check your state\'s deadline and your school\'s priority deadline to ensure you don\'t miss out on any aid opportunities.'
-  },
-  {
-    id: '13',
-    question: 'Are there other Massachusetts-specific benefits for students?',
-    answer: 'Yes! Massachusetts offers several programs including: the Massachusetts Gilbert Grant for students at private institutions, Tuition Waiver programs for certain categories like National Guard members and foster care youth, the Adams Scholarship for high MCAS scorers, and various institutional grants at state colleges and universities. Contact your school\'s financial aid office to learn about all available Massachusetts programs.'
-  }
-];
+import { Input } from '@/app/components/ui/input';
+import { renderLinkedText } from '@/app/components/ui/render-linked-text';
+import { faqData } from '@/app/data/faqData';
 
 export default function FAQPage() {
+  const [query, setQuery] = useState('');
+
+  const filteredFaqs = useMemo(() => {
+    const tokens = query
+      .toLowerCase()
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+
+    if (!tokens.length) {
+      return faqData;
+    }
+
+    return faqData.filter((faq) => {
+      const searchableText = [faq.question, faq.answer, ...faq.keywords].join(' ').toLowerCase();
+      return tokens.every((token) => searchableText.includes(token));
+    });
+  }, [query]);
+
   return (
-    <div className="min-h-screen bg-white text-black">
+    <div className="min-h-screen bg-white text-black dark:bg-slate-950 dark:text-slate-100">
       <Navbar />
-      
-      {/* Hero Section */}
-      <section className="bg-gray-50 border-b border-gray-200 py-16 px-4">
+
+      <section className="bg-gray-50 border-b border-gray-200 py-16 px-4 dark:border-white/10 dark:bg-slate-900/60">
         <div className="max-w-4xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -96,7 +49,7 @@ export default function FAQPage() {
               <HelpCircle className="h-8 w-8 text-white" />
             </div>
           </motion.div>
-          
+
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -105,54 +58,85 @@ export default function FAQPage() {
           >
             Frequently Asked Questions
           </motion.h1>
-          
+
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-lg text-gray-600 max-w-2xl mx-auto"
+            className="text-lg text-gray-600 max-w-2xl mx-auto dark:text-slate-300"
           >
             Find answers to common questions about student benefits, financial aid, and assistance programs.
           </motion.p>
         </div>
       </section>
 
-      {/* FAQ Section */}
       <section className="py-16 px-4">
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
+            className="mb-8 rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-white/10 dark:bg-slate-900/80 md:p-5"
           >
-            <Accordion type="single" collapsible className="space-y-4">
-              {faqData.map((faq, index) => (
-                <motion.div
-                  key={faq.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.1 * index }}
-                >
-                  <AccordionItem 
-                    value={faq.id} 
-                    className="border border-gray-200 rounded-lg px-6 bg-white hover:shadow-sm transition-shadow"
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+              <Input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search FAQ"
+                className="h-12 rounded-xl border-gray-200 bg-white pl-11 text-base shadow-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+              />
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.35 }}
+          >
+            {filteredFaqs.length ? (
+              <Accordion type="single" collapsible className="space-y-4">
+                {filteredFaqs.map((faq, index) => (
+                  <motion.div
+                    key={faq.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.06 * index }}
                   >
-                    <AccordionTrigger className="text-left hover:no-underline py-5">
-                      <span className="font-medium text-black pr-4">{faq.question}</span>
-                    </AccordionTrigger>
-                    <AccordionContent className="text-gray-700 leading-relaxed pb-5">
-                      {faq.answer}
-                    </AccordionContent>
-                  </AccordionItem>
-                </motion.div>
-              ))}
-            </Accordion>
+                    <AccordionItem
+                      value={faq.id}
+                      className="border border-gray-200 rounded-lg px-6 bg-white hover:shadow-sm transition-shadow dark:border-white/10 dark:bg-slate-900/80 dark:hover:shadow-[0_18px_36px_-26px_rgba(2,6,23,0.95)]"
+                    >
+                      <AccordionTrigger className="text-left hover:no-underline py-5">
+                        <span className="font-medium text-black pr-4 dark:text-slate-100">{faq.question}</span>
+                      </AccordionTrigger>
+                      <AccordionContent className="pb-5">
+                        <div className="space-y-3 text-gray-700 leading-relaxed dark:text-slate-300">
+                          {renderLinkedText(faq.answer, {
+                            paragraphClassName: 'text-gray-700 leading-relaxed dark:text-slate-300',
+                            linkClassName:
+                              'font-medium text-[#1e3a5f] underline underline-offset-4 hover:text-[#16304f] dark:text-sky-200 dark:hover:text-orange-200',
+                          })}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </motion.div>
+                ))}
+              </Accordion>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center dark:border-slate-700 dark:bg-slate-900/80">
+                <h2 className="text-xl font-semibold text-black dark:text-slate-100">No matching questions found</h2>
+                <p className="mt-2 text-gray-600 dark:text-slate-300">
+                  Try a broader keyword like FAFSA, SNAP, MassHealth, MBTA, loans, or deadlines.
+                </p>
+              </div>
+            )}
           </motion.div>
         </div>
       </section>
 
-      {/* AI Chatbot Section */}
-      <section className="py-16 px-4 bg-gray-50 border-t border-gray-200">
+      <section className="py-16 px-4 bg-gray-50 border-t border-gray-200 dark:border-white/10 dark:bg-slate-900/55">
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -162,11 +146,11 @@ export default function FAQPage() {
             className="text-center mb-8"
           >
             <h2 className="text-3xl font-bold mb-3">Need More Help?</h2>
-            <p className="text-gray-600 text-lg">
+            <p className="text-gray-600 text-lg dark:text-slate-300">
               Chat with our AI assistant for personalized answers to your questions.
             </p>
           </motion.div>
-          
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -178,10 +162,9 @@ export default function FAQPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-white py-12 border-t border-gray-200">
-        <div className="container mx-auto px-6 text-center text-gray-500 text-sm">
-          <p>© 2026 CommonMASS. All rights reserved.</p>
+      <footer className="bg-white py-12 border-t border-gray-200 dark:border-white/10 dark:bg-slate-950">
+        <div className="container mx-auto px-6 text-center text-gray-500 text-sm dark:text-slate-400">
+          <p>Copyright 2026 CommonMASS. All rights reserved.</p>
         </div>
       </footer>
     </div>

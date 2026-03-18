@@ -125,7 +125,7 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground transition-colors duration-300;
   }
 
   /**
@@ -135,6 +135,7 @@
 
   html {
     font-size: var(--font-size);
+    scrollbar-gutter: stable both-edges;
   }
 
   h1 {
