@@ -146,3 +146,9 @@ The project emphasizes:
   Email: `Zain.Raza001@umb.edu`
 
 ---
+
+## Developer Documentation
+
+For local installation, environment setup, and running the project in development, see [SETUP.md](./SETUP.md).
+
+For contribution workflow, branching, and pull requests, see [CONTRIBUTING.md](./CONTRIBUTING.md).
