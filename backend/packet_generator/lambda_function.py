@@ -48,7 +48,13 @@ FIELD_LABELS = {
 # -----------------------------
 # HTTP helpers
 # -----------------------------
-def _resp(status_code: int, body, content_type: str = "application/json", extra_headers: dict | None = None):
+def _resp(
+    status_code: int,
+    body,
+    event: dict | None = None,
+    content_type: str = "application/json",
+    extra_headers: dict | None = None,
+):
     if body is None:
         body = ""
     if not isinstance(body, str):
@@ -59,7 +65,7 @@ def _resp(status_code: int, body, content_type: str = "application/json", extra_
         "Cache-Control": "no-store",
     }
 
-    allowed_origin = os.environ.get("ALLOWED_ORIGIN")
+    allowed_origin = _get_allowed_origin(event or {})
     if allowed_origin:
         headers["Access-Control-Allow-Origin"] = allowed_origin
         headers["Vary"] = "Origin"
@@ -109,6 +115,20 @@ def _get_header(event: dict, name: str) -> str | None:
     for k, v in headers.items():
         if str(k).lower() == name.lower():
             return v
+    return None
+
+def _get_allowed_origin(event: dict) -> str | None:
+    request_origin = _get_header(event or {}, "Origin")
+
+    allowed_origins = {
+        "https://commonmass.org",
+        "https://www.commonmass.org",
+        "http://localhost:5173",
+    }
+
+    if request_origin in allowed_origins:
+        return request_origin
+
     return None
 
 
@@ -548,9 +568,7 @@ def _build_pdf_bytes(
 
     margin_x = 0.75 * inch
 
-    # -----------------------------
     # Page 1
-    # -----------------------------
     _draw_header_band(c, width, height)
     y = height - 1.15 * inch
 
@@ -593,7 +611,7 @@ def _build_pdf_bytes(
         c.drawString(margin_x, y, "No matched benefits based on the submitted profile.")
         y -= 14
     else:
-        for i, m in enumerate(matches, start=1):
+        for m in matches:
             bid = m["id"]
             item = catalog.get(bid, {})
             title = item.get("title", bid)
@@ -639,9 +657,7 @@ def _build_pdf_bytes(
 
             y -= 10
 
-    # -----------------------------
     # Page 2+
-    # -----------------------------
     _new_page(c)
     _draw_header_band(c, width, height)
     y = height - 1.15 * inch
@@ -710,15 +726,15 @@ def _build_pdf_bytes(
 def lambda_handler(event, context):
     method = _get_http_method(event or {})
     if method == "OPTIONS":
-        return _resp(200, "", content_type="text/plain")
+        return _resp(200, "", event=event, content_type="text/plain")
 
     if not PACKETS_BUCKET:
-        return _resp(500, {"error": "PACKETS_BUCKET env var not set"})
+        return _resp(500, {"error": "PACKETS_BUCKET env var not set"}, event=event)
 
     if REQUIRE_SHARED_SECRET:
         header_val = _get_header(event or {}, SHARED_SECRET_HEADER)
         if not SHARED_SECRET_VALUE or header_val != SHARED_SECRET_VALUE:
-            return _resp(403, {"error": "Forbidden"})
+            return _resp(403, {"error": "Forbidden"}, event=event)
 
     payload = _parse_payload(event)
 
@@ -727,15 +743,13 @@ def lambda_handler(event, context):
     checklist_progress = payload.get("checklistProgress") or payload.get("checklist_progress") or {}
 
     if not isinstance(profile, dict):
-        return _resp(400, {"error": "profile must be an object"})
+        return _resp(400, {"error": "profile must be an object"}, event=event)
 
     if selected is not None and not isinstance(selected, list):
-        return _resp(400, {"error": "selectedBenefits must be a list if provided"})
-    if checklist_progress is not None and not isinstance(checklist_progress, dict):
-        return _resp(400, {"error": "checklistProgress must be an object if provided"})
+        return _resp(400, {"error": "selectedBenefits must be a list if provided"}, event=event)
 
-    if checklist_state is not None and not isinstance(checklist_state, dict):
-        return _resp(400, {"error": "checklistState must be an object if provided"})
+    if checklist_progress is not None and not isinstance(checklist_progress, dict):
+        return _resp(400, {"error": "checklistProgress must be an object if provided"}, event=event)
 
     region = _detect_bucket_region(PACKETS_BUCKET)
 
@@ -777,11 +791,20 @@ def lambda_handler(event, context):
             ServerSideEncryption="AES256",
         )
     except ClientError as e:
-        return _resp(500, {"error": "Failed to write PDF to S3", "details": str(e)})
+        return _resp(
+            500,
+            {"error": "Failed to write PDF to S3", "details": str(e)},
+            event=event,
+        )
 
     presigned_url = s3.generate_presigned_url(
         "get_object",
-        Params={"Bucket": PACKETS_BUCKET, "Key": key},
+        Params={
+            "Bucket": PACKETS_BUCKET,
+            "Key": key,
+            "ResponseContentType": "application/pdf",
+            "ResponseContentDisposition": 'inline; filename="CommonMASS-Packet.pdf"',
+        },
         ExpiresIn=URL_EXPIRES_SECONDS,
     )
 
@@ -795,4 +818,5 @@ def lambda_handler(event, context):
             "matched_benefits": matches,
             "download_url": presigned_url,
         },
+        event=event,
     )
