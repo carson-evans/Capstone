@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { Download, ExternalLink } from "lucide-react";
 
 import { Navbar } from "@/app/components/layout/Navbar";
+import { PageBackdrop } from "@/app/components/layout/PageBackdrop";
 import { Button } from "@/app/components/ui/button";
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { useBenefits } from "@/app/context/BenefitsContext";
@@ -109,50 +110,61 @@ export default function ChecklistPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-black font-sans print:bg-white dark:bg-slate-950 dark:text-slate-100">
+    <div className="relative isolate min-h-screen overflow-x-hidden bg-[#f8fafc] text-black font-sans print:bg-white dark:bg-slate-950 dark:text-slate-100">
+      <PageBackdrop />
       <div className="print:hidden">
         <Navbar />
       </div>
 
       <div className="container mx-auto max-w-3xl px-6 py-12 print:max-w-none print:py-0">
-        <div className="mb-12 print:mb-8">
-          <Button
-            asChild
-            variant="ghost"
-            className="mb-4 px-0 text-gray-500 hover:bg-transparent hover:text-black print:hidden dark:text-slate-400 dark:hover:text-slate-100"
+        <div className="relative mb-12 print:mb-8">
+          <div
+            className="relative overflow-hidden rounded-t-[2rem] border-x border-t border-white/70 bg-white/72 p-8 pb-20 shadow-[0_34px_80px_-60px_rgba(15,23,42,0.42)] backdrop-blur-sm print:border-none print:bg-transparent print:p-0 print:pb-0 print:shadow-none dark:border-white/10 dark:bg-slate-900/58"
+            style={{
+              WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)',
+              maskImage: 'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)',
+            }}
           >
-            <Link to="/results">Back to Results</Link>
-          </Button>
-
-          <h1 className="mb-2 text-[2.5rem] font-bold tracking-tight md:text-[2.85rem]">
-            Your Personalized Application Checklist
-          </h1>
-
-          <p className="max-w-2xl text-gray-600 print:text-black dark:text-slate-300">
-            Use this checklist to keep track of the next steps for your matched benefits. You can
-            check off anything you have already finished, and your downloaded PDF will show those
-            items as completed.
-          </p>
-
-          {actionableBenefits.length > 0 && (
-            <p className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-400">
-              {completedChecklistItems} of {totalChecklistItems} checklist items completed.
-            </p>
-          )}
-
-          {actionableBenefits.length > 0 && (
-            <div className="mt-6 flex justify-center print:hidden">
+            <div className="relative z-10">
               <Button
-                size="lg"
-                onClick={handleDownload}
-                disabled={isGenerating}
-                className="cursor-pointer bg-[#1e3a5f] text-white hover:bg-[#152a45] dark:bg-sky-300 dark:text-slate-950 dark:hover:bg-sky-200 dark:shadow-[0_18px_36px_-24px_rgba(125,211,252,0.55)]"
+                asChild
+                variant="ghost"
+                className="mb-4 px-0 text-gray-500 hover:bg-transparent hover:text-black print:hidden dark:text-slate-400 dark:hover:text-slate-100"
               >
-                <Download className="h-5 w-5" />
-                {isGenerating ? "Generating PDF..." : "Download PDF"}
+                <Link to="/results">Back to Results</Link>
               </Button>
+
+              <h1 className="mb-2 text-[2.5rem] font-bold tracking-tight md:text-[2.85rem]">
+                Your Personalized Application Checklist
+              </h1>
+
+              <p className="max-w-2xl text-gray-600 print:text-black dark:text-slate-300">
+                Use this checklist to keep track of the next steps for your matched benefits. You can
+                check off anything you have already finished, and your downloaded PDF will show those
+                items as completed.
+              </p>
+
+              {actionableBenefits.length > 0 && (
+                <p className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-400">
+                  {completedChecklistItems} of {totalChecklistItems} checklist items completed.
+                </p>
+              )}
+
+              {actionableBenefits.length > 0 && (
+                <div className="mt-6 flex justify-center print:hidden">
+                  <Button
+                    size="lg"
+                    onClick={handleDownload}
+                    disabled={isGenerating}
+                    className="cursor-pointer bg-[#1e3a5f] text-white hover:bg-[#152a45] dark:bg-sky-300 dark:text-slate-950 dark:hover:bg-sky-200 dark:shadow-[0_18px_36px_-24px_rgba(125,211,252,0.55)]"
+                  >
+                    <Download className="h-5 w-5" />
+                    {isGenerating ? "Generating PDF..." : "Download PDF"}
+                  </Button>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         {actionableBenefits.length > 0 ? (
@@ -168,7 +180,7 @@ export default function ChecklistPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: index * 0.1 }}
-                    className="rounded-xl border border-gray-100 bg-gray-50 p-8 dark:border-white/10 dark:bg-slate-900/75 print:border-none print:bg-white print:p-0"
+                    className="rounded-[1.75rem] border border-white/75 bg-white/72 p-8 shadow-[0_20px_55px_-38px_rgba(15,23,42,0.28)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/75 print:border-none print:bg-white print:p-0 print:shadow-none"
                   >
                     <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                       <div className="flex items-center gap-3">
@@ -236,7 +248,7 @@ export default function ChecklistPage() {
             </div>
           </>
         ) : (
-          <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 py-20 text-center dark:border-slate-700 dark:bg-slate-900/70">
+          <div className="rounded-[1.75rem] border border-dashed border-gray-300 bg-white/72 py-20 text-center shadow-[0_24px_60px_-42px_rgba(15,23,42,0.28)] backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/70">
             <p className="mb-4 text-gray-500 dark:text-slate-400">
               {matchedBenefits.length > 0
                 ? "Your current matches do not need any checklist steps right now."
@@ -254,3 +266,14 @@ export default function ChecklistPage() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+

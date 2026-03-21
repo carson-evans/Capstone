@@ -18,6 +18,15 @@ export const faqData: FAQItem[] = [
     officialUrl: 'https://studentaid.gov/h/apply-for-aid/fafsa',
   },
   {
+    id: '29',
+    question: 'How much can I get from the Federal Pell Grant?',
+    answer:
+      'For the 2026-27 award year, the maximum Federal Pell Grant is $7,395. Some students can receive up to 150% of their scheduled yearly award through year-round Pell if they attend an additional term in the same award year. Your actual amount depends on your FAFSA results, Student Aid Index, enrollment intensity, and your school cost of attendance.',
+    keywords: ['pell amount', 'pell maximum', 'how much pell', 'pell award amount', 'student aid index', 'sai'],
+    relatedBenefitIds: ['pell-grant'],
+    officialUrl: 'https://studentaid.gov/h/apply-for-aid/fafsa',
+  },
+  {
     id: '2',
     question: 'What is MASSGrant and how do I qualify?',
     answer:
@@ -34,6 +43,15 @@ export const faqData: FAQItem[] = [
     keywords: ['massgrant plus', 'public college', 'umass', 'state university', 'tuition and fees'],
     relatedBenefitIds: ['massgrant-plus'],
     officialUrl: 'https://studentaid.gov/h/apply-for-aid/fafsa',
+  },
+  {
+    id: '30',
+    question: 'How much can I get from MASSGrant or MASSGrant Plus?',
+    answer:
+      'Award amounts vary by program, financial need, school type, enrollment, and available state funding. MASSGrant and MASSGrant Plus are not flat amounts for every student, so the best source for your final number is your financial aid offer or your school financial aid office after you file the [FAFSA](https://studentaid.gov/h/apply-for-aid/fafsa) or [MASFA](https://www.mass.edu/osfa/students/masfa.asp).',
+    keywords: ['massgrant amount', 'massgrant plus amount', 'how much massgrant', 'state grant amount', 'financial aid offer'],
+    relatedBenefitIds: ['massgrant', 'massgrant-plus'],
+    officialUrl: 'https://www.mass.edu/osfa/students/masfa.asp',
   },
   {
     id: '4',
@@ -84,6 +102,15 @@ export const faqData: FAQItem[] = [
     answer:
       'Yes, some college students can qualify for SNAP. Eligibility depends on household circumstances, income, and program rules, and students enrolled at least half time may need to meet an additional student exemption. You can apply through [DTA Connect](https://dtaconnect.eohhs.mass.gov/), and DTA will tell you if more information is needed.',
     keywords: ['snap', 'food stamps', 'dta', 'dta connect', 'ebt', 'student exemption', 'half-time'],
+    relatedBenefitIds: ['snap'],
+    officialUrl: 'https://dtaconnect.eohhs.mass.gov/',
+  },
+  {
+    id: '31',
+    question: 'How much can I get from SNAP?',
+    answer:
+      'SNAP benefits are based on your household size, income, expenses, and program rules, so there is not one fixed amount for every student. DTA determines the monthly benefit after reviewing your application, and your amount can change if your income, housing costs, or household situation changes.',
+    keywords: ['snap amount', 'how much snap', 'monthly ebt amount', 'food benefits amount', 'dta benefit amount'],
     relatedBenefitIds: ['snap'],
     officialUrl: 'https://dtaconnect.eohhs.mass.gov/',
   },
@@ -197,4 +224,61 @@ export const faqData: FAQItem[] = [
     keywords: ['part-time', 'half-time', 'less than full-time', 'enrollment status', 'reduced course load'],
     relatedBenefitIds: ['pell-grant', 'massgrant', 'massgrant-plus'],
   },
+  {
+    id: '23',
+    question: 'What documents should I gather before applying for MassHealth?',
+    answer:
+      'It helps to have identifying information, proof of Massachusetts residency, income details, and information about any current health coverage before you start. If MassHealth or the Health Connector needs more information, they may ask you to upload or mail supporting documents after you submit your application.',
+    keywords: ['masshealth documents', 'proof of residency', 'income verification', 'identity', 'apply for coverage'],
+    relatedBenefitIds: ['masshealth'],
+    officialUrl: 'https://www.mahix.org/individual/',
+  },
+  {
+    id: '24',
+    question: 'Can I keep my MassHealth coverage if my income or address changes?',
+    answer:
+      'You may still qualify, but you should report changes as soon as possible so your eligibility can be reviewed correctly. A change in income, household size, or address can affect the type of coverage you receive, so it is important to update your account promptly.',
+    keywords: ['masshealth eligibility change', 'address update', 'income update', 'household change', 'report change'],
+    relatedBenefitIds: ['masshealth'],
+    officialUrl: 'https://www.mass.gov/how-to/report-changes-to-masshealth',
+  },
+  {
+    id: '25',
+    question: 'How do I know if my school participates in the MBTA Student Pass program?',
+    answer:
+      'Participation is handled through individual colleges and universities, so the fastest way to confirm is to check with your school. Look for information from your transportation office, student affairs office, or commuter services team, then compare it with the [MBTA student pass page](https://www.mbta.com/fares/college-student-semester-passes).',
+    keywords: ['mbta participating schools', 'student pass school', 'college transportation office', 'semester program', 'commuter services'],
+    relatedBenefitIds: ['mbta-pass'],
+    officialUrl: 'https://www.mbta.com/fares/college-student-semester-passes',
+  },
+  {
+    id: '26',
+    question: 'When can I use an MBTA Student Pass?',
+    answer:
+      'That depends on the pass your school offers and the dates tied to that program. Many student passes are sold for a semester or school-defined period rather than as a flexible discount that starts any day, so check your school timeline before relying on it for commuting.',
+    keywords: ['mbta pass dates', 'semester timeline', 'when does student pass start', 'commuting', 'school period'],
+    relatedBenefitIds: ['mbta-pass'],
+    officialUrl: 'https://www.mbta.com/fares/college-student-semester-passes',
+  },
+  {
+    id: '27',
+    question: 'What kind of proof might I need when applying for SNAP as a student?',
+    answer:
+      'Applicants are often asked for details about income, identity, housing costs, and student enrollment. Depending on your situation, you may also need to show that you meet a student exemption or provide information about work, work-study, or household members.',
+    keywords: ['snap documents', 'student exemption proof', 'income proof', 'housing costs', 'enrollment verification'],
+    relatedBenefitIds: ['snap'],
+    officialUrl: 'https://dtaconnect.eohhs.mass.gov/',
+  },
+  {
+    id: '28',
+    question: 'How long does it take to hear back after I apply for SNAP?',
+    answer:
+      'Timing varies by case, but DTA may contact you if an interview or more documents are needed before they make a decision. The best way to avoid delays is to respond quickly to notices and use [DTA Connect](https://dtaconnect.eohhs.mass.gov/) to track your case and submit anything that is missing.',
+    keywords: ['snap timeline', 'dta interview', 'application decision', 'case status', 'processing time'],
+    relatedBenefitIds: ['snap'],
+    officialUrl: 'https://dtaconnect.eohhs.mass.gov/',
+  },
 ];
+
+
+

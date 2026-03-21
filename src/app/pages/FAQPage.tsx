@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { HelpCircle, Search } from 'lucide-react';
+import { ArrowDown, Bot, HelpCircle, Search } from 'lucide-react';
 import { Navbar } from '@/app/components/layout/Navbar';
+import { PageBackdrop } from '@/app/components/layout/PageBackdrop';
 import { Chatbot } from '@/app/components/Chatbot';
 import {
   Accordion,
@@ -13,8 +14,47 @@ import { Input } from '@/app/components/ui/input';
 import { renderLinkedText } from '@/app/components/ui/render-linked-text';
 import { faqData } from '@/app/data/faqData';
 
+const FAQ_CATEGORY_FILTERS = [
+  {
+    id: 'all',
+    label: 'All',
+    benefitIds: [],
+  },
+  {
+    id: 'snap',
+    label: 'SNAP',
+    benefitIds: ['snap'],
+  },
+  {
+    id: 'pell-grant',
+    label: 'Pell Grant',
+    benefitIds: ['pell-grant'],
+  },
+  {
+    id: 'massgrant-family',
+    label: 'MASSGrant / MASSGrant Plus',
+    benefitIds: ['massgrant', 'massgrant-plus'],
+  },
+  {
+    id: 'masshealth',
+    label: 'MassHealth',
+    benefitIds: ['masshealth'],
+  },
+  {
+    id: 'mbta-pass',
+    label: 'MBTA Student Pass',
+    benefitIds: ['mbta-pass'],
+  },
+] as const;
+
+type FAQCategoryFilterId = (typeof FAQ_CATEGORY_FILTERS)[number]['id'];
+
 export default function FAQPage() {
   const [query, setQuery] = useState('');
+  const [activeFilterId, setActiveFilterId] = useState<FAQCategoryFilterId>('all');
+  const chatbotSectionRef = useRef<HTMLElement | null>(null);
+
+  const activeFilter = FAQ_CATEGORY_FILTERS.find((filter) => filter.id === activeFilterId) ?? FAQ_CATEGORY_FILTERS[0];
 
   const filteredFaqs = useMemo(() => {
     const tokens = query
@@ -23,21 +63,28 @@ export default function FAQPage() {
       .split(/\s+/)
       .filter(Boolean);
 
-    if (!tokens.length) {
-      return faqData;
-    }
-
     return faqData.filter((faq) => {
+      const matchesFilter =
+        !activeFilter.benefitIds.length ||
+        activeFilter.benefitIds.some((benefitId) => faq.relatedBenefitIds?.includes(benefitId));
+
       const searchableText = [faq.question, faq.answer, ...faq.keywords].join(' ').toLowerCase();
-      return tokens.every((token) => searchableText.includes(token));
+      const matchesQuery = !tokens.length || tokens.every((token) => searchableText.includes(token));
+
+      return matchesFilter && matchesQuery;
     });
-  }, [query]);
+  }, [activeFilter, query]);
+
+  const scrollToChatbot = () => {
+    chatbotSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   return (
-    <div className="min-h-screen bg-white text-black dark:bg-slate-950 dark:text-slate-100">
+    <div className="relative isolate min-h-screen overflow-x-hidden bg-[#f8fafc] text-black dark:bg-slate-950 dark:text-slate-100">
+      <PageBackdrop />
       <Navbar />
 
-      <section className="bg-gray-50 border-b border-gray-200 py-16 px-4 dark:border-white/10 dark:bg-slate-900/60">
+      <section className="border-b border-white/50 bg-white/62 px-4 py-16 backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/38">
         <div className="max-w-4xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -76,17 +123,61 @@ export default function FAQPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="mb-8 rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-white/10 dark:bg-slate-900/80 md:p-5"
+            className="mb-8 rounded-2xl border border-white/70 bg-white/74 p-4 shadow-[0_30px_70px_-56px_rgba(15,23,42,0.4)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/72 md:p-5"
           >
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
-              <Input
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search FAQ"
-                className="h-12 rounded-xl border-gray-200 bg-white pl-11 text-base shadow-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-              />
+            <div className="mb-4">
+              <p className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-slate-400">
+                Browse by benefit
+              </p>
+
+              <div className="flex flex-wrap gap-3">
+                {FAQ_CATEGORY_FILTERS.map((filter) => {
+                  const isActive = activeFilterId === filter.id;
+
+                  return (
+                    <button
+                      key={filter.id}
+                      type="button"
+                      onClick={() => setActiveFilterId(filter.id)}
+                      aria-pressed={isActive}
+                      className={`rounded-full border px-4 py-2 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/40 focus-visible:ring-offset-2 dark:focus-visible:ring-sky-200/40 dark:focus-visible:ring-offset-slate-900 ${
+                        isActive
+                          ? 'border-[#1e3a5f] bg-[#1e3a5f] text-white shadow-sm dark:border-sky-200 dark:bg-sky-200 dark:text-slate-950'
+                          : 'border-gray-200 bg-white text-gray-700 hover:border-[#1e3a5f] hover:text-[#1e3a5f] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-sky-200 dark:hover:text-sky-200'
+                      }`}
+                    >
+                      {filter.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+                <Input
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search FAQ"
+                  className="h-12 rounded-xl border-gray-200 bg-white pl-11 text-base shadow-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={scrollToChatbot}
+                className="group inline-flex items-center justify-center gap-2 self-start rounded-full border border-[#1e3a5f]/12 bg-[#f8fafc] px-4 py-2 text-sm font-semibold text-[#1e3a5f] transition-all hover:-translate-y-0.5 hover:border-[#1e3a5f]/25 hover:bg-white hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/35 focus-visible:ring-offset-2 dark:border-sky-200/20 dark:bg-slate-950 dark:text-sky-200 dark:hover:border-sky-200/35 dark:hover:bg-slate-900 dark:focus-visible:ring-sky-200/35 dark:focus-visible:ring-offset-slate-900"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] text-white dark:bg-sky-200 dark:text-slate-950">
+                  <Bot className="h-4 w-4" />
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  Need More Help
+                  <ArrowDown className="h-4 w-4 transition-transform duration-200 group-hover:translate-y-0.5" />
+                </span>
+              </button>
             </div>
           </motion.div>
 
@@ -106,7 +197,7 @@ export default function FAQPage() {
                   >
                     <AccordionItem
                       value={faq.id}
-                      className="border border-gray-200 rounded-lg px-6 bg-white hover:shadow-sm transition-shadow dark:border-white/10 dark:bg-slate-900/80 dark:hover:shadow-[0_18px_36px_-26px_rgba(2,6,23,0.95)]"
+                      className="rounded-lg border border-white/75 bg-white/88 px-6 backdrop-blur-sm transition-shadow hover:shadow-sm dark:border-white/10 dark:bg-slate-900/80 dark:hover:shadow-[0_18px_36px_-26px_rgba(2,6,23,0.95)]"
                     >
                       <AccordionTrigger className="text-left hover:no-underline py-5">
                         <span className="font-medium text-black pr-4 dark:text-slate-100">{faq.question}</span>
@@ -125,10 +216,10 @@ export default function FAQPage() {
                 ))}
               </Accordion>
             ) : (
-              <div className="rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center dark:border-slate-700 dark:bg-slate-900/80">
+              <div className="rounded-2xl border border-dashed border-gray-300 bg-white/74 px-6 py-10 text-center shadow-[0_24px_60px_-42px_rgba(15,23,42,0.28)] backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/80">
                 <h2 className="text-xl font-semibold text-black dark:text-slate-100">No matching questions found</h2>
                 <p className="mt-2 text-gray-600 dark:text-slate-300">
-                  Try a broader keyword like FAFSA, SNAP, MassHealth, MBTA, loans, or deadlines.
+                  Try another benefit category or a broader keyword like FAFSA, SNAP, MassHealth, MBTA, loans, or deadlines.
                 </p>
               </div>
             )}
@@ -136,7 +227,10 @@ export default function FAQPage() {
         </div>
       </section>
 
-      <section className="py-16 px-4 bg-gray-50 border-t border-gray-200 dark:border-white/10 dark:bg-slate-900/55">
+      <section
+        ref={chatbotSectionRef}
+        className="border-t border-white/50 bg-white/45 px-4 py-16 backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/38"
+      >
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -162,7 +256,7 @@ export default function FAQPage() {
         </div>
       </section>
 
-      <footer className="bg-white py-12 border-t border-gray-200 dark:border-white/10 dark:bg-slate-950">
+      <footer className="border-t border-white/50 bg-white/78 py-12 backdrop-blur-sm dark:border-white/10 dark:bg-slate-950/92">
         <div className="container mx-auto px-6 text-center text-gray-500 text-sm dark:text-slate-400">
           <p>Copyright 2026 CommonMASS. All rights reserved.</p>
         </div>
@@ -170,3 +264,13 @@ export default function FAQPage() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
