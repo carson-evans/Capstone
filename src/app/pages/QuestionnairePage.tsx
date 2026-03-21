@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from '@/app/components/ui/radio-group';
 import { Label } from '@/app/components/ui/label';
 import { Navbar } from '@/app/components/layout/Navbar';
 import { useBenefits } from '@/app/context/BenefitsContext';
-import { questions } from '@/app/data/benefitsData';
+import { getVisibleQuestions, questions } from '@/app/data/benefitsData';
 
 export default function QuestionnairePage() {
   const navigate = useNavigate();
@@ -19,9 +19,21 @@ export default function QuestionnairePage() {
   const [selectedOption, setSelectedOption] = useState<string>('');
   const [desktopContentHeight, setDesktopContentHeight] = useState<number | null>(null);
 
-  const currentQuestion = questions[currentStep];
-  const isLastStep = currentStep === questions.length - 1;
-  const progress = ((currentStep + 1) / questions.length) * 100;
+  // Dynamically hide/skip questions based on answers from previous steps.
+  const visibleQuestions = React.useMemo(() => {
+    return getVisibleQuestions(questions, answers);
+  }, [answers]);
+
+  useEffect(() => {
+    // If the user's answers cause steps to appear/disappear, clamp to a valid index.
+    if (currentStep >= visibleQuestions.length && visibleQuestions.length > 0) {
+      setCurrentStep(visibleQuestions.length - 1);
+    }
+  }, [visibleQuestions.length, currentStep]);
+
+  const currentQuestion = visibleQuestions[currentStep];
+  const isLastStep = visibleQuestions.length > 0 && currentStep === visibleQuestions.length - 1;
+  const progress = visibleQuestions.length > 0 ? ((currentStep + 1) / visibleQuestions.length) * 100 : 0;
 
   useEffect(() => {
     if (currentQuestion) {
@@ -39,7 +51,7 @@ export default function QuestionnairePage() {
       }
 
       frameId = window.requestAnimationFrame(() => {
-        const tallestHeight = questions.reduce((maxHeight, question) => {
+        const tallestHeight = visibleQuestions.reduce((maxHeight, question) => {
           const element = measurementRefs.current[question.id];
           return element ? Math.max(maxHeight, element.offsetHeight) : maxHeight;
         }, 0);
@@ -57,18 +69,31 @@ export default function QuestionnairePage() {
       window.cancelAnimationFrame(frameId);
       window.removeEventListener('resize', measureDesktopContentHeight);
     };
-  }, []);
+  }, [visibleQuestions]);
 
   const handleNext = () => {
-    if (!selectedOption) return;
+    if (!currentQuestion || !selectedOption) return;
+
+    // Compute the *next* visible step using prospective answers so we don't rely
+    // on stale "isLastStep" from before the answer is set.
+    const prospectiveAnswers = {
+      ...answers,
+      [currentQuestion.id]: selectedOption,
+    };
+    const prospectiveVisibleQuestions = getVisibleQuestions(questions, prospectiveAnswers);
+    const currentIndexInProspective = prospectiveVisibleQuestions.findIndex(
+      (q) => q.id === currentQuestion.id,
+    );
+    const nextIndex = currentIndexInProspective + 1;
 
     setAnswer(currentQuestion.id, selectedOption);
 
-    if (isLastStep) {
+    if (nextIndex >= prospectiveVisibleQuestions.length) {
       navigate('/results');
-    } else {
-      setCurrentStep((prev) => prev + 1);
+      return;
     }
+
+    setCurrentStep(nextIndex);
   };
 
   const handleBack = () => {
@@ -89,7 +114,7 @@ export default function QuestionnairePage() {
         <div className="mb-8 space-y-3 md:mb-10">
           <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400 md:text-sm">
             <span>
-              Step {currentStep + 1} of {questions.length}
+              Step {currentStep + 1} of {visibleQuestions.length}
             </span>
             <span>{Math.round(progress)}% Complete</span>
           </div>
@@ -169,7 +194,7 @@ export default function QuestionnairePage() {
 
       <div aria-hidden="true" className="pointer-events-none invisible fixed inset-x-0 top-0 -z-10 hidden md:block">
         <div className="container mx-auto max-w-3xl px-6 py-14">
-          {questions.map((question) => (
+          {visibleQuestions.map((question) => (
             <div key={question.id} className="rounded-xl border border-transparent bg-white p-12 shadow-sm">
               <div
                 ref={(element) => {

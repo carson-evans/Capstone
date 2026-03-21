@@ -15,6 +15,11 @@ export interface Question {
   text: string;
   options: { label: string; value: string }[];
   category: string;
+  // If present, this question is only shown when all conditions match prior answers.
+  conditions?: {
+    questionId: string;
+    values: string[];
+  }[];
 }
 
 export const benefits: Benefit[] = [
@@ -153,6 +158,12 @@ export const questions: Question[] = [
     id: 'fafsa_completed',
     text: 'Have you completed the FAFSA for the current academic year?',
     category: 'Financial',
+    conditions: [
+      {
+        questionId: 'student_status',
+        values: ['full_time', 'part_time'],
+      },
+    ],
     options: [
       { label: 'Yes', value: 'yes' },
       { label: 'No', value: 'no' },
@@ -162,6 +173,12 @@ export const questions: Question[] = [
     id: 'dependent_status',
     text: "Are you claimed as a dependent on someone else's tax return?",
     category: 'Financial',
+    conditions: [
+      {
+        questionId: 'student_status',
+        values: ['full_time', 'part_time'],
+      },
+    ],
     options: [
       { label: 'Yes', value: 'yes' },
       { label: 'No', value: 'no' },
@@ -171,6 +188,12 @@ export const questions: Question[] = [
     id: 'work_study',
     text: 'Are you participating in Federal Work-Study?',
     category: 'Financial',
+    conditions: [
+      {
+        questionId: 'student_status',
+        values: ['full_time', 'part_time'],
+      },
+    ],
     options: [
       { label: 'Yes', value: 'yes' },
       { label: 'No', value: 'no' },
@@ -190,6 +213,12 @@ export const questions: Question[] = [
     id: 'housing_status',
     text: 'What is your current living situation?',
     category: 'Housing',
+    conditions: [
+      {
+        questionId: 'student_status',
+        values: ['full_time', 'part_time'],
+      },
+    ],
     options: [
       { label: 'On-campus housing', value: 'on_campus' },
       { label: 'Off-campus (renting)', value: 'off_campus' },
@@ -200,6 +229,16 @@ export const questions: Question[] = [
     id: 'transportation',
     text: 'Do you use public transportation to get to school?',
     category: 'Transport',
+    conditions: [
+      {
+        questionId: 'ma_resident',
+        values: ['yes'],
+      },
+      {
+        questionId: 'student_status',
+        values: ['full_time', 'part_time'],
+      },
+    ],
     options: [
       { label: 'Yes, regularly', value: 'yes' },
       { label: 'Sometimes', value: 'sometimes' },
@@ -217,3 +256,25 @@ export const questions: Question[] = [
     ],
   },
 ];
+
+/**
+ * Checks if a question should be shown based on its conditions.
+ * Uses AND logic: all conditions must be satisfied.
+ */
+export function shouldShowQuestion(question: Question, answers: Record<string, string>): boolean {
+  if (!question.conditions || question.conditions.length === 0) {
+    return true;
+  }
+
+  return question.conditions.every((condition) => {
+    const answerValue = answers[condition.questionId];
+    return answerValue && condition.values.includes(answerValue);
+  });
+}
+
+/**
+ * Gets the visible questions based on user answers.
+ */
+export function getVisibleQuestions(allQuestions: Question[], answers: Record<string, string>): Question[] {
+  return allQuestions.filter((question) => shouldShowQuestion(question, answers));
+}
