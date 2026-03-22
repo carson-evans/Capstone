@@ -20,13 +20,10 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "https://5zlqeedlcc.execute-api.us-east-1.amazonaws.com",
+        target: "https://commonmass.org",
         changeOrigin: true,
         secure: true,
-        // /api/packet -> /dev/packet
-        rewrite: (path) => path.replace(/^\/api\/packet/, "/dev/packet"),
       },
     },
-  },
-  assetsInclude: ['**/*.svg', '**/*.csv'],
+},  assetsInclude: ['**/*.svg', '**/*.csv'],
 })
