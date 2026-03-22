@@ -1,8 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { AnimatePresence, motion } from 'motion/react';
-import { ExternalLink, CheckSquare, ChevronDown } from 'lucide-react';
+import { motion } from 'motion/react';
+import { ChevronDown, ExternalLink, CheckSquare } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/app/components/ui/accordion';
 import {
   Card,
   CardHeader,
@@ -14,22 +20,36 @@ import { Navbar } from '@/app/components/layout/Navbar';
 import { PageBackdrop } from '@/app/components/layout/PageBackdrop';
 import { renderLinkedText } from '@/app/components/ui/render-linked-text';
 import { useBenefits } from '@/app/context/BenefitsContext';
+import { useIsMobile } from '@/app/components/ui/use-mobile';
 
 const FAFSA_MANAGED_BENEFIT_IDS = new Set(['pell-grant', 'massgrant', 'massgrant-plus']);
 const FAFSA_STATUS_URL =
   'https://studentaid.gov/fsa-id/sign-in/landing?redirectTo=%2Fmy-activity';
+const MOBILE_ROUTE_TRANSITION = {
+  duration: 0.2,
+  ease: [0.22, 1, 0.36, 1] as const,
+};
 
 export default function ResultsPage() {
   const { matchedBenefits } = useBenefits();
   const hasMatches = matchedBenefits.length > 0;
-  const [expandedBenefitIds, setExpandedBenefitIds] = useState<string[]>([]);
+  const isMobile = useIsMobile();
+  const [mobileOpenDetails, setMobileOpenDetails] = useState<Record<string, boolean>>({});
+  const heroEnterInitial = { opacity: 0, y: isMobile ? 12 : 20 };
+  const heroEnterTransition = (delay = 0) =>
+    isMobile
+      ? { ...MOBILE_ROUTE_TRANSITION, delay: Math.min(delay, 0.08) }
+      : { duration: 0.5, delay };
+  const benefitCardTransition = (index: number) =>
+    isMobile
+      ? { ...MOBILE_ROUTE_TRANSITION, duration: 0.18, delay: Math.min(index, 2) * 0.035 }
+      : { duration: 0.22, delay: index * 0.08 };
 
-  const toggleBenefitDetails = (benefitId: string) => {
-    setExpandedBenefitIds((previousIds) =>
-      previousIds.includes(benefitId)
-        ? previousIds.filter((id) => id !== benefitId)
-        : [...previousIds, benefitId]
-    );
+  const toggleMobileDetails = (benefitId: string) => {
+    setMobileOpenDetails((current) => ({
+      ...current,
+      [benefitId]: !current[benefitId],
+    }));
   };
 
   const getBenefitAction = (benefit: (typeof matchedBenefits)[number]) => {
@@ -49,78 +69,103 @@ export default function ResultsPage() {
   };
 
   return (
-    <div className="relative isolate min-h-screen overflow-x-hidden bg-[#f8fafc] text-black font-sans dark:bg-slate-950 dark:text-slate-100">
+    <div className="relative isolate min-h-screen overflow-x-hidden bg-[#f8fafc] font-sans text-black dark:bg-slate-950 dark:text-slate-100">
       <PageBackdrop />
       <Navbar />
 
-      <div className="container max-w-4xl mx-auto px-6 py-12">
+      <div className="container mx-auto max-w-4xl px-6 py-12">
         <div className="relative mb-14">
           <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="relative overflow-hidden rounded-t-[2rem] border-x border-t border-white/70 bg-white/72 p-8 pb-20 shadow-[0_34px_80px_-60px_rgba(15,23,42,0.42)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/58 md:p-10 md:pb-24"
-          style={{
-            WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)',
-            maskImage: 'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)',
-          }}
-        >
-          <div className="relative z-10">
-            <h1 className="mb-4 text-[2.6rem] font-bold tracking-tight md:text-[2.85rem]">Your Results</h1>
-            <p className="max-w-2xl text-lg text-gray-600 dark:text-slate-300">
-              Based on your answers, you may qualify for the following {matchedBenefits.length}{' '}
-              benefits.
-            </p>
+            initial={heroEnterInitial}
+            animate={{ opacity: 1, y: 0 }}
+            transition={heroEnterTransition()}
+            className="relative"
+          >
+            <div
+              className="relative overflow-hidden rounded-t-[2rem] border-x border-t border-white/70 bg-white/72 p-8 pb-20 shadow-[0_34px_80px_-60px_rgba(15,23,42,0.42)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/58 md:p-10 md:pb-24"
+              style={{
+                WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)',
+                maskImage: 'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)',
+              }}
+            >
+              <div className="relative z-10">
+                <h1 className="mb-4 text-[2.6rem] font-bold tracking-tight md:text-[2.85rem]">Your Results</h1>
+                <p className="max-w-2xl text-lg text-gray-600 dark:text-slate-300">
+                  Based on your answers, you may qualify for the following {matchedBenefits.length}{' '}
+                  benefits.
+                </p>
 
-            {hasMatches && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                className="mt-6 flex justify-center"
-              >
-                <Link to="/checklist">
-                  <Button
-                    size="lg"
-                    className="bg-[#f97316] text-white hover:bg-[#ea580c] text-lg px-8 py-6 rounded-full group transition-all duration-200 shadow-[0_4px_14px_0_rgba(249,115,22,0.3)] hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_20px_25px_-5px_rgba(249,115,22,0.4)] dark:shadow-[0_10px_28px_-14px_rgba(251,146,60,0.56)] dark:hover:shadow-[0_20px_40px_-16px_rgba(251,146,60,0.76)] cursor-pointer"
+                {hasMatches && (
+                  <motion.div
+                    initial={heroEnterInitial}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={heroEnterTransition(0.1)}
+                    className="mt-6 flex justify-center"
                   >
-                    <CheckSquare className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
-                    Get Personalized Checklist
-                  </Button>
-                </Link>
-              </motion.div>
-            )}
-          </div>
-        </motion.div>
+                    <Link to="/checklist">
+                      <Button
+                        size="lg"
+                        className="group cursor-pointer rounded-full bg-[#f97316] px-8 py-6 text-lg text-white transition-all duration-200 shadow-[0_4px_14px_0_rgba(249,115,22,0.3)] hover:-translate-y-1 hover:scale-[1.02] hover:bg-[#ea580c] hover:shadow-[0_20px_25px_-5px_rgba(249,115,22,0.4)] dark:shadow-[0_10px_28px_-14px_rgba(251,146,60,0.56)] dark:hover:shadow-[0_20px_40px_-16px_rgba(251,146,60,0.76)]"
+                      >
+                        <CheckSquare className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
+                        Get Personalized Checklist
+                      </Button>
+                    </Link>
+                  </motion.div>
+                )}
+              </div>
+            </div>
+          </motion.div>
         </div>
 
         {hasMatches ? (
-          <div className="space-y-6">
-            {matchedBenefits.map((benefit, index) => {
-              const action = getBenefitAction(benefit);
-              const showActionStatus = benefit.id !== 'snap' && Boolean(benefit.actionStatus);
-              const isDetailsOpen = expandedBenefitIds.includes(benefit.id);
+          isMobile ? (
+            <div className="space-y-6">
+              {matchedBenefits.map((benefit) => {
+                const action = getBenefitAction(benefit);
+                const showActionStatus = benefit.id !== 'snap' && Boolean(benefit.actionStatus);
+                const isDetailsOpen = Boolean(mobileOpenDetails[benefit.id]);
+                const actionButton = (
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="group w-full whitespace-nowrap border-[#355b8a] bg-white text-[#355b8a] shadow-sm transition-all duration-300 hover:border-[#f97316] hover:bg-[#f97316] hover:text-white hover:shadow-[0_12px_28px_-18px_rgba(249,115,22,0.4)] sm:w-auto sm:shrink-0 dark:border-sky-200 dark:bg-transparent dark:text-sky-200 dark:hover:border-[#f97316] dark:hover:bg-[#f97316] dark:hover:text-white dark:hover:shadow-[0_0_24px_rgba(249,115,22,0.28)]"
+                  >
+                    <a href={action.href} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                      {action.label}
+                    </a>
+                  </Button>
+                );
+                const detailsContent = (
+                  <div className="space-y-3 text-sm leading-relaxed text-gray-700 dark:text-slate-200">
+                    {renderLinkedText(benefit.details, {
+                      paragraphClassName: 'text-sm text-gray-700 leading-relaxed dark:text-slate-200',
+                      linkClassName:
+                        'font-medium text-[#1e3a5f] underline underline-offset-4 hover:text-[#16304f] dark:text-sky-200 dark:hover:text-orange-200',
+                    })}
+                  </div>
+                );
 
-              return (
-                <motion.div
-                  key={benefit.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.22, delay: index * 0.08 }}
-                >
-                  <Card className="overflow-hidden border border-white/75 bg-white/86 shadow-[0_20px_55px_-38px_rgba(15,23,42,0.3)] backdrop-blur-sm transition-all duration-125 hover:-translate-y-1.5 hover:scale-[1.01] hover:shadow-xl hover:shadow-slate-200/70 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-[0_24px_60px_-38px_rgba(2,6,23,0.95)] dark:hover:shadow-[0_30px_70px_-38px_rgba(2,6,23,1)]">
-                    <CardHeader className="gap-4">
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                return (
+                  <div
+                    key={benefit.id}
+                    style={{ overflowAnchor: 'none' }}
+                    className="rounded-[1.5rem] border border-white/75 bg-white/86 shadow-[0_24px_52px_-24px_rgba(15,23,42,0.24)] backdrop-blur-none dark:border-white/10 dark:bg-slate-900/80 dark:shadow-[0_24px_52px_-24px_rgba(2,6,23,0.78)]"
+                  >
+                    <div className="px-5 pt-5">
+                      <div className="flex flex-col gap-3">
                         <div className="min-w-0">
-                          <span className="inline-block px-2 py-1 bg-gray-100 text-xs font-bold text-gray-500 rounded mb-2 uppercase tracking-wide dark:bg-slate-800 dark:text-slate-300">
+                          <span className="mb-1.5 inline-block rounded bg-gray-100 px-2 py-1 text-xs font-bold uppercase tracking-wide text-gray-500 dark:bg-slate-800 dark:text-slate-300">
                             {benefit.category}
                           </span>
 
-                          <CardTitle className="text-2xl font-bold">{benefit.title}</CardTitle>
+                          <h2 className="text-xl font-bold">{benefit.title}</h2>
 
                           {showActionStatus && (
                             <div
-                              className={`mt-2 inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                              className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-semibold ${
                                 benefit.actionStatus?.includes('No action needed')
                                   ? 'bg-green-100 text-green-800 dark:bg-emerald-400/18 dark:text-emerald-200 dark:ring-1 dark:ring-inset dark:ring-emerald-300/30'
                                   : 'bg-red-100 text-red-700 dark:bg-[#ff0000]/22 dark:text-[#fff3f3] dark:ring-1 dark:ring-inset dark:ring-[#ff4d4d]/55'
@@ -131,71 +176,125 @@ export default function ResultsPage() {
                           )}
                         </div>
 
-                        <Button
-                          asChild
-                          variant="outline"
-                          size="sm"
-                          className="w-full sm:w-auto sm:shrink-0 border-gray-300 text-gray-700 hover:bg-[#1e3a5f] hover:text-white whitespace-nowrap dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-[#f97316] dark:hover:bg-[#f97316] dark:hover:text-white dark:hover:shadow-[0_0_24px_rgba(249,115,22,0.28)]"
-                        >
-                          <a href={action.href} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="mr-2 h-4 w-4" />
-                            {action.label}
-                          </a>
-                        </Button>
+                        {actionButton}
                       </div>
-                    </CardHeader>
-
-                    <CardContent className="pb-6">
-                      <CardDescription className="text-base text-gray-600 leading-relaxed dark:text-slate-300">
-                        {benefit.description}
-                      </CardDescription>
-                    </CardContent>
-
-                    <div className="border-t border-gray-100 bg-gray-50/60 dark:border-white/10 dark:bg-slate-950/60">
-                      <button
-                        type="button"
-                        onClick={() => toggleBenefitDetails(benefit.id)}
-                        aria-expanded={isDetailsOpen}
-                        className="flex w-full cursor-pointer items-center justify-between px-6 py-4 text-left text-sm font-semibold text-[#1e3a5f] transition-colors hover:text-[#16304f] dark:text-slate-200 dark:hover:text-sky-200"
-                      >
-                        <span>More Details</span>
-                        <ChevronDown
-                          className={`h-4 w-4 transition-transform duration-200 ${
-                            isDetailsOpen ? 'rotate-180' : ''
-                          }`}
-                        />
-                      </button>
-
-                      <AnimatePresence initial={false}>
-                        {isDetailsOpen && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.22, ease: 'easeInOut' }}
-                            className="overflow-hidden border-t border-gray-100 dark:border-white/10"
-                          >
-                            <div className="px-6 py-5">
-                              <div className="space-y-3 text-sm text-gray-700 leading-relaxed dark:text-slate-200">
-                                {renderLinkedText(benefit.details, {
-                                  paragraphClassName: 'text-sm text-gray-700 leading-relaxed dark:text-slate-200',
-                                  linkClassName:
-                                    'font-medium text-[#1e3a5f] underline underline-offset-4 hover:text-[#16304f] dark:text-sky-200 dark:hover:text-orange-200',
-                                })}
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
                     </div>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </div>
+
+                    <div className="px-5 pb-5 pt-4">
+                      <p className="text-sm leading-relaxed text-gray-600 dark:text-slate-300">
+                        {benefit.description}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      aria-expanded={isDetailsOpen}
+                      onClick={() => toggleMobileDetails(benefit.id)}
+                      className="flex w-full items-start justify-between gap-4 border-t border-gray-100 px-5 py-3.5 text-left text-sm font-semibold text-[#1e3a5f] transition-colors hover:text-[#16304f] dark:border-white/10 dark:text-slate-200 dark:hover:text-sky-200"
+                    >
+                      <span>More Details</span>
+                      <ChevronDown
+                        className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
+                          isDetailsOpen ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+
+                    {isDetailsOpen && <div className="px-5 pb-5 pt-1">{detailsContent}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <Accordion type="multiple" className="space-y-6">
+              {matchedBenefits.map((benefit, index) => {
+                const action = getBenefitAction(benefit);
+                const showActionStatus = benefit.id !== 'snap' && Boolean(benefit.actionStatus);
+                const actionButton = (
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="group w-full whitespace-nowrap border-[#355b8a] bg-white text-[#355b8a] shadow-sm transition-all duration-300 hover:border-[#f97316] hover:bg-[#f97316] hover:text-white hover:shadow-[0_12px_28px_-18px_rgba(249,115,22,0.4)] sm:w-auto sm:shrink-0 dark:border-sky-200 dark:bg-transparent dark:text-sky-200 dark:hover:border-[#f97316] dark:hover:bg-[#f97316] dark:hover:text-white dark:hover:shadow-[0_0_24px_rgba(249,115,22,0.28)]"
+                  >
+                    <a href={action.href} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                      {action.label}
+                    </a>
+                  </Button>
+                );
+                const detailsContent = (
+                  <div className="space-y-3 text-sm leading-relaxed text-gray-700 dark:text-slate-200">
+                    {renderLinkedText(benefit.details, {
+                      paragraphClassName: 'text-sm text-gray-700 leading-relaxed dark:text-slate-200',
+                      linkClassName:
+                        'font-medium text-[#1e3a5f] underline underline-offset-4 hover:text-[#16304f] dark:text-sky-200 dark:hover:text-orange-200',
+                    })}
+                  </div>
+                );
+                const cardContent = (
+                  <AccordionItem value={benefit.id} className="rounded-[1.5rem] border-none">
+                    <Card className="gap-5 overflow-hidden border border-white/75 bg-white/86 shadow-[0_24px_52px_-24px_rgba(15,23,42,0.24)] backdrop-blur-none transition-all duration-125 hover:-translate-y-1.5 hover:scale-[1.01] hover:shadow-xl hover:shadow-slate-200/70 sm:gap-6 md:shadow-[0_20px_55px_-38px_rgba(15,23,42,0.3)] sm:backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/80 dark:shadow-[0_24px_52px_-24px_rgba(2,6,23,0.78)] md:dark:shadow-[0_24px_60px_-38px_rgba(2,6,23,0.95)] dark:hover:shadow-[0_30px_70px_-38px_rgba(2,6,23,1)]">
+                      <CardHeader className="gap-3 px-5 pt-5 sm:gap-4 sm:px-6 sm:pt-6">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                          <div className="min-w-0">
+                            <span className="mb-1.5 inline-block rounded bg-gray-100 px-2 py-1 text-xs font-bold uppercase tracking-wide text-gray-500 sm:mb-2 dark:bg-slate-800 dark:text-slate-300">
+                              {benefit.category}
+                            </span>
+
+                            <CardTitle className="text-xl font-bold sm:text-2xl">{benefit.title}</CardTitle>
+
+                            {showActionStatus && (
+                              <div
+                                className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-semibold ${
+                                  benefit.actionStatus?.includes('No action needed')
+                                    ? 'bg-green-100 text-green-800 dark:bg-emerald-400/18 dark:text-emerald-200 dark:ring-1 dark:ring-inset dark:ring-emerald-300/30'
+                                    : 'bg-red-100 text-red-700 dark:bg-[#ff0000]/22 dark:text-[#fff3f3] dark:ring-1 dark:ring-inset dark:ring-[#ff4d4d]/55'
+                                }`}
+                              >
+                                {benefit.actionStatus}
+                              </div>
+                            )}
+                          </div>
+
+                          {actionButton}
+                        </div>
+                      </CardHeader>
+
+                      <CardContent className="px-5 pb-5 sm:px-6 sm:pb-6">
+                        <CardDescription className="text-sm leading-relaxed text-gray-600 dark:text-slate-300 sm:text-base">
+                          {benefit.description}
+                        </CardDescription>
+                      </CardContent>
+
+                      <div className="border-t border-gray-100 bg-gray-50/60 dark:border-white/10 dark:bg-slate-950/60">
+                        <AccordionTrigger className="px-5 py-3.5 text-left text-sm font-semibold text-[#1e3a5f] transition-colors hover:no-underline hover:text-[#16304f] sm:px-6 sm:py-4 dark:text-slate-200 dark:hover:text-sky-200 [&>svg]:h-4 [&>svg]:w-4">
+                          <span>More Details</span>
+                        </AccordionTrigger>
+                        <AccordionContent className="border-t border-gray-100 px-5 py-4 dark:border-white/10 sm:px-6 sm:py-5">
+                          {detailsContent}
+                        </AccordionContent>
+                      </div>
+                    </Card>
+                  </AccordionItem>
+                );
+
+                return (
+                  <motion.div
+                    key={benefit.id}
+                    initial={heroEnterInitial}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={benefitCardTransition(index)}
+                  >
+                    {cardContent}
+                  </motion.div>
+                );
+              })}
+            </Accordion>
+          )
         ) : (
-          <div className="rounded-[1.75rem] border border-dashed border-gray-300 bg-white/72 py-20 text-center shadow-[0_24px_60px_-42px_rgba(15,23,42,0.28)] backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/70">
-            <p className="text-gray-500 mb-4 dark:text-slate-400">
+          <div className="rounded-[1.75rem] border border-dashed border-gray-300 bg-white/72 py-20 text-center shadow-[0_24px_60px_-42px_rgba(15,23,42,0.28)] backdrop-blur-none dark:border-slate-700 dark:bg-slate-900/70 md:backdrop-blur-sm">
+            <p className="mb-4 text-gray-500 dark:text-slate-400">
               We couldn't find any specific benefits matching your profile at this time.
             </p>
             <Button variant="outline" onClick={() => (window.location.href = '/')}>
@@ -207,12 +306,3 @@ export default function ResultsPage() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-

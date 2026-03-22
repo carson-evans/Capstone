@@ -1,4 +1,4 @@
-import { type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from 'react';
+import { type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from 'framer-motion';
 import { ArrowRight, CheckSquare, FileText, ListChecks } from 'lucide-react';
@@ -53,6 +53,8 @@ export default function LandingPage() {
   const [hoveredSideCard, setHoveredSideCard] = useState<'left' | 'right' | null>(null);
   const [promotedSideCard, setPromotedSideCard] = useState<'left' | 'right' | null>(null);
   const sideCardLayerTimeoutRef = useRef<number | null>(null);
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
   const hoverX = useMotionValue(0);
   const hoverY = useMotionValue(0);
   const smoothHoverX = useSpring(hoverX, { stiffness: 180, damping: 24, mass: 0.45 });
@@ -74,7 +76,7 @@ export default function LandingPage() {
     }
 
     const intervalId = window.setInterval(() => {
-      setActiveSlideIndex((currentIndex) => (currentIndex + 1) % HERO_SLIDES.length);
+      showNextSlide();
     }, 9200);
 
     return () => window.clearInterval(intervalId);
@@ -112,6 +114,14 @@ export default function LandingPage() {
     hoverY.set(0);
   };
 
+  const showNextSlide = () => {
+    setActiveSlideIndex((currentIndex) => (currentIndex + 1) % HERO_SLIDES.length);
+  };
+
+  const showPreviousSlide = () => {
+    setActiveSlideIndex((currentIndex) => (currentIndex - 1 + HERO_SLIDES.length) % HERO_SLIDES.length);
+  };
+
   const queueSideCardLayerChange = (nextSide: 'left' | 'right' | null, delayMs: number) => {
     if (sideCardLayerTimeoutRef.current !== null) {
       window.clearTimeout(sideCardLayerTimeoutRef.current);
@@ -145,6 +155,37 @@ export default function LandingPage() {
     queueSideCardLayerChange(null, 110);
   };
 
+  const handleHeroTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
+    if (event.touches.length !== 1) {
+      return;
+    }
+
+    touchStartXRef.current = event.touches[0].clientX;
+    touchStartYRef.current = event.touches[0].clientY;
+  };
+
+  const handleHeroTouchEnd = (event: ReactTouchEvent<HTMLDivElement>) => {
+    if (touchStartXRef.current === null || touchStartYRef.current === null) {
+      return;
+    }
+
+    const deltaX = event.changedTouches[0].clientX - touchStartXRef.current;
+    const deltaY = event.changedTouches[0].clientY - touchStartYRef.current;
+
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+
+    if (Math.abs(deltaX) < 36 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) {
+      return;
+    }
+
+    if (deltaX < 0) {
+      showNextSlide();
+      return;
+    }
+
+    showPreviousSlide();
+  };
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#f8fafc] font-sans text-black dark:bg-slate-950 dark:text-slate-100">
       <Navbar />
@@ -168,12 +209,12 @@ export default function LandingPage() {
         />
 
         <div className="relative mx-auto max-w-7xl px-6">
-          <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-10">
+          <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-x-10 lg:gap-y-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55 }}
-              className="relative z-10 text-center lg:text-left"
+              className="relative z-10 text-center lg:col-start-1 lg:row-start-1 lg:text-left"
             >
               <div className="mb-5 inline-flex rounded-full border border-[#1e3a5f]/12 bg-white/88 px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-[#1e3a5f] shadow-sm backdrop-blur dark:border-sky-200/20 dark:bg-slate-900/70 dark:text-sky-200">
                 Massachusetts Benefits Screener, for Students
@@ -214,24 +255,9 @@ export default function LandingPage() {
                 </Link>
               </motion.div>
 
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.55, delay: 0.3 }}
-                className="mt-9 flex flex-wrap justify-center gap-3 lg:justify-start"
-              >
-                {HERO_BADGES.map((badge) => (
-                  <span
-                    key={badge}
-                    className="rounded-full border border-gray-200 bg-white/92 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-200"
-                  >
-                    {badge}
-                  </span>
-                ))}
-              </motion.div>
             </motion.div>
 
-            <div className="relative mx-auto w-full max-w-[58rem]" onMouseMove={handleHeroVisualMove} onMouseLeave={resetHeroVisualHover}>
+            <div className="relative mx-auto w-full max-w-[58rem] lg:col-start-2 lg:row-span-2" onMouseMove={handleHeroVisualMove} onMouseLeave={resetHeroVisualHover} onTouchStart={handleHeroTouchStart} onTouchEnd={handleHeroTouchEnd} style={{ touchAction: 'pan-y pinch-zoom' }}>
               <motion.div
                 className="absolute -left-2 top-10 hidden w-72 transform-gpu overflow-hidden rounded-[2rem] border border-white/85 bg-white/92 p-2.5 shadow-[0_30px_80px_-40px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-slate-900/84 dark:shadow-[0_34px_96px_-44px_rgba(2,6,23,0.92)] md:block lg:-left-24"
                 style={{
@@ -295,7 +321,7 @@ export default function LandingPage() {
               </motion.div>
 
               <motion.div
-                className="relative z-10 overflow-hidden rounded-[2.35rem] border border-white/78 bg-white/90 p-3 shadow-[0_40px_120px_-58px_rgba(15,23,42,0.46)] backdrop-blur dark:border-white/10 dark:bg-slate-900/78 dark:shadow-[0_40px_120px_-58px_rgba(2,6,23,0.9)]"
+                className="relative z-10 overflow-hidden rounded-[2rem] border border-white/78 bg-white/90 p-2 shadow-[0_40px_120px_-58px_rgba(15,23,42,0.46)] backdrop-blur dark:border-white/10 dark:bg-slate-900/78 dark:shadow-[0_40px_120px_-58px_rgba(2,6,23,0.9)] md:rounded-[2.35rem] md:p-3"
                 animate={
                   shouldReduceMotion
                     ? { x: 0 }
@@ -307,7 +333,7 @@ export default function LandingPage() {
                 }
                 transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.8 }}
               >
-                <div className="relative aspect-[16/10] overflow-hidden rounded-[1.85rem] bg-slate-200 dark:bg-slate-800">
+                <div className="relative aspect-[5/6] overflow-hidden rounded-[1.6rem] bg-slate-200 dark:bg-slate-800 sm:aspect-[16/10] md:rounded-[1.85rem]">
                   {HERO_SLIDES.map((slide, index) => {
                     const isActive = activeSlideIndex === index;
 
@@ -354,30 +380,30 @@ export default function LandingPage() {
                         </motion.div>
 
                         <div className="absolute inset-0 bg-white/[0.04] dark:bg-slate-950/[0.04]" />
-                        <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#08131f] via-[#08131f]/42 to-transparent" />
+                        <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#08131f] via-[#08131f]/42 to-transparent sm:h-44" />
                       </motion.div>
                     );
                   })}
 
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-5 md:p-6">
-                    <div className="grid min-h-[7.5rem] grid-cols-1 gap-4 rounded-[1.35rem] border border-white/10 bg-[#08131f]/72 p-4 text-left text-white shadow-[0_18px_50px_-32px_rgba(8,19,31,0.92)] sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                      <div className="max-w-md min-h-[4.75rem]">
-                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-200">
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-2.5 sm:p-5 md:p-6">
+                    <div className="grid max-w-[12.5rem] grid-cols-1 gap-2.5 rounded-[0.95rem] border border-white/10 bg-[#08131f]/72 p-2.5 text-left text-white shadow-[0_18px_50px_-32px_rgba(8,19,31,0.92)] sm:max-w-none sm:min-h-[7.5rem] sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:gap-4 sm:rounded-[1.35rem] sm:p-4">
+                      <div className="max-w-[10.5rem] min-h-0 sm:max-w-md sm:min-h-[4.75rem]">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-200 sm:text-xs sm:tracking-[0.22em]">
                           {activeSlide.eyebrow}
                         </p>
-                        <p className="mt-2 text-sm leading-relaxed text-white/88 md:text-base">
+                        <p className="mt-1 text-[11px] leading-[1.45] text-white/88 sm:mt-2 sm:text-sm md:text-base">
                           {activeSlide.caption}
                         </p>
                       </div>
 
-                      <div className="justify-self-start rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-white/85 sm:justify-self-end">
+                      <div className="justify-self-start rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[10px] font-medium text-white/85 sm:justify-self-end sm:px-3 sm:py-1.5 sm:text-xs">
                         Student-first support
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3 px-2 pb-1 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 px-1.5 pb-1 pt-3 sm:flex-row sm:items-center sm:justify-between sm:px-2 sm:pt-4">
                   <div className="flex items-center gap-2">
                     {HERO_SLIDES.map((slide, index) => {
                       const isActive = activeSlideIndex === index;
@@ -405,6 +431,21 @@ export default function LandingPage() {
                 </div>
               </motion.div>
             </div>
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, delay: 0.3 }}
+              className="mt-1 flex flex-wrap justify-center gap-3 lg:col-start-1 lg:row-start-2 lg:mt-0 lg:justify-start"
+            >
+              {HERO_BADGES.map((badge) => (
+                <span
+                  key={badge}
+                  className="rounded-full border border-gray-200 bg-white/92 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-200"
+                >
+                  {badge}
+                </span>
+              ))}
+            </motion.div>
           </div>
         </div>
       </section>
@@ -472,6 +513,13 @@ export default function LandingPage() {
     </div>
   );
 }
+
+
+
+
+
+
+
 
 
 

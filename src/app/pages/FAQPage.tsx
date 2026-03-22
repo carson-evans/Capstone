@@ -84,7 +84,7 @@ export default function FAQPage() {
       <PageBackdrop />
       <Navbar />
 
-      <section className="border-b border-white/50 bg-white/62 px-4 py-16 backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/38">
+      <section className="border-b border-white/50 bg-white/62 px-4 py-16 backdrop-blur-none md:backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/38">
         <div className="max-w-4xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -123,7 +123,7 @@ export default function FAQPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="mb-8 rounded-2xl border border-white/70 bg-white/74 p-4 shadow-[0_30px_70px_-56px_rgba(15,23,42,0.4)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/72 md:p-5"
+            className="mb-8 rounded-2xl border border-white/70 bg-white/74 p-4 shadow-[0_30px_70px_-56px_rgba(15,23,42,0.4)] backdrop-blur-none dark:border-white/10 dark:bg-slate-900/72 md:p-5 md:backdrop-blur-sm"
           >
             <div className="mb-4">
               <p className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-slate-400">
@@ -197,7 +197,7 @@ export default function FAQPage() {
                   >
                     <AccordionItem
                       value={faq.id}
-                      className="rounded-lg border border-white/75 bg-white/88 px-6 backdrop-blur-sm transition-shadow hover:shadow-sm dark:border-white/10 dark:bg-slate-900/80 dark:hover:shadow-[0_18px_36px_-26px_rgba(2,6,23,0.95)]"
+                      className="rounded-lg border border-white/75 bg-white/88 px-6 backdrop-blur-none transition-shadow hover:shadow-sm dark:border-white/10 dark:bg-slate-900/80 dark:hover:shadow-[0_18px_36px_-26px_rgba(2,6,23,0.95)] md:backdrop-blur-sm"
                     >
                       <AccordionTrigger className="text-left hover:no-underline py-5">
                         <span className="font-medium text-black pr-4 dark:text-slate-100">{faq.question}</span>
@@ -216,7 +216,7 @@ export default function FAQPage() {
                 ))}
               </Accordion>
             ) : (
-              <div className="rounded-2xl border border-dashed border-gray-300 bg-white/74 px-6 py-10 text-center shadow-[0_24px_60px_-42px_rgba(15,23,42,0.28)] backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/80">
+              <div className="rounded-2xl border border-dashed border-gray-300 bg-white/74 px-6 py-10 text-center shadow-[0_24px_60px_-42px_rgba(15,23,42,0.28)] backdrop-blur-none dark:border-slate-700 dark:bg-slate-900/80 md:backdrop-blur-sm">
                 <h2 className="text-xl font-semibold text-black dark:text-slate-100">No matching questions found</h2>
                 <p className="mt-2 text-gray-600 dark:text-slate-300">
                   Try another benefit category or a broader keyword like FAFSA, SNAP, MassHealth, MBTA, loans, or deadlines.
@@ -229,7 +229,7 @@ export default function FAQPage() {
 
       <section
         ref={chatbotSectionRef}
-        className="border-t border-white/50 bg-white/45 px-4 py-16 backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/38"
+        className="border-t border-white/50 bg-white/45 px-4 py-16 backdrop-blur-none dark:border-white/10 dark:bg-slate-900/38 md:backdrop-blur-sm"
       >
         <div className="max-w-4xl mx-auto">
           <motion.div
@@ -256,7 +256,7 @@ export default function FAQPage() {
         </div>
       </section>
 
-      <footer className="border-t border-white/50 bg-white/78 py-12 backdrop-blur-sm dark:border-white/10 dark:bg-slate-950/92">
+      <footer className="border-t border-white/50 bg-white/78 py-12 backdrop-blur-none dark:border-white/10 dark:bg-slate-950/92 md:backdrop-blur-sm">
         <div className="container mx-auto px-6 text-center text-gray-500 text-sm dark:text-slate-400">
           <p>Copyright 2026 CommonMASS. All rights reserved.</p>
         </div>
@@ -264,6 +264,7 @@ export default function FAQPage() {
     </div>
   );
 }
+
 
 
 

@@ -8,17 +8,29 @@ import { PageBackdrop } from "@/app/components/layout/PageBackdrop";
 import { Button } from "@/app/components/ui/button";
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { useBenefits } from "@/app/context/BenefitsContext";
-
-const checklistItemTransition = {
+import { useIsMobile } from "@/app/components/ui/use-mobile";
+const desktopChecklistItemTransition = {
   type: "spring",
   stiffness: 420,
   damping: 34,
   mass: 0.45,
 };
 
+const mobileChecklistItemTransition = {
+  type: "tween",
+  duration: 0.24,
+  ease: [0.22, 1, 0.36, 1] as const,
+};
+
 export default function ChecklistPage() {
   const { matchedBenefits, answers, checklistProgress, setChecklistItemChecked } = useBenefits();
+  const isMobile = useIsMobile();
   const [isGenerating, setIsGenerating] = useState(false);
+  const checklistItemTransition = isMobile
+    ? mobileChecklistItemTransition
+    : desktopChecklistItemTransition;
+  const checklistItemLayout = isMobile ? "position" : true;
+  const checklistListStyle = isMobile ? ({ overflowAnchor: "none" } as const) : undefined;
 
   const actionableBenefits = useMemo(
     () =>
@@ -182,7 +194,7 @@ export default function ChecklistPage() {
                 <Link to="/results">Back to Results</Link>
               </Button>
 
-              <h1 className="mb-2 text-[2.5rem] font-bold tracking-tight md:text-[2.85rem]">
+              <h1 className="mb-2 text-[2.15rem] font-bold leading-[1.02] tracking-[-0.035em] md:text-[2.85rem] md:tracking-tight">
                 Your Personalized Application Checklist
               </h1>
 
@@ -227,7 +239,7 @@ export default function ChecklistPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: index * 0.1 }}
-                  className="rounded-[1.75rem] border border-white/75 bg-white/72 p-8 shadow-[0_20px_55px_-38px_rgba(15,23,42,0.28)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/75 print:border-none print:bg-white print:p-0 print:shadow-none"
+                  className="rounded-[1.75rem] border border-white/75 bg-white/72 p-8 shadow-[0_16px_32px_-24px_rgba(15,23,42,0.18)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/75 dark:shadow-[0_18px_38px_-24px_rgba(2,6,23,0.68)] md:shadow-[0_20px_55px_-38px_rgba(15,23,42,0.28)] md:dark:shadow-[0_24px_60px_-38px_rgba(2,6,23,0.95)] print:border-none print:bg-white print:p-0 print:shadow-none"
                 >
                   <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="flex items-center gap-3">
@@ -248,23 +260,24 @@ export default function ChecklistPage() {
                     <Button
                       asChild
                       variant="outline"
-                      className="w-full border-gray-300 text-gray-700 hover:text-white md:w-auto print:hidden dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-[#f97316] dark:hover:bg-[#f97316] dark:hover:text-white dark:hover:shadow-[0_0_24px_rgba(249,115,22,0.28)]"
+                      className="group w-full border-[#355b8a] bg-white text-[#355b8a] shadow-sm transition-all duration-300 hover:border-[#f97316] hover:bg-[#f97316] hover:text-white hover:shadow-[0_12px_28px_-18px_rgba(249,115,22,0.4)] md:w-auto print:hidden dark:border-sky-200 dark:bg-transparent dark:text-sky-200 dark:hover:border-[#f97316] dark:hover:bg-[#f97316] dark:hover:text-white dark:hover:shadow-[0_0_24px_rgba(249,115,22,0.28)]"
                     >
                       <a href={benefit.officialUrl} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="mr-2 h-4 w-4" />
+                        <ExternalLink className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                         {benefit.officialButtonLabel ?? "Visit Official Site"}
                       </a>
                     </Button>
                   </div>
 
-                  <div className="space-y-3 pl-0 md:pl-11 print:pl-0">
+                  <div className="space-y-3 pl-0 md:pl-11 print:pl-0" style={checklistListStyle}>
                     {getOrderedChecklistItems(benefit.id, benefit.checklist).map(
                       ({ item, originalIndex, checked }) => (
                         <motion.div
                           key={originalIndex}
-                          layout
+                          layout={checklistItemLayout}
                           transition={checklistItemTransition}
-                          className={`flex items-start gap-3 rounded-2xl border px-4 py-3 transition-all duration-300 print:border-none print:bg-white print:px-0 print:py-1 print:shadow-none ${
+                          style={isMobile ? { willChange: "transform" } : undefined}
+                          className={`flex items-start gap-3 rounded-2xl border px-4 py-3 transition-colors duration-200 md:transition-all md:duration-300 print:border-none print:bg-white print:px-0 print:py-1 print:shadow-none ${
                             checked
                               ? "border-slate-200 bg-slate-100/80 opacity-70 dark:border-slate-800 dark:bg-slate-800/70"
                               : "border-white/90 bg-white shadow-[0_14px_36px_-28px_rgba(15,23,42,0.55)] hover:-translate-y-0.5 hover:border-[#355b8a]/20 hover:shadow-[0_20px_38px_-28px_rgba(30,58,95,0.45)] dark:border-slate-800 dark:bg-slate-950/80 dark:shadow-[0_20px_44px_-30px_rgba(2,6,23,0.95)] dark:hover:border-slate-700 dark:hover:shadow-[0_24px_50px_-30px_rgba(2,6,23,1)]"
@@ -320,3 +333,9 @@ export default function ChecklistPage() {
     </div>
   );
 }
+
+
+
+
+
+
