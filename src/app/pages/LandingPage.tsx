@@ -1,7 +1,16 @@
 import { type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from 'framer-motion';
-import { ArrowRight, CheckSquare, FileText, ListChecks } from 'lucide-react';
+import {
+  ArrowRight,
+  Bus,
+  CheckSquare,
+  FileText,
+  HeartPulse,
+  ListChecks,
+  PiggyBank,
+  Utensils,
+} from 'lucide-react';
 import bostonDayImage from '@/assets/Images/Boston Day.jpg';
 import bostonSkylineEveningImage from '@/assets/Images/Boston Skyline Evening.jpg';
 import bostonSkylineNightImage from '@/assets/Images/Boston Skyline Night.jpg';
@@ -46,6 +55,44 @@ const HERO_BADGES = [
   'MBTA Student Pass',
 ] as const;
 
+const BENEFIT_SPOTLIGHTS = [
+  {
+    title: 'Pell Grant',
+    description:
+      'Federal Pell Grants may help eligible undergraduate students pay for tuition, fees, books, and other school costs.',
+    icon: PiggyBank,
+  },
+  {
+    title: 'MASSGrant',
+    description:
+      'MASSGrant is a Massachusetts state financial aid program that may help students at eligible colleges cover education expenses.',
+    icon: FileText,
+  },
+  {
+    title: 'MASSGrant Plus',
+    description:
+      'MASSGrant Plus may provide additional state financial aid support for eligible Massachusetts students, depending on school type and enrollment.',
+    icon: CheckSquare,
+  },
+  {
+    title: 'SNAP',
+    description:
+      'SNAP may help qualifying households and some students buy groceries and reduce food insecurity during the school year.',
+    icon: Utensils,
+  },
+  {
+    title: 'MassHealth',
+    description:
+      'MassHealth may help eligible Massachusetts residents access health coverage for doctor visits, prescriptions, and other care.',
+    icon: HeartPulse,
+  },
+  {
+    title: 'MBTA Student Pass',
+    description:
+      'MBTA student discount programs may help some students lower transportation costs for commuting to class, work, and campus activities.',
+    icon: Bus,
+  },
+] as const;
 export default function LandingPage() {
   const { theme } = useTheme();
   const shouldReduceMotion = useReducedMotion();
@@ -190,7 +237,8 @@ export default function LandingPage() {
     <div className="relative min-h-screen overflow-x-hidden bg-[#f8fafc] font-sans text-black dark:bg-slate-950 dark:text-slate-100">
       <Navbar />
 
-      <section className="relative overflow-hidden pb-4 pt-10 md:pb-6 md:pt-14 lg:pb-8 lg:pt-16">
+      <main>
+        <section className="relative overflow-hidden pb-4 pt-10 md:pb-6 md:pt-14 lg:pb-8 lg:pt-16">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_32%,_rgba(191,219,254,0.7),_transparent_34%),radial-gradient(circle_at_88%_18%,_rgba(254,215,170,0.56),_transparent_24%),linear-gradient(180deg,_rgba(255,255,255,1)_0%,_rgba(248,250,252,0.98)_66%,_rgba(248,250,252,0.94)_100%)] dark:bg-[radial-gradient(circle_at_14%_32%,_rgba(56,189,248,0.16),_transparent_32%),radial-gradient(circle_at_88%_18%,_rgba(251,146,60,0.16),_transparent_22%),linear-gradient(180deg,_rgba(2,6,23,1)_0%,_rgba(15,23,42,0.98)_66%,_rgba(15,23,42,0.95)_100%)]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent via-[#f8fafc]/82 to-[#f8fafc] dark:via-slate-900/80 dark:to-slate-900/72" />
 
@@ -500,6 +548,91 @@ export default function LandingPage() {
         </div>
       </motion.section>
 
+        <section
+          aria-labelledby="benefits-heading"
+          className="border-t border-gray-100 bg-white px-6 py-16 dark:border-white/10 dark:bg-slate-950/80 md:py-20"
+        >
+          <div className="mx-auto max-w-7xl">
+            <div className="mx-auto max-w-3xl text-center">
+              <h2
+                id="benefits-heading"
+                className="text-3xl font-bold tracking-tight text-[#1e3a5f] dark:text-slate-100 md:text-4xl"
+              >
+                Popular Massachusetts benefits students often ask about
+              </h2>
+              <p className="mt-4 text-lg text-gray-600 dark:text-slate-300">
+                CommonMASS helps organize information about major programs in one place, so students can
+                compare options without bouncing between multiple websites.
+              </p>
+            </div>
+
+            <div className="mt-12 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {BENEFIT_SPOTLIGHTS.map((benefit) => {
+                const Icon = benefit.icon;
+
+                return (
+                  <article
+                    key={benefit.title}
+                    className="rounded-3xl border border-gray-200 bg-[#f8fafc] p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg dark:border-white/10 dark:bg-slate-900/85"
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1e3a5f] text-white dark:bg-sky-200 dark:text-slate-950">
+                      <Icon className="h-6 w-6" />
+                    </div>
+
+                    <h3 className="mt-5 text-2xl font-bold text-[#1e3a5f] dark:text-slate-100">
+                      {benefit.title}
+                    </h3>
+
+                    <p className="mt-3 leading-relaxed text-gray-600 dark:text-slate-300">
+                      {benefit.description}
+                    </p>
+
+                    <div className="mt-5">
+                      <Link
+                        to="/faq"
+                        className="inline-flex items-center text-sm font-semibold text-[#1e3a5f] underline underline-offset-4 hover:text-[#16304f] dark:text-sky-200 dark:hover:text-orange-200"
+                      >
+                        Learn more in the FAQ
+                      </Link>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className="mt-12 rounded-3xl border border-[#1e3a5f]/10 bg-gradient-to-r from-[#eff6ff] to-[#fff7ed] p-8 dark:border-sky-200/10 dark:from-slate-900 dark:to-slate-900">
+              <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                <div>
+                  <h3 className="text-2xl font-bold text-[#1e3a5f] dark:text-slate-100">
+                    Start with a quick screening
+                  </h3>
+                  <p className="mt-3 max-w-3xl text-gray-600 dark:text-slate-300">
+                    CommonMASS does not replace official benefit agencies or schools. It helps students
+                    understand what programs may be worth exploring first, then points them toward the
+                    next steps.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <Link to="/screener">
+                    <Button className="rounded-full bg-[#1e3a5f] px-6 py-5 text-white hover:bg-[#16304f] dark:bg-sky-200 dark:text-slate-950 dark:hover:bg-sky-100">
+                      Go to Screener
+                    </Button>
+                  </Link>
+
+                  <Link
+                    to="/faq"
+                    className="inline-flex items-center rounded-full border border-[#1e3a5f]/15 bg-white px-6 py-3 text-sm font-semibold text-[#1e3a5f] shadow-sm transition-all hover:bg-[#f8fafc] dark:border-sky-200/20 dark:bg-slate-950 dark:text-sky-200 dark:hover:bg-slate-900"
+                  >
+                    Read FAQs
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
       <motion.footer
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -513,6 +646,11 @@ export default function LandingPage() {
     </div>
   );
 }
+
+
+
+
+
 
 
 
