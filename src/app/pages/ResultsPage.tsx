@@ -29,6 +29,10 @@ const MOBILE_ROUTE_TRANSITION = {
   duration: 0.2,
   ease: [0.22, 1, 0.36, 1] as const,
 };
+const MOBILE_DETAILS_REVEAL = {
+  duration: 0.16,
+  ease: [0.22, 1, 0.36, 1] as const,
+};
 
 export default function ResultsPage() {
   const { matchedBenefits } = useBenefits();
@@ -190,17 +194,27 @@ export default function ResultsPage() {
                       type="button"
                       aria-expanded={isDetailsOpen}
                       onClick={() => toggleMobileDetails(benefit.id)}
-                      className="flex w-full items-start justify-between gap-4 border-t border-gray-100 px-5 py-3.5 text-left text-sm font-semibold text-[#1e3a5f] transition-colors hover:text-[#16304f] dark:border-white/10 dark:text-slate-200 dark:hover:text-sky-200"
+                      className="flex w-full items-start justify-between gap-4 border-t border-gray-100 px-5 py-3.5 text-left text-sm font-semibold text-[#355b8a] transition-colors dark:border-white/10 dark:text-sky-200"
                     >
                       <span>More Details</span>
                       <ChevronDown
-                        className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
+                        className={`h-4 w-4 shrink-0 text-[#355b8a] transition-transform duration-200 dark:text-sky-200 ${
                           isDetailsOpen ? 'rotate-180' : ''
                         }`}
                       />
                     </button>
 
-                    {isDetailsOpen && <div className="px-5 pb-5 pt-1">{detailsContent}</div>}
+                    {isDetailsOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={MOBILE_DETAILS_REVEAL}
+                        className="px-5 pb-5 pt-1"
+                        style={{ contain: 'paint' }}
+                      >
+                        {detailsContent}
+                      </motion.div>
+                    )}
                   </div>
                 );
               })}
@@ -268,7 +282,7 @@ export default function ResultsPage() {
                       </CardContent>
 
                       <div className="border-t border-gray-100 bg-gray-50/60 dark:border-white/10 dark:bg-slate-950/60">
-                        <AccordionTrigger className="px-5 py-3.5 text-left text-sm font-semibold text-[#1e3a5f] transition-colors hover:no-underline hover:text-[#16304f] sm:px-6 sm:py-4 dark:text-slate-200 dark:hover:text-sky-200 [&>svg]:h-4 [&>svg]:w-4">
+                        <AccordionTrigger className="px-5 py-3.5 text-left text-sm font-semibold text-[#355b8a] transition-colors hover:no-underline sm:px-6 sm:py-4 dark:text-sky-200 [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-[#355b8a] dark:[&>svg]:text-sky-200">
                           <span>More Details</span>
                         </AccordionTrigger>
                         <AccordionContent className="border-t border-gray-100 px-5 py-4 dark:border-white/10 sm:px-6 sm:py-5">
