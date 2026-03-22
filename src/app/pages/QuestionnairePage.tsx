@@ -7,6 +7,7 @@ import { Progress } from '@/app/components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/app/components/ui/radio-group';
 import { Label } from '@/app/components/ui/label';
 import { Navbar } from '@/app/components/layout/Navbar';
+import { PageBackdrop } from '@/app/components/layout/PageBackdrop';
 import { useBenefits } from '@/app/context/BenefitsContext';
 import { questions } from '@/app/data/benefitsData';
 
@@ -82,7 +83,8 @@ export default function QuestionnairePage() {
   if (!currentQuestion) return <div>Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-black dark:bg-slate-950 dark:text-slate-100">
+    <div className="relative isolate min-h-screen overflow-x-hidden bg-[#f8fafc] font-sans text-black dark:bg-slate-950 dark:text-slate-100">
+      <PageBackdrop />
       <Navbar />
 
       <div className="container mx-auto max-w-3xl flex-1 px-6 py-10 md:py-14">
@@ -96,7 +98,7 @@ export default function QuestionnairePage() {
           <Progress value={progress} className="h-2 bg-slate-200/90 shadow-inner dark:bg-slate-800/90 md:h-2.5" />
         </div>
 
-        <div className="flex min-h-[calc(100dvh-19rem)] flex-col rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80 dark:shadow-[0_28px_80px_-40px_rgba(2,6,23,0.95)] md:min-h-0 md:p-12">
+        <div className="flex min-h-[calc(100dvh-19rem)] flex-col rounded-[1.75rem] border border-white/75 bg-white/82 p-6 shadow-[0_34px_80px_-52px_rgba(15,23,42,0.45)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/78 dark:shadow-[0_28px_80px_-40px_rgba(2,6,23,0.95)] md:min-h-0 md:p-12">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
@@ -204,4 +206,8 @@ export default function QuestionnairePage() {
     </div>
   );
 }
+
+
+
+
 
