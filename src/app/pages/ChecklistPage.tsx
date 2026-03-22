@@ -51,7 +51,6 @@ export default function ChecklistPage() {
 
     const apiUrl = import.meta.env.VITE_PACKET_API_URL || "/api/packet";
 
-    // Open placeholder tab immediately during click event so popup blockers allow it
     const pendingTab = window.open("about:blank", "_blank");
 
     if (pendingTab) {
@@ -170,8 +169,8 @@ export default function ChecklistPage() {
           <div
             className="relative overflow-hidden rounded-t-[2rem] border-x border-t border-white/70 bg-white/72 p-8 pb-20 shadow-[0_34px_80px_-60px_rgba(15,23,42,0.42)] backdrop-blur-sm print:border-none print:bg-transparent print:p-0 print:pb-0 print:shadow-none dark:border-white/10 dark:bg-slate-900/58"
             style={{
-              WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)',
-              maskImage: 'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)',
+              WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)",
+              maskImage: "linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)",
             }}
           >
             <div className="relative z-10">
@@ -217,32 +216,23 @@ export default function ChecklistPage() {
         </div>
 
         {actionableBenefits.length > 0 ? (
-          <>
-            <div className="space-y-12 print:space-y-8">
-              {actionableBenefits.map((benefit, index) => {
-                const completedSteps =
-                  checklistProgress[benefit.id]?.filter((checked) => checked).length ?? 0;
+          <div className="space-y-12 print:space-y-8">
+            {actionableBenefits.map((benefit, index) => {
+              const completedSteps =
+                checklistProgress[benefit.id]?.filter((checked) => checked).length ?? 0;
 
-                return (
-                  <motion.section
-                    key={benefit.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: index * 0.1 }}
-                    className="rounded-[1.75rem] border border-white/75 bg-white/72 p-8 shadow-[0_20px_55px_-38px_rgba(15,23,42,0.28)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/75 print:border-none print:bg-white print:p-0 print:shadow-none"
-                  >
-                    <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] text-sm font-bold text-white print:hidden">
-                          {index + 1}
-                        </div>
-
-                        <div>
-                          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{benefit.title}</h2>
-                          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                            {completedSteps} of {benefit.checklist.length} steps completed
-                          </p>
-                        </div>
+              return (
+                <motion.section
+                  key={benefit.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.1 }}
+                  className="rounded-[1.75rem] border border-white/75 bg-white/72 p-8 shadow-[0_20px_55px_-38px_rgba(15,23,42,0.28)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/75 print:border-none print:bg-white print:p-0 print:shadow-none"
+                >
+                  <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] text-sm font-bold text-white print:hidden">
+                        {index + 1}
                       </div>
 
                       <div>
