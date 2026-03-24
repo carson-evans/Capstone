@@ -123,7 +123,7 @@ export default function QuestionnairePage() {
           <Progress value={progress} className="h-2 bg-slate-200/90 shadow-inner dark:bg-slate-800/90 md:h-2.5" />
         </div>
 
-        <div className="flex min-h-[calc(100dvh-19rem)] flex-col rounded-[1.75rem] border border-white/75 bg-white/82 p-6 shadow-[0_34px_80px_-52px_rgba(15,23,42,0.45)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/78 dark:shadow-[0_28px_80px_-40px_rgba(2,6,23,0.95)] md:min-h-0 md:p-12">
+        <div className="flex min-h-[calc(100dvh-19rem)] flex-col rounded-[1.75rem] border border-white/110 bg-white/82 p-6 shadow-[0_34px_80px_-52px_rgba(15,23,42,0.45)] backdrop-blur-sm dark:border-white/30 dark:bg-slate-900/78 dark:shadow-[0_28px_80px_-40px_rgba(2,6,23,0.95)] md:min-h-0 md:p-12">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
@@ -155,7 +155,7 @@ export default function QuestionnairePage() {
                       key={option.value}
                       whileHover={{ y: -2 }}
                       transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-                      className="flex cursor-pointer items-start space-x-3 rounded-lg border border-transparent p-3 transition-colors hover:border-gray-200 hover:bg-gray-50 dark:hover:border-slate-700 dark:hover:bg-slate-800/70 md:p-4"
+                      className="flex cursor-pointer items-start space-x-3 rounded-lg border border-transparent p-3 transition-colors hover:border-gray-400 hover:bg-gray-50 dark:hover:border-slate-200 dark:hover:bg-slate-800/70 md:p-4"
                       onClick={() => setSelectedOption(option.value)}
                     >
                       <RadioGroupItem value={option.value} id={optionId} className="mt-1" />
