@@ -133,7 +133,18 @@ export const questions: Question[] = [
     options: [
       { label: 'Yes, full-time', value: 'full_time' },
       { label: 'Yes, part-time', value: 'part_time' },
+      { label: 'Yes, in future', value: 'future' },
       { label: 'No', value: 'no' },
+    ],
+  },
+  {
+    id: 'residency_length',
+    text: 'How many years have you lived in MA?',
+    category: 'General',
+    options: [
+      { label: '1 - 5 years', value: 'low' },
+      { label: '5 - 10 years', value: 'medium' },
+      { label: 'more than 10 years', value: 'high' },
     ],
   },
   {
@@ -169,6 +180,91 @@ export const questions: Question[] = [
       { label: 'No', value: 'no' },
     ],
   },
+
+  {
+    id: 'mbta-specials',
+    text: 'Are you blind, military, police, firefighter, government official?',
+    category: 'General',
+    options: [
+      { label: 'Yes', value: 'yes' },
+      { label: 'No', value: 'no' },
+    ],
+  },
+
+  {
+    id: 'mbta-disability',
+    text: 'Do you have Medicare or a disability?',
+    category: 'General',
+    conditions: [
+      {
+        questionId: 'mbta-specials',
+        values: ['no'],
+      },
+    ],
+    options: [
+      { label: 'Yes', value: 'yes' },
+      { label: 'No', value: 'no' },
+    ],
+  },
+
+  {
+    id: 'age',
+    text: 'Choose your age group?',
+    category: 'General',
+    options: [
+      { label: 'Under 18', value: 'low' },
+      { label: '18 to 64', value: 'medium' },
+      { label: 'Over 64', value: 'high' },
+    ],
+  },
+
+  {
+    id: 'mbta-program',
+    text: 'Are you enrolled in an MBTA income-eligible program?',
+    category: 'General',
+    conditions: [
+      {
+        questionId: 'mbta-specials',
+        values: ['no']
+      },
+      {
+        questionId: 'mbta-disability',
+        values: ['no']
+      },
+      {
+        questionId: 'age',
+        values: ['medium']
+      },
+    ],
+    options: [
+      { label: 'Yes', value: 'yes' },
+      { label: 'No', value: 'no' },
+    ],
+  },
+  {
+    id: 'mbta-uni',
+    text: 'Is your University eligible for MBTA?',
+    category: 'General',
+    conditions: [
+      {
+        questionId: 'mbta-specials',
+        values: ['no']
+      },
+      {
+        questionId: 'mbta-disability',
+        values: ['no']
+      },
+      {
+        questionId: 'mbta-program',
+        values: ['no']
+      },
+    ],
+    options: [
+      { label: 'Yes', value: 'yes' },
+      { label: 'No', value: 'no' },
+    ],
+  },
+
   {
     id: 'dependent_status',
     text: "Are you claimed as a dependent on someone else's tax return?",
