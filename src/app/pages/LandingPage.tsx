@@ -3,12 +3,14 @@ import { Link } from 'react-router';
 import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from 'framer-motion';
 import {
   ArrowRight,
+  Banknote,
   Bus,
   CheckSquare,
   FileText,
   HeartPulse,
   ListChecks,
   PiggyBank,
+  Plus,
   Utensils,
 } from 'lucide-react';
 import bostonDayImage from '@/assets/Images/Boston Day.jpg';
@@ -20,6 +22,7 @@ import studentsTwoImage from '@/assets/Images/Students2.jpg';
 import studentsThreeImage from '@/assets/Images/Students3.jpg';
 import { Navbar } from '@/app/components/layout/Navbar';
 import { Button } from '@/app/components/ui/button';
+import { useIsMobile } from '@/app/components/ui/use-mobile';
 import { useTheme } from '@/app/context/ThemeContext';
 
 const HERO_SLIDES = [
@@ -46,6 +49,8 @@ const HERO_SLIDES = [
   },
 ] as const;
 
+type BenefitSpotlight = (typeof BENEFIT_SPOTLIGHTS)[number];
+
 const HERO_BADGES = [
   'Pell Grant',
   'MASSGrant',
@@ -58,44 +63,76 @@ const HERO_BADGES = [
 const BENEFIT_SPOTLIGHTS = [
   {
     title: 'Pell Grant',
+    faqFilterId: 'pell-grant',
     description:
       'Federal Pell Grants may help eligible undergraduate students pay for tuition, fees, books, and other school costs.',
     icon: PiggyBank,
+    cardClassName:
+      'border-[#d9f99d] bg-[linear-gradient(145deg,rgba(254,252,232,0.98),rgba(255,255,255,0.98)_48%,rgba(236,252,203,0.88))] shadow-[0_18px_44px_-34px_rgba(101,163,13,0.26)] dark:border-lime-300/18 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(15,23,42,0.98)_54%,rgba(101,163,13,0.2))]',
+    iconClassName: 'bg-[#4d7c0f] text-white dark:bg-lime-300 dark:text-slate-950',
+    accentClassName: 'from-[#a3e635]/42 via-[#d9f99d]/20 to-transparent',
   },
   {
     title: 'MASSGrant',
+    faqFilterId: 'massgrant-family',
     description:
       'MASSGrant is a Massachusetts state financial aid program that may help students at eligible colleges cover education expenses.',
-    icon: FileText,
+    icon: Banknote,
+    cardClassName:
+      'border-[#fed7aa] bg-[linear-gradient(145deg,rgba(255,247,237,0.98),rgba(255,255,255,0.98)_50%,rgba(255,237,213,0.86))] shadow-[0_18px_44px_-34px_rgba(249,115,22,0.3)] dark:border-orange-300/18 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(15,23,42,0.98)_54%,rgba(194,65,12,0.22))]',
+    iconClassName: 'bg-[#f97316] text-white dark:bg-orange-300 dark:text-slate-950',
+    accentClassName: 'from-[#fb923c]/52 via-[#fdba74]/18 to-transparent',
   },
   {
     title: 'MASSGrant Plus',
+    faqFilterId: 'massgrant-family',
     description:
       'MASSGrant Plus may provide additional state financial aid support for eligible Massachusetts students, depending on school type and enrollment.',
-    icon: CheckSquare,
-  },
-  {
-    title: 'SNAP',
-    description:
-      'SNAP may help qualifying households and some students buy groceries and reduce food insecurity during the school year.',
-    icon: Utensils,
-  },
-  {
-    title: 'MassHealth',
-    description:
-      'MassHealth may help eligible Massachusetts residents access health coverage for doctor visits, prescriptions, and other care.',
-    icon: HeartPulse,
+    icon: Plus,
+    cardClassName:
+      'border-[#c7d2fe] bg-[linear-gradient(145deg,rgba(238,242,255,0.98),rgba(255,255,255,0.98)_52%,rgba(224,231,255,0.86))] shadow-[0_18px_44px_-34px_rgba(79,70,229,0.28)] dark:border-indigo-300/18 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(15,23,42,0.98)_54%,rgba(67,56,202,0.24))]',
+    iconClassName: 'bg-[#4f46e5] text-white dark:bg-indigo-300 dark:text-slate-950',
+    accentClassName: 'from-[#818cf8]/52 via-[#a5b4fc]/20 to-transparent',
   },
   {
     title: 'MBTA Student Pass',
+    faqFilterId: 'mbta-pass',
     description:
       'MBTA student discount programs may help some students lower transportation costs for commuting to class, work, and campus activities.',
     icon: Bus,
+    cardClassName:
+      'border-[#bfdbfe] bg-[linear-gradient(145deg,rgba(239,246,255,0.98),rgba(255,255,255,0.98)_52%,rgba(219,234,254,0.84))] shadow-[0_18px_44px_-34px_rgba(37,99,235,0.28)] dark:border-sky-300/18 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(15,23,42,0.98)_54%,rgba(14,116,144,0.22))]',
+    iconClassName: 'bg-[#2563eb] text-white dark:bg-sky-300 dark:text-slate-950',
+    accentClassName: 'from-[#60a5fa]/50 via-[#93c5fd]/20 to-transparent',
+  },
+  {
+    title: 'SNAP',
+    faqFilterId: 'snap',
+    description:
+      'SNAP may help qualifying households and some students buy groceries and reduce food insecurity during the school year.',
+    icon: Utensils,
+    cardClassName:
+      'border-[#86efac] bg-[linear-gradient(145deg,rgba(220,252,231,0.98),rgba(240,253,244,0.98)_48%,rgba(187,247,208,0.92))] shadow-[0_18px_44px_-34px_rgba(21,128,61,0.34)] dark:border-emerald-300/22 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(15,23,42,0.98)_52%,rgba(6,95,70,0.3))]',
+    iconClassName: 'bg-[#166534] text-white dark:bg-emerald-300 dark:text-slate-950',
+    accentClassName: 'from-[#22c55e]/50 via-[#4ade80]/24 to-transparent',
+  },
+  {
+    title: 'MassHealth',
+    faqFilterId: 'masshealth',
+    description:
+      'MassHealth may help eligible Massachusetts residents access health coverage for doctor visits, prescriptions, and other care.',
+    icon: HeartPulse,
+    cardClassName:
+      'border-[#fecdd3] bg-[linear-gradient(145deg,rgba(255,241,242,0.98),rgba(255,255,255,0.98)_52%,rgba(254,226,226,0.9))] shadow-[0_18px_44px_-34px_rgba(225,29,72,0.28)] dark:border-rose-300/20 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(15,23,42,0.98)_54%,rgba(190,24,93,0.22))]',
+    iconClassName: 'bg-[#dc2626] text-white dark:bg-rose-300 dark:text-slate-950',
+    accentClassName: 'from-[#fb7185]/48 via-[#fda4af]/22 to-transparent',
   },
 ] as const;
+
 export default function LandingPage() {
   const { theme } = useTheme();
   const shouldReduceMotion = useReducedMotion();
+  const isMobile = useIsMobile();
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [hoveredSideCard, setHoveredSideCard] = useState<'left' | 'right' | null>(null);
   const [promotedSideCard, setPromotedSideCard] = useState<'left' | 'right' | null>(null);
@@ -142,6 +179,69 @@ export default function LandingPage() {
   const rightBackdropImage = theme === 'dark' ? bostonSkylineNightImage : bostonSkylineImage;
   const leftBackdropAlt = theme === 'dark' ? 'Boston skyline in the evening.' : 'Boston skyline during the day.';
   const rightBackdropAlt = theme === 'dark' ? 'Boston skyline at night.' : 'Boston skyline in daylight.';
+  const getLandingRevealProps = (delay = 0, amount = 0.22, distance = 24) =>
+    shouldReduceMotion
+      ? { initial: false as const }
+      : {
+          initial: { opacity: 0, y: distance },
+          whileInView: { opacity: 1, y: 0 },
+          viewport: { once: true, amount } as const,
+          transition: {
+            duration: 0.58,
+            delay,
+            ease: [0.22, 1, 0.36, 1] as const,
+          },
+        };
+
+  const getTightMobileRevealProps = (delay = 0, margin = '0px 0px 18% 0px', distance = 22) =>
+    shouldReduceMotion
+      ? { initial: false as const }
+      : {
+          initial: { opacity: 0, y: distance },
+          whileInView: { opacity: 1, y: 0 },
+          viewport: { once: true, amount: 0.01, margin } as const,
+          transition: {
+            duration: 0.58,
+            delay,
+            ease: [0.22, 1, 0.36, 1] as const,
+          },
+        };
+
+  const renderBenefitCard = (benefit: BenefitSpotlight) => {
+    const Icon = benefit.icon;
+
+    return (
+      <article className={`group relative flex h-full flex-col overflow-hidden rounded-3xl border p-6 shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_24px_58px_-34px_rgba(15,23,42,0.34)] dark:hover:shadow-[0_28px_70px_-36px_rgba(2,6,23,0.9)] ${benefit.cardClassName}`}>
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-x-6 top-0 h-28 rounded-b-[2rem] bg-gradient-to-b opacity-80 blur-2xl transition-opacity duration-300 group-hover:opacity-100 ${benefit.accentClassName}`}
+        />
+
+        <div
+          className={`relative flex h-12 w-12 items-center justify-center rounded-2xl shadow-[0_18px_36px_-22px_rgba(15,23,42,0.65)] transition-transform duration-300 group-hover:scale-110 ${benefit.iconClassName}`}
+        >
+          <Icon className="h-6 w-6" />
+        </div>
+
+        <h3 className="relative mt-5 text-2xl font-bold text-[#1e3a5f] dark:text-slate-100">
+          {benefit.title}
+        </h3>
+
+        <p className="relative mt-3 leading-relaxed text-gray-600 dark:text-slate-300">
+          {benefit.description}
+        </p>
+
+        <div className="relative mt-auto pt-5">
+          <Link
+            to={`/faq?benefit=${benefit.faqFilterId}`}
+            className="inline-flex items-center text-sm font-semibold text-[#1e3a5f] underline underline-offset-4 transition-colors hover:text-[#16304f] dark:text-sky-200 dark:hover:text-orange-200"
+          >
+            Learn more in the FAQ
+          </Link>
+        </div>
+      </article>
+    );
+  };
 
   const handleHeroVisualMove = (event: ReactMouseEvent<HTMLDivElement>) => {
     if (shouldReduceMotion) {
@@ -264,7 +364,7 @@ export default function LandingPage() {
               transition={{ duration: 0.55 }}
               className="relative z-10 text-center lg:col-start-1 lg:row-start-1 lg:text-left"
             >
-              <div className="mb-5 inline-flex rounded-full border border-[#1e3a5f]/12 bg-white/88 px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-[#1e3a5f] shadow-sm backdrop-blur dark:border-sky-200/20 dark:bg-slate-900/70 dark:text-sky-200">
+              <div className="mb-5 inline-flex rounded-full border border-[#fb923c]/55 bg-[linear-gradient(135deg,rgba(219,234,254,0.72),rgba(255,255,255,0.95)_38%,rgba(255,237,213,0.96))] px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-[#355b8a] shadow-[0_12px_28px_-22px_rgba(194,65,12,0.28)] ring-1 ring-white/70 backdrop-blur dark:border-orange-300/28 dark:bg-[linear-gradient(135deg,rgba(30,41,59,0.92),rgba(15,23,42,0.84)_40%,rgba(194,65,12,0.34))] dark:text-sky-100 dark:ring-white/5">
                 Massachusetts Benefits Screener, for Students
               </div>
 
@@ -498,109 +598,118 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.25 }}
-        className="relative -mt-3 border-t border-gray-100 bg-gradient-to-b from-[#f8fafc] via-gray-50 to-gray-50 px-6 pb-16 pt-6 dark:border-white/10 dark:from-slate-900/72 dark:via-slate-900/62 dark:to-slate-900/60 md:pb-20 md:pt-8"
-      >
+      <section className="relative -mt-3 border-t border-gray-100 bg-gradient-to-b from-[#f8fafc] via-gray-50 to-gray-50 px-6 pb-16 pt-6 dark:border-white/10 dark:from-slate-900/72 dark:via-slate-900/62 dark:to-slate-900/60 md:pb-20 md:pt-8">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-10 text-center md:grid-cols-3 md:gap-12 lg:gap-14">
-            <motion.div
-              whileHover={{ y: -8 }}
-              className="group flex cursor-default flex-col items-center space-y-5 rounded-2xl p-8 transition-all hover:bg-white hover:shadow-2xl hover:shadow-gray-200/50 dark:hover:bg-slate-900 dark:hover:shadow-[0_24px_60px_-28px_rgba(2,6,23,0.9)] md:p-10"
-            >
-              <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-[#1e3a5f] transition-transform group-hover:scale-110 md:h-20 md:w-20">
-                <FileText className="h-8 w-8 text-white md:h-9 md:w-9" />
+            <motion.div {...(isMobile ? getTightMobileRevealProps(0.01, '0px 0px 10% 0px', 20) : getLandingRevealProps(0.02, 0.26, 24))}>
+              <div className="group flex cursor-default flex-col items-center space-y-5 rounded-2xl p-8 transition-all hover:bg-white hover:shadow-2xl hover:shadow-gray-200/50 dark:hover:bg-slate-900 dark:hover:shadow-[0_24px_60px_-28px_rgba(2,6,23,0.9)] md:p-10 md:hover:-translate-y-2">
+                <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-[#1e3a5f] transition-transform group-hover:scale-110 md:h-20 md:w-20">
+                  <FileText className="h-8 w-8 text-white md:h-9 md:w-9" />
+                </div>
+                <h3 className="text-xl font-bold text-[#1e3a5f] dark:text-slate-100 md:text-2xl">Answer Questions</h3>
+                <p className="max-w-sm text-gray-600 dark:text-slate-300 md:text-lg">
+                  Complete a brief questionnaire about your student status and needs.
+                </p>
               </div>
-              <h3 className="text-xl font-bold text-[#1e3a5f] dark:text-slate-100 md:text-2xl">Answer Questions</h3>
-              <p className="max-w-sm text-gray-600 dark:text-slate-300 md:text-lg">
-                Complete a brief questionnaire about your student status and needs.
-              </p>
             </motion.div>
 
-            <motion.div
-              whileHover={{ y: -8 }}
-              className="group flex cursor-default flex-col items-center space-y-5 rounded-2xl p-8 transition-all hover:bg-white hover:shadow-2xl hover:shadow-gray-200/50 dark:hover:bg-slate-900 dark:hover:shadow-[0_24px_60px_-28px_rgba(2,6,23,0.9)] md:p-10"
-            >
-              <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-[#f97316] transition-transform group-hover:scale-110 md:h-20 md:w-20">
-                <ListChecks className="h-8 w-8 text-white md:h-9 md:w-9" />
+            <motion.div {...(isMobile ? getTightMobileRevealProps(0.04, '0px 0px 10% 0px', 20) : getLandingRevealProps(0.08, 0.26, 24))}>
+              <div className="group flex cursor-default flex-col items-center space-y-5 rounded-2xl p-8 transition-all hover:bg-white hover:shadow-2xl hover:shadow-gray-200/50 dark:hover:bg-slate-900 dark:hover:shadow-[0_24px_60px_-28px_rgba(2,6,23,0.9)] md:p-10 md:hover:-translate-y-2">
+                <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-[#f97316] transition-transform group-hover:scale-110 md:h-20 md:w-20">
+                  <ListChecks className="h-8 w-8 text-white md:h-9 md:w-9" />
+                </div>
+                <h3 className="text-xl font-bold text-[#1e3a5f] dark:text-slate-100 md:text-2xl">See Matches</h3>
+                <p className="max-w-sm text-gray-600 dark:text-slate-300 md:text-lg">
+                  Instantly view benefits programs you may be eligible for.
+                </p>
               </div>
-              <h3 className="text-xl font-bold text-[#1e3a5f] dark:text-slate-100 md:text-2xl">See Matches</h3>
-              <p className="max-w-sm text-gray-600 dark:text-slate-300 md:text-lg">
-                Instantly view benefits programs you may be eligible for.
-              </p>
             </motion.div>
 
-            <motion.div
-              whileHover={{ y: -8 }}
-              className="group flex cursor-default flex-col items-center space-y-5 rounded-2xl p-8 transition-all hover:bg-white hover:shadow-2xl hover:shadow-gray-200/50 dark:hover:bg-slate-900 dark:hover:shadow-[0_24px_60px_-28px_rgba(2,6,23,0.9)] md:p-10"
-            >
-              <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-[#1e3a5f] transition-transform group-hover:scale-110 md:h-20 md:w-20">
-                <CheckSquare className="h-8 w-8 text-white md:h-9 md:w-9" />
+            <motion.div {...(isMobile ? getTightMobileRevealProps(0.07, '0px 0px 10% 0px', 20) : getLandingRevealProps(0.14, 0.26, 24))}>
+              <div className="group flex cursor-default flex-col items-center space-y-5 rounded-2xl p-8 transition-all hover:bg-white hover:shadow-2xl hover:shadow-gray-200/50 dark:hover:bg-slate-900 dark:hover:shadow-[0_24px_60px_-28px_rgba(2,6,23,0.9)] md:p-10 md:hover:-translate-y-2">
+                <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-[#1e3a5f] transition-transform group-hover:scale-110 md:h-20 md:w-20">
+                  <CheckSquare className="h-8 w-8 text-white md:h-9 md:w-9" />
+                </div>
+                <h3 className="text-xl font-bold text-[#1e3a5f] dark:text-slate-100 md:text-2xl">Get Checklist</h3>
+                <p className="max-w-sm text-gray-600 dark:text-slate-300 md:text-lg">
+                  Download a personalized checklist to help you apply.
+                </p>
               </div>
-              <h3 className="text-xl font-bold text-[#1e3a5f] dark:text-slate-100 md:text-2xl">Get Checklist</h3>
-              <p className="max-w-sm text-gray-600 dark:text-slate-300 md:text-lg">
-                Download a personalized checklist to help you apply.
-              </p>
             </motion.div>
           </div>
         </div>
-      </motion.section>
+      </section>
 
-        <section
-          aria-labelledby="benefits-heading"
-          className="border-t border-gray-100 bg-white px-6 py-16 dark:border-white/10 dark:bg-slate-950/80 md:py-20"
-        >
-          <div className="mx-auto max-w-7xl">
-            <div className="mx-auto max-w-3xl text-center">
-              <h2
-                id="benefits-heading"
-                className="text-3xl font-bold tracking-tight text-[#1e3a5f] dark:text-slate-100 md:text-4xl"
+      <section
+        aria-labelledby="benefits-heading"
+        className="relative overflow-hidden border-t border-gray-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_28%,#ffffff_100%)] px-6 py-16 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.96)_0%,rgba(15,23,42,0.96)_30%,rgba(2,6,23,0.98)_100%)] md:py-20"
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(191,219,254,0.32),transparent_30%),radial-gradient(circle_at_84%_22%,rgba(254,215,170,0.3),transparent_26%),radial-gradient(circle_at_50%_88%,rgba(224,231,255,0.26),transparent_34%)] dark:bg-[radial-gradient(circle_at_18%_20%,rgba(56,189,248,0.1),transparent_28%),radial-gradient(circle_at_84%_22%,rgba(251,146,60,0.1),transparent_24%),radial-gradient(circle_at_50%_88%,rgba(99,102,241,0.12),transparent_32%)]" />
+        <div className="relative mx-auto max-w-7xl">
+          {isMobile ? (
+            <>
+              <motion.div
+                {...getLandingRevealProps(0.04, 0.24, 26)}
+                className="mx-auto max-w-3xl text-center"
               >
-                Popular Massachusetts benefits students often ask about
-              </h2>
-              <p className="mt-4 text-lg text-gray-600 dark:text-slate-300">
-                CommonMASS helps organize information about major programs in one place, so students can
-                compare options without bouncing between multiple websites.
-              </p>
-            </div>
+                <h2
+                  id="benefits-heading"
+                  className="text-3xl font-bold tracking-tight text-[#1e3a5f] dark:text-slate-100 md:text-4xl"
+                >
+                  Popular Massachusetts benefits students often ask about
+                </h2>
+                <p className="mt-4 text-lg text-gray-600 dark:text-slate-300">
+                  CommonMASS helps organize information about major programs in one place, so students can
+                  compare options without bouncing between multiple websites.
+                </p>
+              </motion.div>
 
-            <div className="mt-12 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-              {BENEFIT_SPOTLIGHTS.map((benefit) => {
-                const Icon = benefit.icon;
-
-                return (
-                  <article
+              <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                {BENEFIT_SPOTLIGHTS.map((benefit, index) => (
+                  <motion.div
                     key={benefit.title}
-                    className="rounded-3xl border border-gray-200 bg-[#f8fafc] p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg dark:border-white/10 dark:bg-slate-900/85"
+                    {...getTightMobileRevealProps(0.03 + Math.min(index * 0.025, 0.12), '0px 0px 12% 0px')}
+                    className="h-full"
                   >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1e3a5f] text-white dark:bg-sky-200 dark:text-slate-950">
-                      <Icon className="h-6 w-6" />
-                    </div>
+                    {renderBenefitCard(benefit)}
+                  </motion.div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <motion.div
+                {...getLandingRevealProps(0.04, 0.24, 26)}
+                className="mx-auto max-w-3xl text-center"
+              >
+                <h2
+                  id="benefits-heading"
+                  className="text-3xl font-bold tracking-tight text-[#1e3a5f] dark:text-slate-100 md:text-4xl"
+                >
+                  Popular Massachusetts benefits students often ask about
+                </h2>
+                <p className="mt-4 text-lg text-gray-600 dark:text-slate-300">
+                  CommonMASS helps organize information about major programs in one place, so students can
+                  compare options without bouncing between multiple websites.
+                </p>
+              </motion.div>
 
-                    <h3 className="mt-5 text-2xl font-bold text-[#1e3a5f] dark:text-slate-100">
-                      {benefit.title}
-                    </h3>
+              <div className="mt-12 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                {BENEFIT_SPOTLIGHTS.map((benefit, index) => (
+                  <motion.div
+                    key={benefit.title}
+                    {...getLandingRevealProps(Math.min(index * 0.05, 0.2), 0.22, 24)}
+                    className="h-full"
+                  >
+                    {renderBenefitCard(benefit)}
+                  </motion.div>
+                ))}
+              </div>
+            </>
+          )}
 
-                    <p className="mt-3 leading-relaxed text-gray-600 dark:text-slate-300">
-                      {benefit.description}
-                    </p>
-
-                    <div className="mt-5">
-                      <Link
-                        to="/faq"
-                        className="inline-flex items-center text-sm font-semibold text-[#1e3a5f] underline underline-offset-4 hover:text-[#16304f] dark:text-sky-200 dark:hover:text-orange-200"
-                      >
-                        Learn more in the FAQ
-                      </Link>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-
-            <div className="mt-12 rounded-3xl border border-[#1e3a5f]/10 bg-gradient-to-r from-[#eff6ff] to-[#fff7ed] p-8 dark:border-sky-200/10 dark:from-slate-900 dark:to-slate-900">
+          <motion.div {...getLandingRevealProps(0.08, 0.22, 24)} className="mt-12">
+            <div className="rounded-3xl border border-[#1e3a5f]/10 bg-gradient-to-r from-[#eff6ff] to-[#fff7ed] p-8 dark:border-sky-200/10 dark:from-slate-900 dark:to-slate-900">
               <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                 <div>
                   <h3 className="text-2xl font-bold text-[#1e3a5f] dark:text-slate-100">
@@ -629,8 +738,9 @@ export default function LandingPage() {
                 </div>
               </div>
             </div>
-          </div>
-        </section>
+          </motion.div>
+        </div>
+      </section>
       </main>
 
       <motion.footer
@@ -646,6 +756,25 @@ export default function LandingPage() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
