@@ -1,23 +1,24 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router";
-import { motion } from "motion/react";
-import { Download, ExternalLink } from "lucide-react";
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router';
+import { motion } from 'motion/react';
+import { Download, ExternalLink } from 'lucide-react';
 
-import { Navbar } from "@/app/components/layout/Navbar";
-import { PageBackdrop } from "@/app/components/layout/PageBackdrop";
-import { Button } from "@/app/components/ui/button";
-import { Checkbox } from "@/app/components/ui/checkbox";
-import { useBenefits } from "@/app/context/BenefitsContext";
-import { useIsMobile } from "@/app/components/ui/use-mobile";
+import { Navbar } from '../components/layout/Navbar';
+import { PageBackdrop } from '../components/layout/PageBackdrop';
+import { Button } from '../components/ui/button';
+import { Checkbox } from '../components/ui/checkbox';
+import { useBenefits } from '../context/BenefitsContext';
+import { useIsMobile } from '../components/ui/use-mobile';
+
 const desktopChecklistItemTransition = {
-  type: "spring",
+  type: 'spring',
   stiffness: 420,
   damping: 34,
   mass: 0.45,
 };
 
 const mobileChecklistItemTransition = {
-  type: "tween",
+  type: 'tween',
   duration: 0.24,
   ease: [0.22, 1, 0.36, 1] as const,
 };
@@ -26,15 +27,19 @@ export default function ChecklistPage() {
   const { matchedBenefits, answers, checklistProgress, setChecklistItemChecked } = useBenefits();
   const isMobile = useIsMobile();
   const [isGenerating, setIsGenerating] = useState(false);
-  const checklistItemTransition = isMobile
-    ? mobileChecklistItemTransition
-    : desktopChecklistItemTransition;
-  const checklistItemLayout = isMobile ? "position" : true;
-  const checklistListStyle = isMobile ? ({ overflowAnchor: "none" } as const) : undefined;
+
+  const checklistItemTransition = (
+    isMobile ? mobileChecklistItemTransition : desktopChecklistItemTransition
+  ) as any;
+
+  const checklistItemLayout = isMobile ? ('position' as const) : true;
+  const checklistListStyle = isMobile ? ({ overflowAnchor: 'none' } as const) : undefined;
 
   const actionableBenefits = useMemo(
     () =>
-      matchedBenefits.filter((benefit) => !benefit.actionStatus?.includes("No action needed")),
+      matchedBenefits.filter(
+        (benefit) => !benefit.actionStatus?.includes('No action needed')
+      ),
     [matchedBenefits]
   );
 
@@ -61,9 +66,9 @@ export default function ChecklistPage() {
   const handleDownload = async () => {
     if (actionableBenefits.length === 0) return;
 
-    const apiUrl = import.meta.env.VITE_PACKET_API_URL || "/api/packet";
+    const apiUrl = import.meta.env.VITE_PACKET_API_URL || '/api/packet';
 
-    const pendingTab = window.open("about:blank", "_blank");
+    const pendingTab = window.open('about:blank', '_blank');
 
     if (pendingTab) {
       pendingTab.document.write(`
@@ -87,9 +92,9 @@ export default function ChecklistPage() {
 
     try {
       const response = await fetch(apiUrl, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           profile: answers,
@@ -104,11 +109,11 @@ export default function ChecklistPage() {
       try {
         raw = rawText ? JSON.parse(rawText) : {};
       } catch {
-        throw new Error("Packet API returned a non-JSON response.");
+        throw new Error('Packet API returned a non-JSON response.');
       }
 
       let data = raw;
-      if (typeof raw?.body === "string") {
+      if (typeof raw?.body === 'string') {
         try {
           data = JSON.parse(raw.body);
         } catch {
@@ -117,23 +122,23 @@ export default function ChecklistPage() {
       }
 
       if (!response.ok) {
-        throw new Error(data?.error || "Failed to generate PDF packet.");
+        throw new Error(data?.error || 'Failed to generate PDF packet.');
       }
 
       const url = data?.download_url || data?.url || data?.presigned_url || data?.location;
 
-      if (!url || typeof url !== "string") {
-        throw new Error("No download URL returned from API.");
+      if (!url || typeof url !== 'string') {
+        throw new Error('No download URL returned from API.');
       }
 
       if (pendingTab && !pendingTab.closed) {
         pendingTab.location.replace(url);
         pendingTab.focus();
       } else {
-        window.open(url, "_blank", "noopener,noreferrer");
+        window.open(url, '_blank', 'noopener,noreferrer');
       }
     } catch (error) {
-      console.error("Packet generation error:", error);
+      console.error('Packet generation error:', error);
 
       if (pendingTab && !pendingTab.closed) {
         pendingTab.document.write(`
@@ -162,7 +167,7 @@ export default function ChecklistPage() {
       alert(
         error instanceof Error
           ? error.message
-          : "Something went wrong while generating the PDF packet."
+          : 'Something went wrong while generating the PDF packet.'
       );
     } finally {
       setIsGenerating(false);
@@ -181,8 +186,9 @@ export default function ChecklistPage() {
           <div
             className="relative overflow-hidden rounded-t-[2rem] border-x border-t border-white/70 bg-white/72 p-8 pb-20 shadow-[0_34px_80px_-60px_rgba(15,23,42,0.42)] backdrop-blur-sm print:border-none print:bg-transparent print:p-0 print:pb-0 print:shadow-none dark:border-white/10 dark:bg-slate-900/58"
             style={{
-              WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)",
-              maskImage: "linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)",
+              WebkitMaskImage:
+                'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)',
+              maskImage: 'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)',
             }}
           >
             <div className="relative z-10">
@@ -219,7 +225,7 @@ export default function ChecklistPage() {
                     className="cursor-pointer bg-[#1e3a5f] text-white hover:bg-[#152a45] dark:bg-sky-300 dark:text-slate-950 dark:hover:bg-sky-200 dark:shadow-[0_18px_36px_-24px_rgba(125,211,252,0.55)]"
                   >
                     <Download className="h-5 w-5" />
-                    {isGenerating ? "Generating PDF..." : "Download PDF"}
+                    {isGenerating ? 'Generating PDF...' : 'Download PDF'}
                   </Button>
                 </div>
               )}
@@ -264,7 +270,7 @@ export default function ChecklistPage() {
                     >
                       <a href={benefit.officialUrl} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                        {benefit.officialButtonLabel ?? "Visit Official Site"}
+                        {benefit.officialButtonLabel ?? 'Visit Official Site'}
                       </a>
                     </Button>
                   </div>
@@ -276,11 +282,11 @@ export default function ChecklistPage() {
                           key={originalIndex}
                           layout={checklistItemLayout}
                           transition={checklistItemTransition}
-                          style={isMobile ? { willChange: "transform" } : undefined}
+                          style={isMobile ? { willChange: 'transform' } : undefined}
                           className={`flex items-start gap-3 rounded-2xl border px-4 py-3 transition-colors duration-200 md:transition-all md:duration-300 print:border-none print:bg-white print:px-0 print:py-1 print:shadow-none ${
                             checked
-                              ? "border-slate-200 bg-slate-100/80 opacity-70 dark:border-slate-800 dark:bg-slate-800/70"
-                              : "border-white/90 bg-white shadow-[0_14px_36px_-28px_rgba(15,23,42,0.55)] hover:-translate-y-0.5 hover:border-[#355b8a]/20 hover:shadow-[0_20px_38px_-28px_rgba(30,58,95,0.45)] dark:border-slate-800 dark:bg-slate-950/80 dark:shadow-[0_20px_44px_-30px_rgba(2,6,23,0.95)] dark:hover:border-slate-700 dark:hover:shadow-[0_24px_50px_-30px_rgba(2,6,23,1)]"
+                              ? 'border-slate-200 bg-slate-100/80 opacity-70 dark:border-slate-800 dark:bg-slate-800/70'
+                              : 'border-white/90 bg-white shadow-[0_14px_36px_-28px_rgba(15,23,42,0.55)] hover:-translate-y-0.5 hover:border-[#355b8a]/20 hover:shadow-[0_20px_38px_-28px_rgba(30,58,95,0.45)] dark:border-slate-800 dark:bg-slate-950/80 dark:shadow-[0_20px_44px_-30px_rgba(2,6,23,0.95)] dark:hover:border-slate-700 dark:hover:shadow-[0_24px_50px_-30px_rgba(2,6,23,1)]'
                           }`}
                         >
                           <Checkbox
@@ -300,8 +306,8 @@ export default function ChecklistPage() {
                             htmlFor={`${benefit.id}-${originalIndex}`}
                             className={`flex-1 cursor-pointer text-base font-medium leading-relaxed transition-colors ${
                               checked
-                                ? "text-slate-400 line-through dark:text-slate-500"
-                                : "text-slate-900 dark:text-slate-100"
+                                ? 'text-slate-400 line-through dark:text-slate-500'
+                                : 'text-slate-900 dark:text-slate-100'
                             }`}
                           >
                             {item}
@@ -318,13 +324,13 @@ export default function ChecklistPage() {
           <div className="rounded-[1.75rem] border border-dashed border-gray-300 bg-white/72 py-20 text-center shadow-[0_24px_60px_-42px_rgba(15,23,42,0.28)] backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/70">
             <p className="mb-4 text-gray-500 dark:text-slate-400">
               {matchedBenefits.length > 0
-                ? "Your current matches do not need any checklist steps right now."
-                : "Complete the screener first to generate a personalized checklist."}
+                ? 'Your current matches do not need any checklist steps right now.'
+                : 'Complete the screener first to generate a personalized checklist.'}
             </p>
 
             <Button asChild variant="outline">
-              <Link to={matchedBenefits.length > 0 ? "/results" : "/screener"}>
-                {matchedBenefits.length > 0 ? "Back to Results" : "Go to Screener"}
+              <Link to={matchedBenefits.length > 0 ? '/results' : '/screener'}>
+                {matchedBenefits.length > 0 ? 'Back to Results' : 'Go to Screener'}
               </Link>
             </Button>
           </div>
@@ -333,9 +339,3 @@ export default function ChecklistPage() {
     </div>
   );
 }
-
-
-
-
-
-

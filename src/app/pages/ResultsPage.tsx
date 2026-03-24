@@ -2,33 +2,36 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { ChevronDown, ExternalLink, CheckSquare } from 'lucide-react';
-import { Button } from '@/app/components/ui/button';
+
+import { Button } from '../components/ui/button';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@/app/components/ui/accordion';
+} from '../components/ui/accordion';
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
   CardDescription,
-} from '@/app/components/ui/card';
-import { Navbar } from '@/app/components/layout/Navbar';
-import { PageBackdrop } from '@/app/components/layout/PageBackdrop';
-import { renderLinkedText } from '@/app/components/ui/render-linked-text';
-import { useBenefits } from '@/app/context/BenefitsContext';
-import { useIsMobile } from '@/app/components/ui/use-mobile';
+} from '../components/ui/card';
+import { Navbar } from '../components/layout/Navbar';
+import { PageBackdrop } from '../components/layout/PageBackdrop';
+import { renderLinkedText } from '../components/ui/render-linked-text';
+import { useBenefits } from '../context/BenefitsContext';
+import { useIsMobile } from '../components/ui/use-mobile';
 
 const FAFSA_MANAGED_BENEFIT_IDS = new Set(['pell-grant', 'massgrant', 'massgrant-plus']);
 const FAFSA_STATUS_URL =
   'https://studentaid.gov/fsa-id/sign-in/landing?redirectTo=%2Fmy-activity';
+
 const MOBILE_ROUTE_TRANSITION = {
   duration: 0.2,
   ease: [0.22, 1, 0.36, 1] as const,
 };
+
 const MOBILE_DETAILS_REVEAL = {
   duration: 0.16,
   ease: [0.22, 1, 0.36, 1] as const,
@@ -39,11 +42,14 @@ export default function ResultsPage() {
   const hasMatches = matchedBenefits.length > 0;
   const isMobile = useIsMobile();
   const [mobileOpenDetails, setMobileOpenDetails] = useState<Record<string, boolean>>({});
+
   const heroEnterInitial = { opacity: 0, y: isMobile ? 12 : 20 };
+
   const heroEnterTransition = (delay = 0) =>
     isMobile
       ? { ...MOBILE_ROUTE_TRANSITION, delay: Math.min(delay, 0.08) }
       : { duration: 0.5, delay };
+
   const benefitCardTransition = (index: number) =>
     isMobile
       ? { ...MOBILE_ROUTE_TRANSITION, duration: 0.18, delay: Math.min(index, 2) * 0.035 }
@@ -85,18 +91,15 @@ export default function ResultsPage() {
             transition={heroEnterTransition()}
             className="relative"
           >
-            <div
-              className="relative overflow-hidden rounded-t-[2rem] border-x border-t border-white/70 bg-white/72 p-8 pb-20 shadow-[0_34px_80px_-60px_rgba(15,23,42,0.42)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/58 md:p-10 md:pb-24"
-              style={{
-                WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)',
-                maskImage: 'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)',
-              }}
-            >
+            <div className="relative overflow-hidden rounded-t-[2rem] border-x border-t border-white/70 bg-white/72 p-8 pb-20 shadow-[0_34px_80px_-60px_rgba(15,23,42,0.42)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/58 md:p-10 md:pb-24">
               <div className="relative z-10">
-                <h1 className="mb-4 text-[2.6rem] font-bold tracking-tight md:text-[2.85rem]">Your Results</h1>
+                <h1 className="mb-4 text-[2.6rem] font-bold tracking-tight md:text-[2.85rem]">
+                  Your Results
+                </h1>
+
                 <p className="max-w-2xl text-lg text-gray-600 dark:text-slate-300">
-                  Based on your answers, you may qualify for the following {matchedBenefits.length}{' '}
-                  benefits.
+                  Based on your answers, you may qualify for the following{' '}
+                  {matchedBenefits.length} benefits.
                 </p>
 
                 {hasMatches && (
@@ -109,7 +112,7 @@ export default function ResultsPage() {
                     <Link to="/checklist">
                       <Button
                         size="lg"
-                        className="group cursor-pointer rounded-full bg-[#f97316] px-8 py-6 text-lg text-white transition-all duration-200 shadow-[0_4px_14px_0_rgba(249,115,22,0.3)] hover:-translate-y-1 hover:scale-[1.02] hover:bg-[#ea580c] hover:shadow-[0_20px_25px_-5px_rgba(249,115,22,0.4)] dark:shadow-[0_10px_28px_-14px_rgba(251,146,60,0.56)] dark:hover:shadow-[0_20px_40px_-16px_rgba(251,146,60,0.76)]"
+                        className="group cursor-pointer rounded-full bg-[#f97316] px-8 py-6 text-lg text-white shadow-[0_4px_14px_0_rgba(249,115,22,0.3)] transition-all duration-200 hover:-translate-y-1 hover:scale-[1.02] hover:bg-[#ea580c] hover:shadow-[0_20px_25px_-5px_rgba(249,115,22,0.4)] dark:shadow-[0_10px_28px_-14px_rgba(251,146,60,0.56)] dark:hover:shadow-[0_20px_40px_-16px_rgba(251,146,60,0.76)]"
                       >
                         <CheckSquare className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
                         Get Personalized Checklist
@@ -127,8 +130,10 @@ export default function ResultsPage() {
             <div className="space-y-6">
               {matchedBenefits.map((benefit) => {
                 const action = getBenefitAction(benefit);
-                const showActionStatus = benefit.id !== 'snap' && Boolean(benefit.actionStatus);
+                const showActionStatus =
+                  benefit.id !== 'snap' && Boolean(benefit.actionStatus);
                 const isDetailsOpen = Boolean(mobileOpenDetails[benefit.id]);
+
                 const actionButton = (
                   <Button
                     asChild
@@ -142,10 +147,12 @@ export default function ResultsPage() {
                     </a>
                   </Button>
                 );
+
                 const detailsContent = (
                   <div className="space-y-3 text-sm leading-relaxed text-gray-700 dark:text-slate-200">
                     {renderLinkedText(benefit.details, {
-                      paragraphClassName: 'text-sm text-gray-700 leading-relaxed dark:text-slate-200',
+                      paragraphClassName:
+                        'text-sm text-gray-700 leading-relaxed dark:text-slate-200',
                       linkClassName:
                         'font-medium text-[#1e3a5f] underline underline-offset-4 hover:text-[#16304f] dark:text-sky-200 dark:hover:text-orange-200',
                     })}
@@ -155,7 +162,6 @@ export default function ResultsPage() {
                 return (
                   <div
                     key={benefit.id}
-                    style={{ overflowAnchor: 'none' }}
                     className="rounded-[1.5rem] border border-white/75 bg-white/86 shadow-[0_24px_52px_-24px_rgba(15,23,42,0.24)] backdrop-blur-none dark:border-white/10 dark:bg-slate-900/80 dark:shadow-[0_24px_52px_-24px_rgba(2,6,23,0.78)]"
                   >
                     <div className="px-5 pt-5">
@@ -223,7 +229,9 @@ export default function ResultsPage() {
             <Accordion type="multiple" className="space-y-6">
               {matchedBenefits.map((benefit, index) => {
                 const action = getBenefitAction(benefit);
-                const showActionStatus = benefit.id !== 'snap' && Boolean(benefit.actionStatus);
+                const showActionStatus =
+                  benefit.id !== 'snap' && Boolean(benefit.actionStatus);
+
                 const actionButton = (
                   <Button
                     asChild
@@ -237,60 +245,16 @@ export default function ResultsPage() {
                     </a>
                   </Button>
                 );
+
                 const detailsContent = (
                   <div className="space-y-3 text-sm leading-relaxed text-gray-700 dark:text-slate-200">
                     {renderLinkedText(benefit.details, {
-                      paragraphClassName: 'text-sm text-gray-700 leading-relaxed dark:text-slate-200',
+                      paragraphClassName:
+                        'text-sm text-gray-700 leading-relaxed dark:text-slate-200',
                       linkClassName:
                         'font-medium text-[#1e3a5f] underline underline-offset-4 hover:text-[#16304f] dark:text-sky-200 dark:hover:text-orange-200',
                     })}
                   </div>
-                );
-                const cardContent = (
-                  <AccordionItem value={benefit.id} className="rounded-[1.5rem] border-none">
-                    <Card className="gap-5 overflow-hidden border border-white/75 bg-white/86 shadow-[0_24px_52px_-24px_rgba(15,23,42,0.24)] backdrop-blur-none transition-all duration-125 hover:-translate-y-1.5 hover:scale-[1.01] hover:shadow-xl hover:shadow-slate-200/70 sm:gap-6 md:shadow-[0_20px_55px_-38px_rgba(15,23,42,0.3)] sm:backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/80 dark:shadow-[0_24px_52px_-24px_rgba(2,6,23,0.78)] md:dark:shadow-[0_24px_60px_-38px_rgba(2,6,23,0.95)] dark:hover:shadow-[0_30px_70px_-38px_rgba(2,6,23,1)]">
-                      <CardHeader className="gap-3 px-5 pt-5 sm:gap-4 sm:px-6 sm:pt-6">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                          <div className="min-w-0">
-                            <span className="mb-1.5 inline-block rounded bg-gray-100 px-2 py-1 text-xs font-bold uppercase tracking-wide text-gray-500 sm:mb-2 dark:bg-slate-800 dark:text-slate-300">
-                              {benefit.category}
-                            </span>
-
-                            <CardTitle className="text-xl font-bold sm:text-2xl">{benefit.title}</CardTitle>
-
-                            {showActionStatus && (
-                              <div
-                                className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-semibold ${
-                                  benefit.actionStatus?.includes('No action needed')
-                                    ? 'bg-green-100 text-green-800 dark:bg-emerald-400/18 dark:text-emerald-200 dark:ring-1 dark:ring-inset dark:ring-emerald-300/30'
-                                    : 'bg-red-100 text-red-700 dark:bg-[#ff0000]/22 dark:text-[#fff3f3] dark:ring-1 dark:ring-inset dark:ring-[#ff4d4d]/55'
-                                }`}
-                              >
-                                {benefit.actionStatus}
-                              </div>
-                            )}
-                          </div>
-
-                          {actionButton}
-                        </div>
-                      </CardHeader>
-
-                      <CardContent className="px-5 pb-5 sm:px-6 sm:pb-6">
-                        <CardDescription className="text-sm leading-relaxed text-gray-600 dark:text-slate-300 sm:text-base">
-                          {benefit.description}
-                        </CardDescription>
-                      </CardContent>
-
-                      <div className="border-t border-gray-100 bg-gray-50/60 dark:border-white/10 dark:bg-slate-950/60">
-                        <AccordionTrigger className="px-5 py-3.5 text-left text-sm font-semibold text-[#355b8a] transition-colors hover:no-underline sm:px-6 sm:py-4 dark:text-sky-200 [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-[#355b8a] dark:[&>svg]:text-sky-200">
-                          <span>More Details</span>
-                        </AccordionTrigger>
-                        <AccordionContent className="border-t border-gray-100 px-5 py-4 dark:border-white/10 sm:px-6 sm:py-5">
-                          {detailsContent}
-                        </AccordionContent>
-                      </div>
-                    </Card>
-                  </AccordionItem>
                 );
 
                 return (
@@ -300,7 +264,52 @@ export default function ResultsPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={benefitCardTransition(index)}
                   >
-                    {cardContent}
+                    <AccordionItem value={benefit.id} className="rounded-[1.5rem] border-none">
+                      <Card className="gap-5 overflow-hidden border border-white/75 bg-white/86 shadow-[0_24px_52px_-24px_rgba(15,23,42,0.24)] backdrop-blur-none transition-all duration-125 hover:-translate-y-1.5 hover:scale-[1.01] hover:shadow-xl hover:shadow-slate-200/70 sm:gap-6 md:shadow-[0_20px_55px_-38px_rgba(15,23,42,0.3)] sm:backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/80 dark:shadow-[0_24px_52px_-24px_rgba(2,6,23,0.78)] md:dark:shadow-[0_24px_60px_-38px_rgba(2,6,23,0.95)] dark:hover:shadow-[0_30px_70px_-38px_rgba(2,6,23,1)]">
+                        <CardHeader className="gap-3 px-5 pt-5 sm:gap-4 sm:px-6 sm:pt-6">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                            <div className="min-w-0">
+                              <span className="mb-1.5 inline-block rounded bg-gray-100 px-2 py-1 text-xs font-bold uppercase tracking-wide text-gray-500 sm:mb-2 dark:bg-slate-800 dark:text-slate-300">
+                                {benefit.category}
+                              </span>
+
+                              <CardTitle className="text-xl font-bold sm:text-2xl">
+                                {benefit.title}
+                              </CardTitle>
+
+                              {showActionStatus && (
+                                <div
+                                  className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-semibold ${
+                                    benefit.actionStatus?.includes('No action needed')
+                                      ? 'bg-green-100 text-green-800 dark:bg-emerald-400/18 dark:text-emerald-200 dark:ring-1 dark:ring-inset dark:ring-emerald-300/30'
+                                      : 'bg-red-100 text-red-700 dark:bg-[#ff0000]/22 dark:text-[#fff3f3] dark:ring-1 dark:ring-inset dark:ring-[#ff4d4d]/55'
+                                  }`}
+                                >
+                                  {benefit.actionStatus}
+                                </div>
+                              )}
+                            </div>
+
+                            {actionButton}
+                          </div>
+                        </CardHeader>
+
+                        <CardContent className="px-5 pb-5 sm:px-6 sm:pb-6">
+                          <CardDescription className="text-sm leading-relaxed text-gray-600 dark:text-slate-300 sm:text-base">
+                            {benefit.description}
+                          </CardDescription>
+                        </CardContent>
+
+                        <div className="border-t border-gray-100 bg-gray-50/60 dark:border-white/10 dark:bg-slate-950/60">
+                          <AccordionTrigger className="px-5 py-3.5 text-left text-sm font-semibold text-[#355b8a] transition-colors hover:no-underline sm:px-6 sm:py-4 dark:text-sky-200 [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-[#355b8a] dark:[&>svg]:text-sky-200">
+                            <span>More Details</span>
+                          </AccordionTrigger>
+                          <AccordionContent className="border-t border-gray-100 px-5 py-4 dark:border-white/10 sm:px-6 sm:py-5">
+                            {detailsContent}
+                          </AccordionContent>
+                        </div>
+                      </Card>
+                    </AccordionItem>
                   </motion.div>
                 );
               })}
@@ -309,7 +318,7 @@ export default function ResultsPage() {
         ) : (
           <div className="rounded-[1.75rem] border border-dashed border-gray-300 bg-white/72 py-20 text-center shadow-[0_24px_60px_-42px_rgba(15,23,42,0.28)] backdrop-blur-none dark:border-slate-700 dark:bg-slate-900/70 md:backdrop-blur-sm">
             <p className="mb-4 text-gray-500 dark:text-slate-400">
-              We couldn't find any specific benefits matching your profile at this time.
+              We couldn&apos;t find any specific benefits matching your profile at this time.
             </p>
             <Button variant="outline" onClick={() => (window.location.href = '/')}>
               Start Over

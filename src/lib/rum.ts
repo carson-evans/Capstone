@@ -27,6 +27,6 @@ export function initRum() {
       config
     );
   } catch (error) {
-    console.error('CloudWatch RUM init failed:', error);
+    console.error('Failed to initialize AWS RUM:', error);
   }
 }

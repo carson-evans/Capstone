@@ -2,15 +2,15 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { Button } from '@/app/components/ui/button';
-import { Progress } from '@/app/components/ui/progress';
-import { RadioGroup, RadioGroupItem } from '@/app/components/ui/radio-group';
-import { Label } from '@/app/components/ui/label';
-import { Navbar } from '@/app/components/layout/Navbar';
-import { PageBackdrop } from '@/app/components/layout/PageBackdrop';
-import { useBenefits } from '@/app/context/BenefitsContext';
-import { getVisibleQuestions, questions } from '@/app/data/benefitsData';
-import { useIsMobile } from '@/app/components/ui/use-mobile';
+import { Button } from '../components/ui/button';
+import { Progress } from '../components/ui/progress';
+import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
+import { Label } from '../components/ui/label';
+import { Navbar } from '../components/layout/Navbar';
+import { PageBackdrop } from '../components/layout/PageBackdrop';
+import { useBenefits } from '../context/BenefitsContext';
+import { getVisibleQuestions, questions } from '../data/benefitsData';
+import { useIsMobile } from '../components/ui/use-mobile';
 
 const MOBILE_PAGE_TRANSITION = {
   duration: 0.24,
@@ -20,7 +20,7 @@ const MOBILE_PAGE_TRANSITION = {
 export default function QuestionnairePage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { setAnswer, answers } = useBenefits();
+  const { setAnswer, answers, evaluateBenefits, isEvaluating } = useBenefits();
   const measurementRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -82,30 +82,41 @@ export default function QuestionnairePage() {
     };
   }, [isMobile, visibleQuestions]);
 
-  const handleNext = () => {
-    if (!currentQuestion || !selectedOption) return;
+  const handleNext = async () => {
+    if (!currentQuestion || !selectedOption || isEvaluating) return;
 
-    const prospectiveAnswers = {
+    const nextAnswers = {
       ...answers,
       [currentQuestion.id]: selectedOption,
     };
-    const prospectiveVisibleQuestions = getVisibleQuestions(questions, prospectiveAnswers);
-    const currentIndexInProspective = prospectiveVisibleQuestions.findIndex(
-      (q) => q.id === currentQuestion.id,
-    );
-    const nextIndex = currentIndexInProspective + 1;
+
+    const nextVisibleQuestions = getVisibleQuestions(questions, nextAnswers);
+    const isLastVisibleStep = currentStep >= nextVisibleQuestions.length - 1;
 
     setAnswer(currentQuestion.id, selectedOption);
 
-    if (nextIndex >= prospectiveVisibleQuestions.length) {
-      navigate('/results');
+    if (isLastVisibleStep) {
+      try {
+        await evaluateBenefits(nextAnswers);
+        navigate('/results');
+      } catch (error) {
+        console.error('Eligibility evaluation error:', error);
+        alert(
+          error instanceof Error
+            ? error.message
+            : 'Something went wrong while checking eligibility.'
+        );
+      }
       return;
     }
 
-    setCurrentStep(nextIndex);
+    setSelectedOption('');
+    setCurrentStep((prev) => prev + 1);
   };
 
   const handleBack = () => {
+    if (isEvaluating) return;
+
     if (currentStep > 0) {
       setCurrentStep((prev) => prev - 1);
     } else {
@@ -140,7 +151,11 @@ export default function QuestionnairePage() {
               key={option.value}
               whileHover={isMobile ? undefined : { y: -2 }}
               whileTap={isMobile ? { scale: 0.995 } : undefined}
-              transition={isMobile ? { duration: 0.14, ease: 'easeOut' } : { type: 'spring', stiffness: 420, damping: 28 }}
+              transition={
+                isMobile
+                  ? { duration: 0.14, ease: 'easeOut' }
+                  : { type: 'spring', stiffness: 420, damping: 28 }
+              }
               className={optionClasses}
               onClick={() => setSelectedOption(option.value)}
             >
@@ -171,7 +186,10 @@ export default function QuestionnairePage() {
             </span>
             <span>{Math.round(progress)}% Complete</span>
           </div>
-          <Progress value={progress} className="h-2 bg-slate-200/90 shadow-inner dark:bg-slate-800/90 md:h-2.5" />
+          <Progress
+            value={progress}
+            className="h-2 bg-slate-200/90 shadow-inner dark:bg-slate-800/90 md:h-2.5"
+          />
         </div>
 
         <div className="flex h-[calc(100dvh-12.25rem)] flex-col overflow-hidden rounded-[1.75rem] border border-white/75 bg-white/82 px-4 py-3.5 shadow-[0_34px_80px_-52px_rgba(15,23,42,0.45)] backdrop-blur-none dark:border-white/10 dark:bg-slate-900/78 dark:shadow-[0_28px_80px_-40px_rgba(2,6,23,0.95)] md:h-auto md:min-h-0 md:p-12 md:backdrop-blur-sm">
@@ -182,8 +200,16 @@ export default function QuestionnairePage() {
               animate={{ opacity: 1, x: 0 }}
               exit={isMobile ? { opacity: 0, x: -16 } : { opacity: 0, x: -20 }}
               transition={isMobile ? MOBILE_PAGE_TRANSITION : { duration: 0.3 }}
-              className={`min-w-0 min-h-0 flex-1 ${isMobile ? 'overflow-y-auto overscroll-contain pr-1 transform-gpu will-change-transform' : 'md:flex-none'}`}
-              style={!isMobile && desktopContentHeight ? { height: desktopContentHeight } : undefined}
+              className={`min-w-0 min-h-0 flex-1 ${
+                isMobile
+                  ? 'overflow-y-auto overscroll-contain pr-1 transform-gpu will-change-transform'
+                  : 'md:flex-none'
+              }`}
+              style={
+                !isMobile && desktopContentHeight
+                  ? { height: desktopContentHeight }
+                  : undefined
+              }
             >
               {questionContent}
             </motion.div>
@@ -193,6 +219,7 @@ export default function QuestionnairePage() {
             <Button
               variant="ghost"
               onClick={handleBack}
+              disabled={isEvaluating}
               className="text-gray-500 hover:bg-gray-100 hover:text-black dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 md:text-base"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -201,20 +228,26 @@ export default function QuestionnairePage() {
 
             <Button
               onClick={handleNext}
-              disabled={!selectedOption}
+              disabled={!selectedOption || isEvaluating}
               className="rounded-md bg-[#1e3a5f] px-8 text-white transition-all hover:bg-[#f97316] dark:shadow-[0_18px_36px_-24px_rgba(15,23,42,0.95)] disabled:opacity-50 md:text-base"
             >
-              {isLastStep ? 'See Results' : 'Next'}
+              {isLastStep ? (isEvaluating ? 'Checking...' : 'See Results') : 'Next'}
               {!isLastStep && <ArrowRight className="ml-2 h-4 w-4" />}
             </Button>
           </div>
         </div>
       </div>
 
-      <div aria-hidden="true" className="pointer-events-none invisible fixed inset-x-0 top-0 -z-10 hidden md:block">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none invisible fixed inset-x-0 top-0 -z-10 hidden md:block"
+      >
         <div className="container mx-auto max-w-3xl px-6 py-14">
           {visibleQuestions.map((question) => (
-            <div key={question.id} className="rounded-xl border border-transparent bg-white p-12 shadow-sm">
+            <div
+              key={question.id}
+              className="rounded-xl border border-transparent bg-white p-12 shadow-sm"
+            >
               <div
                 ref={(element) => {
                   measurementRefs.current[question.id] = element;
@@ -236,7 +269,9 @@ export default function QuestionnairePage() {
                       className="flex items-start space-x-3 rounded-lg border border-transparent p-4"
                     >
                       <div className="mt-1 h-4 w-4 rounded-full border border-slate-300" />
-                      <div className="flex-1 text-lg font-medium leading-relaxed">{option.label}</div>
+                      <div className="flex-1 text-lg font-medium leading-relaxed">
+                        {option.label}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -248,5 +283,3 @@ export default function QuestionnairePage() {
     </div>
   );
 }
-
-
