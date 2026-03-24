@@ -10,9 +10,16 @@ import { Navbar } from '@/app/components/layout/Navbar';
 import { PageBackdrop } from '@/app/components/layout/PageBackdrop';
 import { useBenefits } from '@/app/context/BenefitsContext';
 import { getVisibleQuestions, questions } from '@/app/data/benefitsData';
+import { useIsMobile } from '@/app/components/ui/use-mobile';
+
+const MOBILE_PAGE_TRANSITION = {
+  duration: 0.24,
+  ease: [0.22, 1, 0.36, 1] as const,
+};
 
 export default function QuestionnairePage() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { setAnswer, answers } = useBenefits();
   const measurementRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -20,17 +27,21 @@ export default function QuestionnairePage() {
   const [selectedOption, setSelectedOption] = useState<string>('');
   const [desktopContentHeight, setDesktopContentHeight] = useState<number | null>(null);
 
-  // Dynamically hide/skip questions based on answers from previous steps.
   const visibleQuestions = React.useMemo(() => {
     return getVisibleQuestions(questions, answers);
   }, [answers]);
 
   useEffect(() => {
-    // If the user's answers cause steps to appear/disappear, clamp to a valid index.
     if (currentStep >= visibleQuestions.length && visibleQuestions.length > 0) {
       setCurrentStep(visibleQuestions.length - 1);
     }
   }, [visibleQuestions.length, currentStep]);
+
+  useEffect(() => {
+    if (isMobile && desktopContentHeight !== null) {
+      setDesktopContentHeight(null);
+    }
+  }, [desktopContentHeight, isMobile]);
 
   const currentQuestion = visibleQuestions[currentStep];
   const isLastStep = visibleQuestions.length > 0 && currentStep === visibleQuestions.length - 1;
@@ -43,14 +54,13 @@ export default function QuestionnairePage() {
   }, [currentStep, currentQuestion, answers]);
 
   useLayoutEffect(() => {
+    if (isMobile) {
+      return;
+    }
+
     let frameId = 0;
 
     const measureDesktopContentHeight = () => {
-      if (window.innerWidth < 768) {
-        setDesktopContentHeight(null);
-        return;
-      }
-
       frameId = window.requestAnimationFrame(() => {
         const tallestHeight = visibleQuestions.reduce((maxHeight, question) => {
           const element = measurementRefs.current[question.id];
@@ -70,13 +80,11 @@ export default function QuestionnairePage() {
       window.cancelAnimationFrame(frameId);
       window.removeEventListener('resize', measureDesktopContentHeight);
     };
-  }, [visibleQuestions]);
+  }, [isMobile, visibleQuestions]);
 
   const handleNext = () => {
     if (!currentQuestion || !selectedOption) return;
 
-    // Compute the *next* visible step using prospective answers so we don't rely
-    // on stale "isLastStep" from before the answer is set.
     const prospectiveAnswers = {
       ...answers,
       [currentQuestion.id]: selectedOption,
@@ -107,13 +115,56 @@ export default function QuestionnairePage() {
 
   if (!currentQuestion) return <div>Loading...</div>;
 
+  const questionContent = (
+    <>
+      <span className="mb-4 inline-block rounded bg-gray-100 px-2 py-1 text-xs font-bold uppercase tracking-wider text-gray-500 dark:bg-slate-800 dark:text-slate-300 md:mb-4 md:px-3 md:py-1.5 md:text-sm">
+        {currentQuestion.category}
+      </span>
+
+      <h2 className="mb-7 max-w-2xl text-[1.66rem] font-bold leading-[1.08] md:mb-10 md:text-[2.15rem] md:leading-[1.08]">
+        {currentQuestion.text}
+      </h2>
+
+      <RadioGroup
+        value={selectedOption}
+        onValueChange={setSelectedOption}
+        className="space-y-2.5 md:space-y-4"
+      >
+        {currentQuestion.options.map((option) => {
+          const optionId = `${currentQuestion.id}-${option.value}`;
+          const optionClasses =
+            'flex cursor-pointer items-start space-x-3 rounded-lg border border-transparent px-3 py-2 transition-colors hover:border-gray-200 hover:bg-gray-50 dark:hover:border-slate-700 dark:hover:bg-slate-800/70 md:p-4';
+
+          return (
+            <motion.div
+              key={option.value}
+              whileHover={isMobile ? undefined : { y: -2 }}
+              whileTap={isMobile ? { scale: 0.995 } : undefined}
+              transition={isMobile ? { duration: 0.14, ease: 'easeOut' } : { type: 'spring', stiffness: 420, damping: 28 }}
+              className={optionClasses}
+              onClick={() => setSelectedOption(option.value)}
+            >
+              <RadioGroupItem value={option.value} id={optionId} className="mt-1" />
+              <Label
+                htmlFor={optionId}
+                className="flex-1 cursor-pointer text-[0.98rem] font-medium leading-relaxed md:text-lg"
+              >
+                {option.label}
+              </Label>
+            </motion.div>
+          );
+        })}
+      </RadioGroup>
+    </>
+  );
+
   return (
     <div className="relative isolate min-h-screen overflow-x-hidden bg-[#f8fafc] font-sans text-black dark:bg-slate-950 dark:text-slate-100">
       <PageBackdrop />
       <Navbar />
 
-      <div className="container mx-auto max-w-3xl flex-1 px-6 py-10 md:py-14">
-        <div className="mb-8 space-y-3 md:mb-10">
+      <div className="container mx-auto max-w-3xl flex-1 px-5 py-4 sm:px-6 md:py-14">
+        <div className="mb-5 space-y-2 md:mb-10">
           <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400 md:text-sm">
             <span>
               Step {currentStep + 1} of {visibleQuestions.length}
@@ -123,56 +174,22 @@ export default function QuestionnairePage() {
           <Progress value={progress} className="h-2 bg-slate-200/90 shadow-inner dark:bg-slate-800/90 md:h-2.5" />
         </div>
 
-        <div className="flex min-h-[calc(100dvh-19rem)] flex-col rounded-[1.75rem] border border-white/75 bg-white/82 p-6 shadow-[0_34px_80px_-52px_rgba(15,23,42,0.45)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/78 dark:shadow-[0_28px_80px_-40px_rgba(2,6,23,0.95)] md:min-h-0 md:p-12">
-          <AnimatePresence mode="wait">
+        <div className="flex h-[calc(100dvh-12.25rem)] flex-col overflow-hidden rounded-[1.75rem] border border-white/75 bg-white/82 px-4 py-3.5 shadow-[0_34px_80px_-52px_rgba(15,23,42,0.45)] backdrop-blur-none dark:border-white/10 dark:bg-slate-900/78 dark:shadow-[0_28px_80px_-40px_rgba(2,6,23,0.95)] md:h-auto md:min-h-0 md:p-12 md:backdrop-blur-sm">
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
-              key={currentStep}
-              initial={{ opacity: 0, x: 20 }}
+              key={currentQuestion.id}
+              initial={isMobile ? { opacity: 0, x: 16 } : { opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="min-w-0 flex-1 md:flex-none"
-              style={desktopContentHeight ? { height: desktopContentHeight } : undefined}
+              exit={isMobile ? { opacity: 0, x: -16 } : { opacity: 0, x: -20 }}
+              transition={isMobile ? MOBILE_PAGE_TRANSITION : { duration: 0.3 }}
+              className={`min-w-0 min-h-0 flex-1 ${isMobile ? 'overflow-y-auto overscroll-contain pr-1 transform-gpu will-change-transform' : 'md:flex-none'}`}
+              style={!isMobile && desktopContentHeight ? { height: desktopContentHeight } : undefined}
             >
-              <span className="mb-4 inline-block rounded bg-gray-100 px-2 py-1 text-xs font-bold uppercase tracking-wider text-gray-500 dark:bg-slate-800 dark:text-slate-300 md:px-3 md:py-1.5 md:text-sm">
-                {currentQuestion.category}
-              </span>
-
-              <h2 className="mb-8 max-w-2xl text-[1.9rem] font-bold leading-tight md:mb-10 md:text-[2.15rem] md:leading-[1.08]">
-                {currentQuestion.text}
-              </h2>
-
-              <RadioGroup
-                value={selectedOption}
-                onValueChange={setSelectedOption}
-                className="space-y-3 md:space-y-4"
-              >
-                {currentQuestion.options.map((option) => {
-                  const optionId = `${currentQuestion.id}-${option.value}`;
-
-                  return (
-                    <motion.div
-                      key={option.value}
-                      whileHover={{ y: -2 }}
-                      transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-                      className="flex cursor-pointer items-start space-x-3 rounded-lg border border-transparent p-3 transition-colors hover:border-gray-200 hover:bg-gray-50 dark:hover:border-slate-700 dark:hover:bg-slate-800/70 md:p-4"
-                      onClick={() => setSelectedOption(option.value)}
-                    >
-                      <RadioGroupItem value={option.value} id={optionId} className="mt-1" />
-                      <Label
-                        htmlFor={optionId}
-                        className="flex-1 cursor-pointer text-base font-medium leading-relaxed md:text-lg"
-                      >
-                        {option.label}
-                      </Label>
-                    </motion.div>
-                  );
-                })}
-              </RadioGroup>
+              {questionContent}
             </motion.div>
           </AnimatePresence>
 
-          <div className="mt-10 flex items-center justify-between border-t border-gray-100 pt-6 dark:border-white/10 md:mt-12 md:pt-8">
+          <div className="mt-2 flex shrink-0 items-center justify-between border-t border-gray-100 pt-2.5 dark:border-white/10 md:mt-12 md:pt-8">
             <Button
               variant="ghost"
               onClick={handleBack}
@@ -231,8 +248,5 @@ export default function QuestionnairePage() {
     </div>
   );
 }
-
-
-
 
 
