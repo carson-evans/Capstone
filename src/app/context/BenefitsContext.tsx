@@ -127,6 +127,34 @@ const evaluateBenefitsLocally = (profile: Record<string, string>): Benefit[] => 
   return uniqueMatches;
 };
 
+const parseEligibilityResponse = async (response: Response) => {
+  const contentType = response.headers.get('content-type') || '';
+  const rawText = await response.text();
+
+  if (!contentType.toLowerCase().includes('application/json')) {
+    throw new Error(
+      `Eligibility endpoint returned ${contentType || 'a non-JSON response'}.`
+    );
+  }
+
+  let raw: any = {};
+  try {
+    raw = rawText ? JSON.parse(rawText) : {};
+  } catch {
+    throw new Error('Eligibility API returned invalid JSON.');
+  }
+
+  if (typeof raw?.body === 'string') {
+    try {
+      return JSON.parse(raw.body);
+    } catch {
+      return raw;
+    }
+  }
+
+  return raw;
+};
+
 export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [matchedBenefits, setMatchedBenefits] = useState<Benefit[]>([]);
@@ -145,13 +173,25 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
     overrideAnswers?: Record<string, string>
   ): Promise<Benefit[]> => {
     const profile = overrideAnswers ?? answers;
-    const apiUrl = import.meta.env.VITE_ELIGIBILITY_API_URL || '/api/eligibility/check';
+    const configuredUrl = import.meta.env.VITE_ELIGIBILITY_API_URL?.trim();
 
     setIsEvaluating(true);
     setEvaluationError(null);
 
+    if (!configuredUrl) {
+      console.warn(
+        'VITE_ELIGIBILITY_API_URL is missing. Falling back to local eligibility evaluation.'
+      );
+
+      const fallbackMatches = evaluateBenefitsLocally(profile);
+      setMatchedBenefits(fallbackMatches);
+      setEvaluationError(null);
+      setIsEvaluating(false);
+      return fallbackMatches;
+    }
+
     try {
-      const response = await fetch(apiUrl, {
+      const response = await fetch(configuredUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -159,30 +199,7 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
         body: JSON.stringify({ profile }),
       });
 
-      const contentType = response.headers.get('content-type') || '';
-      const rawText = await response.text();
-
-      if (!contentType.toLowerCase().includes('application/json')) {
-        throw new Error(
-          `Eligibility endpoint returned ${contentType || 'a non-JSON response'}.`
-        );
-      }
-
-      let raw: any = {};
-      try {
-        raw = rawText ? JSON.parse(rawText) : {};
-      } catch {
-        throw new Error('Eligibility API returned invalid JSON.');
-      }
-
-      let data = raw;
-      if (typeof raw?.body === 'string') {
-        try {
-          data = JSON.parse(raw.body);
-        } catch {
-          data = raw;
-        }
-      }
+      const data = await parseEligibilityResponse(response);
 
       if (!response.ok) {
         throw new Error(data?.error || 'Failed to evaluate eligibility.');
@@ -197,26 +214,15 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
       setMatchedBenefits(nextMatches);
       return nextMatches;
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Something went wrong while checking eligibility.';
+      console.error(
+        'Eligibility API failed. Falling back to local eligibility evaluation.',
+        error
+      );
 
-      if (import.meta.env.DEV) {
-        console.warn(
-          'Eligibility API failed in dev. Falling back to local evaluation.',
-          message
-        );
-
-        const fallbackMatches = evaluateBenefitsLocally(profile);
-        setMatchedBenefits(fallbackMatches);
-        setEvaluationError(null);
-        return fallbackMatches;
-      }
-
-      setEvaluationError(message);
-      setMatchedBenefits([]);
-      throw error;
+      const fallbackMatches = evaluateBenefitsLocally(profile);
+      setMatchedBenefits(fallbackMatches);
+      setEvaluationError(null);
+      return fallbackMatches;
     } finally {
       setIsEvaluating(false);
     }
