@@ -71,7 +71,8 @@ const evaluateBenefitsLocally = (profile: Record<string, string>): Benefit[] => 
     isFullTimeOrFuture &&
     profile['ma_resident'] === 'yes' &&
     profile['citizen_status'] === 'yes' &&
-    profile['income_level'] === 'low'
+    profile['income_level'] === 'low'  &&
+    profile['massgrant-plus-uni'] === 'yes'
   ) {
     const benefit = getBenefitById('massgrant-plus');
     if (benefit) {
