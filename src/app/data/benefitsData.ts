@@ -192,7 +192,7 @@ export const questions: Question[] = [
     conditions: [
       {
         questionId: 'student_status',
-        values: ['full_time', 'part_time','future'],
+        values: ['full_time', 'part_time',' future'],
       },
     ],
     options: [
@@ -290,7 +290,7 @@ export const questions: Question[] = [
     conditions: [
       {
         questionId: 'student_status',
-        values: ['full_time', 'part_time'],
+        values: ['full_time', 'part_time', 'future'],
       },
     ],
     options: [
@@ -305,7 +305,7 @@ export const questions: Question[] = [
     conditions: [
       {
         questionId: 'student_status',
-        values: ['full_time', 'part_time'],
+        values: ['full_time', 'part_time','future'],
       },
     ],
     options: [
@@ -325,12 +325,12 @@ export const questions: Question[] = [
   },
   {
     id: 'housing_status',
-    text: 'What is your current living situation?',
+    text: 'What is or will be your living situation while attending college/university?',
     category: 'Housing',
     conditions: [
       {
         questionId: 'student_status',
-        values: ['full_time', 'part_time'],
+        values: ['full_time', 'part_time','future'],
       },
     ],
     options: [
@@ -341,7 +341,7 @@ export const questions: Question[] = [
   },
   {
     id: 'transportation',
-    text: 'Do you use public transportation to get to school?',
+    text: 'Do you or will you use public transportation to get to school?',
     category: 'Transport',
     conditions: [
       {
