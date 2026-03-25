@@ -174,9 +174,9 @@ export const questions: Question[] = [
     category: 'General',
     conditions: [
       {
-      questionId : 'ma_resident',
-      values: ['yes']
-      }
+        questionId: 'ma_resident',
+        values: ['yes'],
+      },
     ],
     options: [
       { label: 'Less than 5 years', value: 'low' },
