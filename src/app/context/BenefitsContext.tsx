@@ -71,7 +71,7 @@ const evaluateBenefitsLocally = (profile: Record<string, string>): Benefit[] => 
     isFullTimeOrFuture &&
     profile['ma_resident'] === 'yes' &&
     profile['citizen_status'] === 'yes' &&
-    profile['income_level'] === 'low'  &&
+    profile['income_level'] === 'low' &&
     profile['massgrant-plus-uni'] === 'yes'
   ) {
     const benefit = getBenefitById('massgrant-plus');
@@ -114,9 +114,9 @@ const evaluateBenefitsLocally = (profile: Record<string, string>): Benefit[] => 
   if (
     isStudentOrFuture &&
     (profile['mbta-specials'] === 'yes' ||
-    profile['mbta-disability'] === 'yes' ||
-    profile['mbta-program'] === 'yes' ||
-    profile['mbta-uni'] === 'yes')
+      profile['mbta-disability'] === 'yes' ||
+      profile['mbta-program'] === 'yes' ||
+      profile['mbta-uni'] === 'yes')
   ) {
     const benefit = getBenefitById('mbta-pass');
     if (benefit) {

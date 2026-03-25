@@ -252,7 +252,7 @@ export const questions: Question[] = [
   },
   {
     id: 'mbta-uni',
-    text: 'Do you or will you attend any of these universities?(MBTA)',
+    text: 'Do you or will you attend any of these universities? (MBTA)',
     category: 'General',
     conditions: [
       {
