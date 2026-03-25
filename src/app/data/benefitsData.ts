@@ -133,20 +133,22 @@ export const questions: Question[] = [
     options: [
       { label: 'Yes, full-time', value: 'full_time' },
       { label: 'Yes, part-time', value: 'part_time' },
-      { label: 'Yes, in future', value: 'future' },
+      { label: 'I will be enrolled within the next year', value: 'future' },
       { label: 'No', value: 'no' },
     ],
   },
+
   {
-    id: 'residency_length',
-    text: 'How many years have you lived in MA?',
+    id: 'age',
+    text: 'Choose your age group?',
     category: 'General',
     options: [
-      { label: '1 - 5 years', value: 'low' },
-      { label: '5 - 10 years', value: 'medium' },
-      { label: 'more than 10 years', value: 'high' },
+      { label: 'Under 18', value: 'low' },
+      { label: '18 to 64', value: 'medium' },
+      { label: 'Over 64', value: 'high' },
     ],
   },
+
   {
     id: 'citizen_status',
     text: 'Are you a U.S. citizen or an eligible non-citizen?',
@@ -165,6 +167,24 @@ export const questions: Question[] = [
       { label: 'No', value: 'no' },
     ],
   },
+
+  {
+    id: 'residency_length',
+    text: 'How many years have you lived in MA?',
+    category: 'General',
+    conditions: [
+      {
+      questionId : 'ma_resident',
+      values: ['yes']
+      }
+    ],
+    options: [
+      { label: 'Less than 5 years', value: 'low' },
+      { label: '5 - 10 years', value: 'medium' },
+      { label: 'More than 10 years', value: 'high' },
+    ],
+  },
+
   {
     id: 'fafsa_completed',
     text: 'Have you completed the FAFSA for the current academic year?',
@@ -172,7 +192,7 @@ export const questions: Question[] = [
     conditions: [
       {
         questionId: 'student_status',
-        values: ['full_time', 'part_time'],
+        values: ['full_time', 'part_time',' future'],
       },
     ],
     options: [
@@ -208,17 +228,6 @@ export const questions: Question[] = [
   },
 
   {
-    id: 'age',
-    text: 'Choose your age group?',
-    category: 'General',
-    options: [
-      { label: 'Under 18', value: 'low' },
-      { label: '18 to 64', value: 'medium' },
-      { label: 'Over 64', value: 'high' },
-    ],
-  },
-
-  {
     id: 'mbta-program',
     text: 'Are you enrolled in an MBTA income-eligible program?',
     category: 'General',
@@ -243,7 +252,7 @@ export const questions: Question[] = [
   },
   {
     id: 'mbta-uni',
-    text: 'Is your University eligible for MBTA?',
+    text: 'Do you or will you attend any of these universities?(MBTA)',
     category: 'General',
     conditions: [
       {
@@ -259,6 +268,15 @@ export const questions: Question[] = [
         values: ['no']
       },
     ],
+    options: [
+      { label: 'Yes', value: 'yes' },
+      { label: 'No', value: 'no' },
+    ],
+  },
+  {
+    id: 'massgrant-plus-uni',
+    text: 'Do you or will you attend any of these universities?(MassGrantPlus)',
+    category: 'General',
     options: [
       { label: 'Yes', value: 'yes' },
       { label: 'No', value: 'no' },
@@ -338,16 +356,6 @@ export const questions: Question[] = [
     options: [
       { label: 'Yes, regularly', value: 'yes' },
       { label: 'Sometimes', value: 'sometimes' },
-      { label: 'No', value: 'no' },
-    ],
-  },
-  {
-    id: 'health_insurance',
-    text: 'Do you currently have health insurance?',
-    category: 'Health',
-    options: [
-      { label: 'Yes, through parents', value: 'parents' },
-      { label: 'Yes, through school', value: 'school' },
       { label: 'No', value: 'no' },
     ],
   },
