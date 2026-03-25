@@ -192,7 +192,7 @@ export const questions: Question[] = [
     conditions: [
       {
         questionId: 'student_status',
-        values: ['full_time', 'part_time', 'future'],
+        values: ['full_time', 'part_time','future'],
       },
     ],
     options: [
@@ -337,26 +337,6 @@ export const questions: Question[] = [
       { label: 'On-campus housing', value: 'on_campus' },
       { label: 'Off-campus (renting)', value: 'off_campus' },
       { label: 'Living with family', value: 'family' },
-    ],
-  },
-  {
-    id: 'transportation',
-    text: 'Do you or will you use public transportation to get to school?',
-    category: 'Transport',
-    conditions: [
-      {
-        questionId: 'ma_resident',
-        values: ['yes'],
-      },
-      {
-        questionId: 'student_status',
-        values: ['full_time', 'part_time', 'future'],
-      },
-    ],
-    options: [
-      { label: 'Yes, regularly', value: 'yes' },
-      { label: 'Sometimes', value: 'sometimes' },
-      { label: 'No', value: 'no' },
     ],
   },
 ];
