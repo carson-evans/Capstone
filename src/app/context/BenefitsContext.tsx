@@ -35,7 +35,7 @@ function isBelowSnapLimit(profile: Record<string, string>): boolean {
   const household = profile['household_sizes'];
   const income = parseInt(profile['income_level']);
 
-  if (!household || !income) return false;
+  if (!household || isNaN(income)) return false;
 
   const limit = SNAP_LIMITS[household];
   if (!limit) return false;
@@ -54,7 +54,7 @@ function isBelowMassHealthLimit(profile: Record<string, string>): boolean {
   const household = profile['household_sizes'];
   const income = parseInt(profile['income_level']);
 
-  if (!household || !income) return false;
+  if (!household || isNaN(income)) return false;
 
   const limit = MASSHEALTH_LIMITS[household];
   if (!limit) return false;
@@ -110,7 +110,7 @@ const evaluateBenefitsLocally = (profile: Record<string, string>): Benefit[] => 
     isFullTimeOrFuture &&
     profile['ma_resident'] === 'yes' &&
     profile['citizen_status'] === 'yes' &&
-    profile['efc_level'] === 'zero'  &&
+    profile['efc_level'] === 'zero' &&
     profile['massgrant-plus-uni'] === 'yes'
   ) {
     const benefit = getBenefitById('massgrant-plus');
@@ -129,7 +129,6 @@ const evaluateBenefitsLocally = (profile: Record<string, string>): Benefit[] => 
     profile['citizen_status'] === 'yes' &&
     profile['ma_resident'] === 'yes' &&
     (profile['work_study'] === 'yes' || isBelowSnapLimit(profile))
-
   ) {
     const benefit = getBenefitById('snap');
     if (benefit) {

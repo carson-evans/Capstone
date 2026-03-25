@@ -1,5 +1,3 @@
-import { Value } from "@radix-ui/react-select";
-
 export interface Benefit {
   id: string;
   title: string;
@@ -177,9 +175,9 @@ export const questions: Question[] = [
     category: 'General',
     conditions: [
       {
-      questionId : 'ma_resident',
-      values: ['yes']
-      }
+        questionId: 'ma_resident',
+        values: ['yes'],
+      },
     ],
     options: [
       { label: 'Less than 5 years', value: 'low' },
@@ -213,48 +211,24 @@ export const questions: Question[] = [
   },
 
   {
-  id: 'efc_level',
-  text: 'What is your Expected Family Contribution (EFC) from FAFSA?',
-  category: 'Financial',
-  conditions: [
-    {
+    id: 'efc_level',
+    text: 'What is your Expected Family Contribution (EFC) from FAFSA?',
+    category: 'Financial',
+    conditions: [
+      {
         questionId: 'student_status',
         values: ['full_time', 'part_time', 'future'],
       },
-  ],
-  options: [
-    { label: '$0', value: 'zero' },
-    { label: 'Above $0', value: '1' },
-  ],
-},
-
-{
-  id: 'mbta-uni',
-  text: 'Do you or will you attend any of these universities?(MBTA)',
-  category: 'General',
-  conditions: [
-    {
-      questionId: 'citizen_status',
-      values: ['yes'],
-    },
-    {
-      questionId: 'ma_resident',
-      values: ['yes'],
-    },
-    {
-      questionId: 'student_status',
-      values: ['full_time', 'part_time', 'future'],
-    }
-  ],
-  options: [
-    { label: 'Yes', value: 'yes' },
-    { label: 'No', value: 'no' },
-  ],
+    ],
+    options: [
+      { label: '$0', value: 'zero' },
+      { label: 'Above $0', value: '1' },
+    ],
   },
 
   {
-    id: 'massgrant-plus-uni',
-    text: 'Do you or will you attend any of these universities?(MassGrantPlus)',
+    id: 'mbta-uni',
+    text: 'Do you or will you attend any of these universities? (MBTA)',
     category: 'General',
     conditions: [
       {
@@ -268,7 +242,31 @@ export const questions: Question[] = [
       {
         questionId: 'student_status',
         values: ['full_time', 'part_time', 'future'],
-      }
+      },
+    ],
+    options: [
+      { label: 'Yes', value: 'yes' },
+      { label: 'No', value: 'no' },
+    ],
+  },
+
+  {
+    id: 'massgrant-plus-uni',
+    text: 'Do you or will you attend any of these universities? (MassGrant Plus)',
+    category: 'General',
+    conditions: [
+      {
+        questionId: 'citizen_status',
+        values: ['yes'],
+      },
+      {
+        questionId: 'ma_resident',
+        values: ['yes'],
+      },
+      {
+        questionId: 'student_status',
+        values: ['full_time', 'part_time', 'future'],
+      },
     ],
     options: [
       { label: 'Yes', value: 'yes' },
@@ -280,7 +278,7 @@ export const questions: Question[] = [
     id: 'dependent_status',
     text: "Are you claimed as a dependent on someone else's tax return?",
     category: 'Financial',
-    conditions:[
+    conditions: [
       {
         questionId: 'citizen_status',
         values: ['yes'],
@@ -298,7 +296,7 @@ export const questions: Question[] = [
     conditions: [
       {
         questionId: 'student_status',
-        values: ['full_time', 'part_time','future'],
+        values: ['full_time', 'part_time', 'future'],
       },
     ],
     options: [
@@ -310,7 +308,7 @@ export const questions: Question[] = [
     id: 'household_sizes',
     text: 'What is your household size?',
     category: 'Financial',
-    conditions:[
+    conditions: [
       {
         questionId: 'citizen_status',
         values: ['yes'],
@@ -320,7 +318,6 @@ export const questions: Question[] = [
         values: ['yes'],
       },
     ],
-
     options: [
       { label: '1', value: '1' },
       { label: '2', value: '2' },
@@ -336,7 +333,7 @@ export const questions: Question[] = [
     conditions: [
       {
         questionId: 'student_status',
-        values: ['full_time', 'part_time','future'],
+        values: ['full_time', 'part_time', 'future'],
       },
     ],
     options: [
@@ -361,12 +358,12 @@ export const questions: Question[] = [
       },
     ],
     options: [
-    { label: 'Under $20,000', value: '20000' },
-    { label: '$20,000 - $27,000', value: '27000' },
-    { label: '$27,000 - $34,000', value: '34000' },
-    { label: '$34,000 - $41,400,', value: '41400' },
-    { label: 'Above 41,400$', value: '999999' }
-  ],
+      { label: 'Under $20,000', value: '20000' },
+      { label: '$20,000 - $27,000', value: '27000' },
+      { label: '$27,000 - $34,000', value: '34000' },
+      { label: '$34,000 - $41,400', value: '41400' },
+      { label: 'Above $41,400', value: '999999' },
+    ],
   },
 
 ];
