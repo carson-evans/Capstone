@@ -192,7 +192,7 @@ export const questions: Question[] = [
     conditions: [
       {
         questionId: 'student_status',
-        values: ['full_time', 'part_time',' future'],
+        values: ['full_time', 'part_time','future'],
       },
     ],
     options: [
