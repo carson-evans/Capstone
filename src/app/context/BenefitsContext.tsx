@@ -112,7 +112,7 @@ const evaluateBenefitsLocally = (profile: Record<string, string>): Benefit[] => 
   }
 
   if (
-    isEnrolled &&
+    isStudentOrFuture &&
     (profile['transportation'] === 'yes' || profile['transportation'] === 'sometimes')
   ) {
     const benefit = getBenefitById('mbta-pass');
