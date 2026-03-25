@@ -20,6 +20,8 @@ export interface Question {
     questionId: string;
     values: string[];
   }[];
+  description?: string;
+
 }
 
 export const benefits: Benefit[] = [
@@ -125,6 +127,55 @@ export const benefits: Benefit[] = [
   },
 ];
 
+const MBTA_SCHOOLS = [
+  "Bay State College",
+  "Benjamin Franklin Institute of Technology",
+  "Berklee College of Music",
+  "Boston Architectural College",
+  "Boston College",
+  "Boston University",
+  "Bridgewater State University",
+  "Bunker Hill Community College",
+  "College for Social Innovation",
+  "Curry College",
+  "Emerson College",
+  "Emmanuel College",
+  "Endicott College",
+  "Fisher College",
+  "Harvard University",
+  "Harvard Graduate School of Arts and Sciences",
+  "Harvard Divinity School",
+  "Harvard Graduate School of Education",
+  "Harvard Kennedy School",
+  "Harvard Law School",
+  "Harvard Medical School",
+  "Harvard School of Dental Medicine",
+  "Harvard T.H. Chan School of Public Health",
+  "Harvard University Graduate School of Design",
+  "Hebrew College",
+  "Lasell College",
+  "Lesley University",
+  "Longy School of Music of Bard College",
+  "Massachusetts College of Art and Design",
+  "Massachusetts Institute of Technology",
+  "MCPHS University",
+  "MGH Institute of Health Professions",
+  "New England Conservatory",
+  "New England College of Optometry",
+  "New England School of Law",
+  "North Bennet Street School",
+  "Northeastern University",
+  "Quincy College",
+  "Salem State University",
+  "Simmons College",
+  "Stonehill College",
+  "Suffolk University Boston",
+  "Suffolk University Law School",
+  "Tufts University",
+  "University of Massachusetts Boston",
+  "Wentworth Institute of Technology"
+];
+
 export const questions: Question[] = [
   {
     id: 'student_status',
@@ -133,20 +184,22 @@ export const questions: Question[] = [
     options: [
       { label: 'Yes, full-time', value: 'full_time' },
       { label: 'Yes, part-time', value: 'part_time' },
-      { label: 'Yes, in future', value: 'future' },
+      { label: 'I will be enrolled within the next year', value: 'future' },
       { label: 'No', value: 'no' },
     ],
   },
+
   {
-    id: 'residency_length',
-    text: 'How many years have you lived in MA?',
+    id: 'age',
+    text: 'Choose your age group?',
     category: 'General',
     options: [
-      { label: '1 - 5 years', value: 'low' },
-      { label: '5 - 10 years', value: 'medium' },
-      { label: 'more than 10 years', value: 'high' },
+      { label: 'Under 18', value: 'low' },
+      { label: '18 to 64', value: 'medium' },
+      { label: 'Over 64', value: 'high' },
     ],
   },
+
   {
     id: 'citizen_status',
     text: 'Are you a U.S. citizen or an eligible non-citizen?',
@@ -165,6 +218,24 @@ export const questions: Question[] = [
       { label: 'No', value: 'no' },
     ],
   },
+
+  {
+    id: 'residency_length',
+    text: 'How many years have you lived in MA?',
+    category: 'General',
+    conditions: [
+      {
+      questionId : 'ma_resident',
+      values: ['yes']
+      }
+    ],
+    options: [
+      { label: 'Less than 5 years', value: 'low' },
+      { label: '5 - 10 years', value: 'medium' },
+      { label: 'More than 10 years', value: 'high' },
+    ],
+  },
+
   {
     id: 'fafsa_completed',
     text: 'Have you completed the FAFSA for the current academic year?',
@@ -208,17 +279,6 @@ export const questions: Question[] = [
   },
 
   {
-    id: 'age',
-    text: 'Choose your age group?',
-    category: 'General',
-    options: [
-      { label: 'Under 18', value: 'low' },
-      { label: '18 to 64', value: 'medium' },
-      { label: 'Over 64', value: 'high' },
-    ],
-  },
-
-  {
     id: 'mbta-program',
     text: 'Are you enrolled in an MBTA income-eligible program?',
     category: 'General',
@@ -243,7 +303,7 @@ export const questions: Question[] = [
   },
   {
     id: 'mbta-uni',
-    text: 'Is your University eligible for MBTA?',
+    text: 'Do you or will you attend any of these universities?',
     category: 'General',
     conditions: [
       {
@@ -263,6 +323,7 @@ export const questions: Question[] = [
       { label: 'Yes', value: 'yes' },
       { label: 'No', value: 'no' },
     ],
+    description: MBTA_SCHOOLS
   },
 
   {
@@ -346,13 +407,11 @@ export const questions: Question[] = [
     text: 'Do you currently have health insurance?',
     category: 'Health',
     options: [
-      { label: 'Yes, through parents', value: 'parents' },
-      { label: 'Yes, through school', value: 'school' },
+      { label: 'Yes', value: 'yes' },
       { label: 'No', value: 'no' },
     ],
   },
 ];
-
 /**
  * Checks if a question should be shown based on its conditions.
  * Uses AND logic: all conditions must be satisfied.
