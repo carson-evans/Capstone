@@ -135,7 +135,13 @@ export default function QuestionnairePage() {
       <h2 className="mb-7 max-w-2xl text-[1.66rem] font-bold leading-[1.08] md:mb-10 md:text-[2.15rem] md:leading-[1.08]">
         {currentQuestion.text}
       </h2>
-
+      {Array.isArray(currentQuestion.description) && (
+        <ul className="mb-4 list-disc pl-5 text-sm text-gray-600 dark:text-slate-400">
+          {currentQuestion.description.map((school) => (
+            <li key={school}>{school}</li>
+          ))}
+        </ul>
+      )}
       <RadioGroup
         value={selectedOption}
         onValueChange={setSelectedOption}
@@ -205,11 +211,7 @@ export default function QuestionnairePage() {
                   ? 'overflow-y-auto overscroll-contain pr-1 transform-gpu will-change-transform'
                   : 'md:flex-none'
               }`}
-              style={
-                !isMobile && desktopContentHeight
-                  ? { height: desktopContentHeight }
-                  : undefined
-              }
+              style={undefined}
             >
               {questionContent}
             </motion.div>
@@ -261,6 +263,13 @@ export default function QuestionnairePage() {
                 <h2 className="mb-10 max-w-2xl text-[2.15rem] font-bold leading-[1.08]">
                   {question.text}
                 </h2>
+                {Array.isArray(question.description) && (
+                  <ul className="mb-4 list-disc pl-5 text-sm text-gray-600">
+                    {question.description.map((school) => (
+                      <li key={school}>{school}</li>
+                    ))}
+                  </ul>
+                )}
 
                 <div className="space-y-4">
                   {question.options.map((option) => (
