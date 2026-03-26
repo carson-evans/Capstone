@@ -9,14 +9,7 @@ import { Button } from '../components/ui/button';
 import { Checkbox } from '../components/ui/checkbox';
 import { InlineTooltipText } from '../components/ui/inline-tooltip-text';
 import { useBenefits } from '../context/BenefitsContext';
-import {
-  FAFSA_STATUS_URL,
-  MASFA_START_URL,
-  MASFA_STATUS_URL,
-  getBenefitApplicationType,
-  getBenefitRichTextSegments,
-  isBenefitApplicationCompleted,
-} from '../data/benefitsData';
+import { getBenefitRichTextSegments } from '../data/benefitsData';
 import { useIsMobile } from '../components/ui/use-mobile';
 import { generatePacketRequest } from '@/lib/api';
 import { SiteFooter } from '../components/layout/SiteFooter';
@@ -71,40 +64,6 @@ export default function ChecklistPage() {
       }))
       .sort((a, b) => Number(a.checked) - Number(b.checked) || a.originalIndex - b.originalIndex);
 
-  const getBenefitAction = (benefit: (typeof matchedBenefits)[number]) => {
-    const applicationType = getBenefitApplicationType(benefit.id, answers);
-    const isApplicationCompleted = isBenefitApplicationCompleted(benefit.id, answers);
-
-    if (applicationType === 'masfa') {
-      return isApplicationCompleted
-        ? {
-            href: MASFA_STATUS_URL,
-            label: 'Check MASFA Status',
-          }
-        : {
-            href: MASFA_START_URL,
-            label: 'Start MASFA Application',
-          };
-    }
-
-    if (applicationType === 'fafsa') {
-      return isApplicationCompleted
-        ? {
-            href: FAFSA_STATUS_URL,
-            label: 'Check FAFSA Status',
-          }
-        : {
-            href: benefit.officialUrl,
-            label: 'Start FAFSA Application',
-          };
-    }
-
-    return {
-      href: benefit.officialUrl,
-      label: benefit.officialButtonLabel ?? 'Visit Official Site',
-    };
-  };
-
   const renderChecklistItemText = (item: string) => {
     const richTextSegments = getBenefitRichTextSegments(item);
     return richTextSegments ? <InlineTooltipText segments={richTextSegments} /> : item;
@@ -141,7 +100,6 @@ export default function ChecklistPage() {
     try {
       const packetResult = await generatePacketRequest({
         profile: answers,
-        matchedBenefits: checklistBenefits,
         selectedBenefits: checklistBenefits.map((benefit) => benefit.id),
         checklistProgress,
       });
@@ -289,8 +247,6 @@ export default function ChecklistPage() {
               const completedSteps =
                 checklistProgress[benefit.id]?.filter((checked) => checked).length ?? 0;
 
-              const action = getBenefitAction(benefit);
-
               return (
                 <motion.section
                   key={benefit.id}
@@ -320,9 +276,9 @@ export default function ChecklistPage() {
                       variant="outline"
                       className="group w-full border-[#355b8a] bg-white text-[#355b8a] shadow-sm transition-all duration-300 hover:border-[#f97316] hover:bg-[#f97316] hover:text-white hover:shadow-[0_12px_28px_-18px_rgba(249,115,22,0.4)] md:w-auto print:hidden dark:border-sky-200 dark:bg-transparent dark:text-sky-200 dark:hover:border-[#f97316] dark:hover:bg-[#f97316] dark:hover:text-white dark:hover:shadow-[0_0_24px_rgba(249,115,22,0.28)]"
                     >
-                      <a href={action.href} target="_blank" rel="noopener noreferrer">
+                      <a href={benefit.officialUrl} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                        {action.label}
+                        {benefit.officialButtonLabel ?? 'Visit Official Site'}
                       </a>
                     </Button>
                   </div>

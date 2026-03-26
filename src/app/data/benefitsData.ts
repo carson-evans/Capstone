@@ -34,8 +34,11 @@ export interface Benefit {
   officialUrl: string;
   officialButtonLabel?: string;
   actionStatus?: string;
+  actionStatuses?: string[];
+  applicationType?: 'fafsa' | 'masfa';
+  applicationCompleted?: boolean;
+  dheAffidavitRequired?: boolean;
 }
-
 export interface QuestionOption {
   label: string;
   value: string;
