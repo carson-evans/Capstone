@@ -18,7 +18,7 @@
       "description": "Need-based grant for Massachusetts residents attending college in-state.",
       "officialUrl": "https://studentaid.gov/h/apply-for-aid/fafsa",
       "checklist": [
-        "Complete the FAFSA",
+        "Complete the FAFSA or MASFA",
         "Be a Massachusetts resident",
         "Enroll in a Massachusetts college",
         "Maintain satisfactory academic progress",
@@ -31,7 +31,7 @@
       "description": "Additional need-based grant for Massachusetts residents with exceptional financial need.",
       "officialUrl": "https://studentaid.gov/h/apply-for-aid/fafsa",
       "checklist": [
-        "Complete the FAFSA",
+        "Complete the FAFSA or MASFA",
         "Demonstrate exceptional financial need",
         "Enroll full-time at a Massachusetts public college",
         "Maintain good academic standing",

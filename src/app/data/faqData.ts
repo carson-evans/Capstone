@@ -30,7 +30,7 @@ export const faqData: FAQItem[] = [
     id: '2',
     question: 'What is MASSGrant and how do I qualify?',
     answer:
-      'MASSGrant is Massachusetts need-based aid for eligible undergraduate students. In general, you must be a Massachusetts resident, file the [FAFSA](https://studentaid.gov/h/apply-for-aid/fafsa) or [MASFA](https://www.mass.edu/osfa/students/masfa.asp) each year by the applicable deadline, attend an eligible school, enroll full time in an eligible program, show financial need, and meet satisfactory academic progress requirements.',
+      'MASSGrant is Massachusetts need-based aid for eligible undergraduate students. In general, you must be a Massachusetts resident, file the [FAFSA](https://studentaid.gov/h/apply-for-aid/fafsa) or [MASFA](https://www.mass.edu/osfa/students/masfa.asp) each year by the applicable deadline, attend an eligible school, enroll full time in an eligible program, show financial need, and meet satisfactory academic progress requirements. Students who cannot use the FAFSA because of immigration or citizenship status may still be reviewed through MASFA under the [Tuition Equity Law](https://www.mass.edu/tuitionequity/) if they meet the Massachusetts high-school-completer and documentation rules.',
     keywords: ['massgrant', 'state grant', 'resident', 'full-time', 'osfa', 'massachusetts aid'],
     relatedBenefitIds: ['massgrant'],
     officialUrl: 'https://studentaid.gov/h/apply-for-aid/fafsa',
@@ -39,7 +39,7 @@ export const faqData: FAQItem[] = [
     id: '3',
     question: 'What is MASSGrant Plus?',
     answer:
-      'MASSGrant Plus is Massachusetts aid designed to reduce tuition and fee costs for eligible students at public four-year colleges and universities. Eligibility depends on factors such as Massachusetts residency, financial need, school type, enrollment, and academic progress, and students are usually considered through the [FAFSA](https://studentaid.gov/h/apply-for-aid/fafsa) or [MASFA](https://www.mass.edu/osfa/students/masfa.asp).',
+      'MASSGrant Plus is Massachusetts aid designed to reduce tuition and fee costs for eligible students at public four-year colleges and universities. Eligibility depends on factors such as Massachusetts residency, financial need, school type, enrollment, and academic progress, and students are usually considered through the [FAFSA](https://studentaid.gov/h/apply-for-aid/fafsa) or [MASFA](https://www.mass.edu/osfa/students/masfa.asp). Students using MASFA may need to satisfy the [Tuition Equity Law](https://www.mass.edu/tuitionequity/) high-school-completer and documentation requirements.',
     keywords: ['massgrant plus', 'public college', 'umass', 'state university', 'tuition and fees'],
     relatedBenefitIds: ['massgrant-plus'],
     officialUrl: 'https://studentaid.gov/h/apply-for-aid/fafsa',
@@ -168,7 +168,7 @@ export const faqData: FAQItem[] = [
     id: '16',
     question: 'What if I cannot complete the FAFSA because of my immigration or citizenship status?',
     answer:
-      'Massachusetts offers the [MASFA](https://www.mass.edu/osfa/students/masfa.asp) for students who are ineligible or unable to complete the FAFSA but may still qualify for in-state tuition rates and state financial aid. Students should complete only one application, [FAFSA](https://studentaid.gov/h/apply-for-aid/fafsa) or MASFA, depending on eligibility.',
+      'Massachusetts offers the [MASFA](https://www.mass.edu/osfa/students/masfa.asp) for students who are ineligible or unable to complete the FAFSA but may still qualify for in-state tuition rates and state financial aid. Students should complete only one application, [FAFSA](https://studentaid.gov/h/apply-for-aid/fafsa) or MASFA, depending on eligibility. For the Tuition Equity Law state-aid path, Massachusetts says students generally must have attended high school in Massachusetts for at least 3 academic years, earned a Massachusetts diploma or equivalent, and provide a valid SSN, ITIN document, Selective Service registration if applicable, or a completed [DHE Tuition Equity Form and Affidavit](https://www.mass.edu/tuitionequity/documents/2025-09-10%20Tuition%20Equity%20Form%20and%20Affidavit_Fillable.pdf) when needed.',
     keywords: ['masfa', 'immigration', 'citizenship', 'noncitizen', 'undocumented', 'state financial aid'],
     officialUrl: 'https://www.mass.edu/osfa/students/masfa.asp',
   },
@@ -278,7 +278,23 @@ export const faqData: FAQItem[] = [
     relatedBenefitIds: ['snap'],
     officialUrl: 'https://dtaconnect.eohhs.mass.gov/',
   },
+
+  {
+    id: '32',
+    question: 'Can students who are not citizens or permanent residents still get MASSGrant or MASSGrant Plus?',
+    answer:
+      'Yes, sometimes. Massachusetts says some students who cannot complete the [FAFSA](https://studentaid.gov/h/apply-for-aid/fafsa) because of immigration or citizenship status may still be reviewed for state aid through the [MASFA](https://www.mass.edu/osfa/students/masfa.asp) and the [Tuition Equity Law](https://www.mass.edu/tuitionequity/). For that path, students generally must be Massachusetts residents for the state-aid program, have attended high school in Massachusetts for at least 3 academic years, earned a Massachusetts diploma or equivalent, and provide a valid SSN, ITIN document, Selective Service registration if applicable, or a completed [DHE Tuition Equity Form and Affidavit](https://www.mass.edu/tuitionequity/documents/2025-09-10%20Tuition%20Equity%20Form%20and%20Affidavit_Fillable.pdf) when needed.',
+    keywords: ['undocumented massgrant', 'noncitizen massgrant', 'permanent resident massgrant', 'masfa massgrant', 'tuition equity law', 'massgrant plus undocumented'],
+    relatedBenefitIds: ['massgrant', 'massgrant-plus'],
+    officialUrl: 'https://www.mass.edu/osfa/students/masfa.asp',
+  },
+  {
+    id: '33',
+    question: 'Can students who are not citizens or eligible noncitizens get the Pell Grant?',
+    answer:
+      'No. Federal Pell Grant eligibility follows federal student-aid rules, so students who are not U.S. citizens or eligible noncitizens are generally not eligible for Pell. If you cannot complete the [FAFSA](https://studentaid.gov/h/apply-for-aid/fafsa) because of immigration or citizenship status, you can still review the [MASFA](https://www.mass.edu/osfa/students/masfa.asp) for Massachusetts state aid such as MASSGrant or MASSGrant Plus, but MASFA does not make you eligible for Pell.',
+    keywords: ['undocumented pell', 'noncitizen pell', 'pell permanent resident', 'pell citizenship', 'masfa pell', 'pell no'],
+    relatedBenefitIds: ['pell-grant'],
+    officialUrl: 'https://studentaid.gov/h/apply-for-aid/fafsa',
+  },
 ];
-
-
-

@@ -1,7 +1,7 @@
-﻿import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, X } from 'lucide-react';
 
 import { Button } from '../components/ui/button';
 import { Progress } from '../components/ui/progress';
@@ -186,6 +186,50 @@ export default function QuestionnairePage() {
   const isLastStep =
     visibleQuestions.length > 0 && currentStep === visibleQuestions.length - 1;
 
+  const willSubmitCurrentStep = React.useMemo(() => {
+    if (!currentQuestion || !normalizedSelectedOption || currentValidationError) {
+      return isLastStep;
+    }
+
+    const normalizedAnswerValue =
+      currentQuestion.control === 'select'
+        ? findMatchingSelectOption(
+            currentQuestion,
+            normalizedSelectedOption,
+            answers
+          )?.value ?? normalizedSelectedOption
+        : normalizedSelectedOption;
+
+    const nextAnswers = getPrunedAnswers({
+      ...answers,
+      [currentQuestion.id]: normalizedAnswerValue,
+    });
+
+    const nextVisibleQuestions = getVisibleQuestions(
+      screeningQuestions,
+      nextAnswers
+    );
+
+    const currentQuestionIndex = nextVisibleQuestions.findIndex(
+      (question) => question.id === currentQuestion.id
+    );
+
+    const safeCurrentQuestionIndex =
+      currentQuestionIndex >= 0 ? currentQuestionIndex : currentStep;
+
+    return safeCurrentQuestionIndex >= nextVisibleQuestions.length - 1;
+  }, [
+    answers,
+    currentQuestion,
+    currentStep,
+    currentValidationError,
+    findMatchingSelectOption,
+    getPrunedAnswers,
+    isLastStep,
+    normalizedSelectedOption,
+    screeningQuestions,
+  ]);
+
   const progress =
     visibleQuestions.length > 0
       ? ((currentStep + 1) / visibleQuestions.length) * 100
@@ -340,7 +384,7 @@ export default function QuestionnairePage() {
             <div className="space-y-3">
               <div className="h-14 rounded-lg border border-gray-200 bg-white px-4 text-base font-medium text-gray-500 md:text-lg" />
               <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-                <div className="max-h-64 min-h-64 overflow-y-auto p-2">
+                <div className="max-h-64 min-h-64 overflow-y-auto p-2 md:max-h-[22rem] md:min-h-[22rem]">
                   {questionOptions.slice(0, 6).map((option) => (
                     <div
                       key={option.value}
@@ -368,62 +412,79 @@ export default function QuestionnairePage() {
           selectedOption,
           answers
         );
+        const hasExactSelectedSchool =
+          Boolean(selectedSchool) && selectedSchool.label.toLowerCase() === searchTerm;
+        const shouldShowSchoolResults = !hasExactSelectedSchool;
 
         return (
           <div className="space-y-3">
             <label htmlFor="school-search" className="sr-only">
               Search for your college or university
             </label>
-            <Input
-              id="school-search"
-              type="text"
-              value={selectedOption}
-              onChange={(event) => setSelectedOption(event.target.value)}
-              placeholder="Start typing or scroll to select"
-              autoComplete="off"
-              aria-autocomplete="list"
-              aria-controls="school-search-results"
-              aria-expanded={filteredOptions.length > 0}
-              aria-describedby={currentValidationError ? 'school-search-error' : undefined}
-              aria-invalid={currentValidationError ? true : undefined}
-              className="h-14 rounded-lg border-gray-200 bg-white px-4 text-base font-medium md:text-lg"
-            />
-
-            <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-              <div
-                id="school-search-results"
-                role="listbox"
-                aria-label="Matching schools"
-                className="max-h-64 overflow-y-auto p-2"
-              >
-                {filteredOptions.length > 0 ? (
-                  filteredOptions.map((option) => {
-                    const isSelected = selectedSchool?.value === option.value;
-
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        role="option"
-                        aria-selected={isSelected}
-                        onClick={() => setSelectedOption(option.label)}
-                        className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors md:text-base ${
-                          isSelected
-                            ? 'bg-[#1e3a5f] text-white'
-                            : 'text-slate-700 hover:bg-slate-100'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })
-                ) : (
-                  <p className="px-3 py-2 text-sm text-slate-500 md:text-base">
-                    No matching schools found.
-                  </p>
-                )}
-              </div>
+            <div className="relative">
+              <Input
+                id="school-search"
+                type="text"
+                value={selectedOption}
+                onChange={(event) => setSelectedOption(event.target.value)}
+                placeholder="Start typing or scroll to select"
+                autoComplete="off"
+                aria-autocomplete="list"
+                aria-controls={shouldShowSchoolResults ? 'school-search-results' : undefined}
+                aria-expanded={shouldShowSchoolResults}
+                aria-describedby={currentValidationError ? 'school-search-error' : undefined}
+                aria-invalid={currentValidationError ? true : undefined}
+                className="h-14 rounded-lg border-gray-200 bg-white px-4 pr-12 text-base font-medium md:text-lg"
+              />
+              {selectedOption.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedOption('')}
+                  aria-label="Clear selected school"
+                  className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
+
+            {shouldShowSchoolResults && (
+              <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+                <div
+                  id="school-search-results"
+                  role="listbox"
+                  aria-label="Matching schools"
+                  className="max-h-64 overflow-y-auto p-2 md:max-h-[22rem]"
+                >
+                  {filteredOptions.length > 0 ? (
+                    filteredOptions.map((option) => {
+                      const isSelected = selectedSchool?.value === option.value;
+
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          role="option"
+                          aria-selected={isSelected}
+                          onClick={() => setSelectedOption(option.label)}
+                          className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors md:text-base ${
+                            isSelected
+                              ? 'bg-[#1e3a5f] text-white'
+                              : 'text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <p className="px-3 py-2 text-sm text-slate-500 md:text-base">
+                      No matching schools found.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {currentValidationError && (
               <p id="school-search-error" role="alert" className="text-sm font-medium text-red-600 dark:text-red-400">
@@ -620,8 +681,8 @@ export default function QuestionnairePage() {
               }
               className="rounded-md bg-[#1e3a5f] px-8 text-white transition-all hover:bg-[#f97316] dark:shadow-[0_18px_36px_-24px_rgba(15,23,42,0.95)] disabled:opacity-50 md:text-base"
             >
-              {isLastStep ? (isEvaluating ? 'Checking...' : 'See Results') : 'Next'}
-              {!isLastStep && <ArrowRight className="ml-2 h-4 w-4" />}
+              {willSubmitCurrentStep ? (isEvaluating ? 'Checking...' : 'See Results') : 'Next'}
+              {!willSubmitCurrentStep && <ArrowRight className="ml-2 h-4 w-4" />}
             </Button>
           </div>
         </div>
