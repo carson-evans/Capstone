@@ -9,9 +9,8 @@ import { Label } from '../components/ui/label';
 import { Navbar } from '../components/layout/Navbar';
 import { PageBackdrop } from '../components/layout/PageBackdrop';
 import { useBenefits } from '../context/BenefitsContext';
-import { benefits, getVisibleQuestions, questions } from '../data/benefitsData';
+import { getVisibleQuestions, questions } from '../data/benefitsData';
 import { useIsMobile } from '../components/ui/use-mobile';
-import { Checkbox } from '../components/ui/checkbox';
 
 const MOBILE_PAGE_TRANSITION = {
   duration: 0.24,
@@ -24,31 +23,17 @@ export default function QuestionnairePage() {
   const { setAnswer, answers, evaluateBenefits, isEvaluating } = useBenefits();
   const measurementRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // Step 0 = choose which benefits to screen for.
-  // Step 1..N = screener questions (with conditional show/hide).
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string>('');
   const [desktopContentHeight, setDesktopContentHeight] = useState<number | null>(null);
-
-  const selectedBenefits = React.useMemo(() => {
-    const raw = answers['selected_benefits'];
-    if (!raw) return [];
-    return raw
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }, [answers]);
 
   const visibleQuestions = React.useMemo(() => {
     return getVisibleQuestions(questions, answers);
   }, [answers]);
 
   useEffect(() => {
-    // Clamp screener step index (currentStep - 1) when conditional visibility changes.
-    if (currentStep <= 0) return;
-    const screenerIndex = currentStep - 1;
-    if (screenerIndex >= visibleQuestions.length && visibleQuestions.length > 0) {
-      setCurrentStep(1 + (visibleQuestions.length - 1));
+    if (currentStep >= visibleQuestions.length && visibleQuestions.length > 0) {
+      setCurrentStep(visibleQuestions.length - 1);
     }
   }, [visibleQuestions.length, currentStep]);
 
@@ -58,18 +43,9 @@ export default function QuestionnairePage() {
     }
   }, [desktopContentHeight, isMobile]);
 
-  const isBenefitSelectionStep = currentStep === 0;
-  const currentScreenerIndex = currentStep - 1;
-  const currentQuestion =
-    currentScreenerIndex >= 0 ? visibleQuestions[currentScreenerIndex] : undefined;
-
-  const isLastStep =
-    !isBenefitSelectionStep &&
-    visibleQuestions.length > 0 &&
-    currentScreenerIndex === visibleQuestions.length - 1;
-
-  const totalSteps = 1 + visibleQuestions.length;
-  const progress = totalSteps > 0 ? ((currentStep + 1) / totalSteps) * 100 : 0;
+  const currentQuestion = visibleQuestions[currentStep];
+  const isLastStep = visibleQuestions.length > 0 && currentStep === visibleQuestions.length - 1;
+  const progress = visibleQuestions.length > 0 ? ((currentStep + 1) / visibleQuestions.length) * 100 : 0;
 
   useEffect(() => {
     if (currentQuestion) {
@@ -107,40 +83,7 @@ export default function QuestionnairePage() {
   }, [isMobile, visibleQuestions]);
 
   const handleNext = async () => {
-    if (isEvaluating) return;
-
-    if (isBenefitSelectionStep) {
-      if (selectedBenefits.length === 0) return;
-      setCurrentStep(1);
-      return;
-    }
-
-    if (!currentQuestion || !selectedOption) return;
-
-    // If user is NOT a student (no full-time/part-time), skip remaining screener
-    // questions and go straight to results.
-    if (currentQuestion.id === 'student_status') {
-      const isHalfOrFullTime =
-        selectedOption === 'full_time' || selectedOption === 'part_time';
-
-      const nextAnswers = {
-        ...answers,
-        [currentQuestion.id]: selectedOption,
-      };
-
-      setAnswer(currentQuestion.id, selectedOption);
-
-      if (!isHalfOrFullTime) {
-        try {
-          await evaluateBenefits(nextAnswers);
-          navigate('/results');
-        } catch (error) {
-          console.error('Eligibility evaluation error:', error);
-          navigate('/results');
-        }
-        return;
-      }
-    }
+    if (!currentQuestion || !selectedOption || isEvaluating) return;
 
     const nextAnswers = {
       ...answers,
@@ -148,15 +91,11 @@ export default function QuestionnairePage() {
     };
 
     const nextVisibleQuestions = getVisibleQuestions(questions, nextAnswers);
+    const isLastVisibleStep = currentStep >= nextVisibleQuestions.length - 1;
 
     setAnswer(currentQuestion.id, selectedOption);
 
-    const currentIndexInProspective = nextVisibleQuestions.findIndex(
-      (q) => q.id === currentQuestion.id,
-    );
-    const nextIndex = currentIndexInProspective + 1;
-
-    if (nextIndex >= nextVisibleQuestions.length) {
+    if (isLastVisibleStep) {
       try {
         await evaluateBenefits(nextAnswers);
         navigate('/results');
@@ -172,39 +111,22 @@ export default function QuestionnairePage() {
     }
 
     setSelectedOption('');
-    // +1 because step 0 is the benefits selection step.
-    setCurrentStep(1 + nextIndex);
+    setCurrentStep((prev) => prev + 1);
   };
 
   const handleBack = () => {
     if (isEvaluating) return;
 
-    if (currentStep === 0) {
-      navigate('/');
-      return;
-    } else {
+    if (currentStep > 0) {
       setCurrentStep((prev) => prev - 1);
+    } else {
+      navigate('/');
     }
   };
 
-  const toggleBenefit = (benefitId: string) => {
-    const current = new Set(selectedBenefits);
-    if (current.has(benefitId)) current.delete(benefitId);
-    else current.add(benefitId);
-    setAnswer('selected_benefits', Array.from(current).join(','));
-  };
+  if (!currentQuestion) return <div>Loading...</div>;
 
-  const selectAllBenefits = () => {
-    setAnswer('selected_benefits', benefits.map((b) => b.id).join(','));
-  };
-
-  const unselectAllBenefits = () => {
-    setAnswer('selected_benefits', '');
-  };
-
-  if (!isBenefitSelectionStep && !currentQuestion) return <div>Loading...</div>;
-
-  const questionContent = currentQuestion ? (
+  const questionContent = (
     <>
       <span className="mb-4 inline-block rounded bg-gray-100 px-2 py-1 text-xs font-bold uppercase tracking-wider text-gray-500 dark:bg-slate-800 dark:text-slate-300 md:mb-4 md:px-3 md:py-1.5 md:text-sm">
         {currentQuestion.category}
@@ -249,66 +171,6 @@ export default function QuestionnairePage() {
         })}
       </RadioGroup>
     </>
-  ) : null;
-
-  const benefitSelectionContent = (
-    <>
-      <span className="mb-4 inline-block rounded bg-gray-100 px-2 py-1 text-xs font-bold uppercase tracking-wider text-gray-500 dark:bg-slate-800 dark:text-slate-300 md:mb-4 md:px-3 md:py-1.5 md:text-sm">
-        Screener Preferences
-      </span>
-      <h2 className="mb-7 max-w-2xl text-[1.66rem] font-bold leading-[1.08] md:mb-10 md:text-[2.15rem] md:leading-[1.08]">
-        Which benefits do you want to be screened for?
-      </h2>
-
-      <div className="mb-5 flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          className="h-9 border-[#355b8a] bg-white text-[#355b8a] hover:bg-[#f97316] hover:text-white dark:border-sky-200 dark:text-sky-200 dark:hover:bg-[#f97316] dark:hover:text-white"
-          onClick={selectAllBenefits}
-        >
-          Select all
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-9 border-[#355b8a] bg-white text-[#355b8a] hover:bg-[#f97316] hover:text-white dark:border-sky-200 dark:text-sky-200 dark:hover:bg-[#f97316] dark:hover:text-white"
-          onClick={unselectAllBenefits}
-        >
-          Unselect all
-        </Button>
-      </div>
-
-      <div className="space-y-3">
-        {benefits.map((benefit) => {
-          const checked = selectedBenefits.includes(benefit.id);
-          return (
-            <label
-              key={benefit.id}
-              className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-100 bg-white/70 px-4 py-3 transition-colors hover:bg-white dark:border-white/10 dark:bg-slate-900/20"
-            >
-              <Checkbox
-                checked={checked}
-                onCheckedChange={(nextChecked) => {
-                  // Radix returns boolean | "indeterminate"; we treat anything truthy as checked.
-                  if (nextChecked === true) {
-                    if (!checked) toggleBenefit(benefit.id);
-                  } else {
-                    if (checked) toggleBenefit(benefit.id);
-                  }
-                }}
-                className="mt-0.5 border-gray-400 bg-white data-[state=checked]:bg-[#1e3a5f] data-[state=checked]:text-white dark:border-slate-500 dark:bg-slate-950 dark:data-[state=checked]:bg-[#1e3a5f] dark:data-[state=checked]:text-white"
-                aria-label={`Select ${benefit.title}`}
-              />
-              <div className="flex-1">
-                <div className="text-base font-semibold leading-snug">{benefit.title}</div>
-                <div className="text-sm text-slate-600 dark:text-slate-300">{benefit.description}</div>
-              </div>
-            </label>
-          );
-        })}
-      </div>
-    </>
   );
 
   return (
@@ -320,7 +182,7 @@ export default function QuestionnairePage() {
         <div className="mb-5 space-y-2 md:mb-10">
           <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400 md:text-sm">
             <span>
-              Step {currentStep + 1} of {totalSteps}
+              Step {currentStep + 1} of {visibleQuestions.length}
             </span>
             <span>{Math.round(progress)}% Complete</span>
           </div>
@@ -333,7 +195,7 @@ export default function QuestionnairePage() {
         <div className="flex h-[calc(100dvh-12.25rem)] flex-col overflow-hidden rounded-[1.75rem] border border-white/75 bg-white/82 px-4 py-3.5 shadow-[0_34px_80px_-52px_rgba(15,23,42,0.45)] backdrop-blur-none dark:border-white/10 dark:bg-slate-900/78 dark:shadow-[0_28px_80px_-40px_rgba(2,6,23,0.95)] md:h-auto md:min-h-0 md:p-12 md:backdrop-blur-sm">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
-              key={isBenefitSelectionStep ? 'benefits' : currentQuestion?.id ?? 'question'}
+              key={currentQuestion.id}
               initial={isMobile ? { opacity: 0, x: 16 } : { opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={isMobile ? { opacity: 0, x: -16 } : { opacity: 0, x: -20 }}
@@ -341,15 +203,15 @@ export default function QuestionnairePage() {
               className={`min-w-0 min-h-0 flex-1 ${
                 isMobile
                   ? 'overflow-y-auto overscroll-contain pr-1 transform-gpu will-change-transform'
-                  : 'overflow-y-auto overscroll-contain pr-1'
+                  : 'md:flex-none'
               }`}
               style={
-                !isMobile && desktopContentHeight && !isBenefitSelectionStep
+                !isMobile && desktopContentHeight
                   ? { height: desktopContentHeight }
                   : undefined
               }
             >
-              {isBenefitSelectionStep ? benefitSelectionContent : questionContent}
+              {questionContent}
             </motion.div>
           </AnimatePresence>
 
@@ -366,14 +228,11 @@ export default function QuestionnairePage() {
 
             <Button
               onClick={handleNext}
-              disabled={
-                isEvaluating ||
-                (isBenefitSelectionStep ? selectedBenefits.length === 0 : !selectedOption)
-              }
+              disabled={!selectedOption || isEvaluating}
               className="rounded-md bg-[#1e3a5f] px-8 text-white transition-all hover:bg-[#f97316] dark:shadow-[0_18px_36px_-24px_rgba(15,23,42,0.95)] disabled:opacity-50 md:text-base"
             >
-              {isBenefitSelectionStep ? 'Next' : isLastStep ? (isEvaluating ? 'Checking...' : 'See Results') : 'Next'}
-              {!isBenefitSelectionStep && !isLastStep && <ArrowRight className="ml-2 h-4 w-4" />}
+              {isLastStep ? (isEvaluating ? 'Checking...' : 'See Results') : 'Next'}
+              {!isLastStep && <ArrowRight className="ml-2 h-4 w-4" />}
             </Button>
           </div>
         </div>
