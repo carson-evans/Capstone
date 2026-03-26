@@ -6,6 +6,14 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 
 MASSGRANT_PLUS_UNDER_85K_LIMIT = 85000
+FAFSA_URL = "https://studentaid.gov/h/apply-for-aid/fafsa"
+MASFA_URL = "https://www.mass.edu/osfa/students/masfa.asp"
+DHE_TUITION_EQUITY_FORM_URL = (
+    "https://www.mass.edu/tuitionequity/documents/2025-09-10%20Tuition%20Equity%20Form%20and%20Affidavit_Fillable.pdf"
+)
+DHE_AFFIDAVIT_ACTION_STATUS = "Action Needed, Complete DHE Affidavit"
+COMPLETE_DHE_AFFIDAVIT_CHECKLIST_ITEM = "Complete the DHE Tuition Equity Form and Affidavit"
+PROVIDE_DHE_AFFIDAVIT_CHECKLIST_ITEM = "Provide the completed DHE Tuition Equity Form and Affidavit"
 
 SNAP_THRESHOLDS = {
     1: 2608,
@@ -122,12 +130,12 @@ FALLBACK_CATALOG = {
         "id": "massgrant",
         "title": "MASSGrant",
         "description": "Need-based grant for Massachusetts residents attending college in-state. Awards range from $300 to $1,900 per year.",
-        "details": "MASSGrant is state financial aid for eligible Massachusetts residents enrolled at approved in-state colleges. Schools typically use your FAFSA information to review eligibility, so it is important to complete the federal form and follow any requests from your financial aid office. You can review the application entry point through [StudentAid.gov](https://studentaid.gov/h/apply-for-aid/fafsa).",
+        "details": "MASSGrant is state financial aid for eligible Massachusetts residents enrolled at approved in-state colleges. Depending on your eligibility, schools may review you through the [FAFSA](https://studentaid.gov/h/apply-for-aid/fafsa) or the [MASFA](https://www.mass.edu/osfa/students/masfa.asp). Students using MASFA may need the [DHE Tuition Equity Form and Affidavit](https://www.mass.edu/tuitionequity/documents/2025-09-10%20Tuition%20Equity%20Form%20and%20Affidavit_Fillable.pdf) if they cannot provide the other listed documentation.",
         "category": "Education",
         "officialUrl": "https://studentaid.gov/h/apply-for-aid/fafsa",
         "officialButtonLabel": "Start Official Application",
         "checklist": [
-            "Complete the FAFSA",
+            "Complete the FAFSA or MASFA",
             "Be a Massachusetts resident",
             "Enroll in a Massachusetts college",
             "Maintain satisfactory academic progress",
@@ -138,12 +146,12 @@ FALLBACK_CATALOG = {
         "id": "massgrant-plus",
         "title": "MASSGrant Plus",
         "description": "State grant that can reduce tuition and fees for eligible Massachusetts residents at participating public institutions.",
-        "details": "This screener treats MASSGrant Plus as requiring Massachusetts residency for at least 12 months for reasons other than education before the academic year, attendance at a participating MASSGrant Plus school, at least 6 credits when family income is below $85,000, at least 12 credits when family income is $85,000 to $100,000, and no prior bachelor's degree. Keep your FAFSA and school records current through [StudentAid.gov](https://studentaid.gov/h/apply-for-aid/fafsa).",
+        "details": "This screener treats MASSGrant Plus as requiring Massachusetts residency for at least 12 months for reasons other than education before the academic year, attendance at a participating MASSGrant Plus school, at least 6 credits when family income is below $85,000, at least 12 credits when family income is $85,000 to $100,000, no prior bachelor's degree, and the correct state-aid application path through [FAFSA](https://studentaid.gov/h/apply-for-aid/fafsa) or [MASFA](https://www.mass.edu/osfa/students/masfa.asp). Students using MASFA may need the [DHE Tuition Equity Form and Affidavit](https://www.mass.edu/tuitionequity/documents/2025-09-10%20Tuition%20Equity%20Form%20and%20Affidavit_Fillable.pdf) if they cannot provide the other listed documentation.",
         "category": "Education",
         "officialUrl": "https://studentaid.gov/h/apply-for-aid/fafsa",
         "officialButtonLabel": "Start Official Application",
         "checklist": [
-            "Complete the FAFSA",
+            "Complete the FAFSA or MASFA",
             "Be a Massachusetts resident for at least 12 months for reasons other than education",
             "Attend a participating MASSGrant Plus school",
             "Not already hold a bachelor's degree",
@@ -358,6 +366,105 @@ def match_benefits(profile: dict) -> list[dict]:
             or a.get("snap_income_under_limit") == "yes"
         )
 
+    def uses_masfa_route():
+        return a.get("citizen_status") == "no"
+
+    def has_masfa_document_path():
+        documentation_ready = a.get("masfa_documentation_ready")
+
+        if documentation_ready == "yes":
+            return True
+
+        if documentation_ready == "no":
+            return a.get("dhe_affidavit_completed") in ("yes", "no")
+
+        return False
+
+    def qualifies_under_tuition_equity():
+        return (
+            uses_masfa_route()
+            and has_qualifying_massgrant_residency()
+            and a.get("masfa_high_school_completer") == "yes"
+            and has_masfa_document_path()
+        )
+
+    def has_state_aid_path():
+        if a.get("citizen_status") == "yes":
+            return True
+
+        return qualifies_under_tuition_equity()
+
+    def get_state_aid_application_type():
+        return "masfa" if uses_masfa_route() else "fafsa"
+
+    def is_state_aid_application_completed():
+        if uses_masfa_route():
+            return a.get("masfa_completed") == "yes"
+
+        return a.get("fafsa_completed") == "yes"
+
+    def get_state_aid_action_status():
+        if uses_masfa_route():
+            return (
+                "No Action Needed, Already Completed MASFA Application"
+                if a.get("masfa_completed") == "yes"
+                else "Action Needed, Please Complete MASFA"
+            )
+
+        return (
+            "No action needed (already applied to FAFSA)"
+            if a.get("fafsa_completed") == "yes"
+            else "Action needed - Complete FAFSA"
+        )
+
+    def get_state_aid_official_url():
+        return MASFA_URL if uses_masfa_route() else FAFSA_URL
+
+    def get_state_aid_official_button_label():
+        return "Start MASFA Application" if uses_masfa_route() else "Start FAFSA Application"
+
+    def get_state_aid_application_checklist_item():
+        return "Complete the MASFA" if uses_masfa_route() else "Complete the FAFSA"
+
+    def get_dhe_affidavit_checklist_item():
+        if not qualifies_under_tuition_equity() or a.get("masfa_documentation_ready") != "no":
+            return None
+
+        if a.get("dhe_affidavit_completed") == "yes":
+            return PROVIDE_DHE_AFFIDAVIT_CHECKLIST_ITEM
+
+        return COMPLETE_DHE_AFFIDAVIT_CHECKLIST_ITEM
+
+    def build_massgrant_checklist():
+        checklist = [
+            get_state_aid_application_checklist_item(),
+            "Be a Massachusetts resident",
+            "Enroll in a Massachusetts college",
+            "Maintain satisfactory academic progress",
+        ]
+
+        dhe_checklist_item = get_dhe_affidavit_checklist_item()
+        if dhe_checklist_item:
+            checklist.append(dhe_checklist_item)
+
+        checklist.append("Check award notification from your school")
+        return checklist
+
+    def build_massgrant_plus_checklist():
+        checklist = [
+            get_state_aid_application_checklist_item(),
+            "Be a Massachusetts resident for at least 12 months for reasons other than education",
+            "Attend a participating MASSGrant Plus school",
+            "Not already hold a bachelor's degree",
+        ]
+
+        dhe_checklist_item = get_dhe_affidavit_checklist_item()
+        if dhe_checklist_item:
+            checklist.append(dhe_checklist_item)
+
+        checklist.append("Review eligibility with your financial aid office")
+        return checklist
+
     matches = []
 
     if is_student_or_future() and a.get("citizen_status") == "yes":
@@ -366,34 +473,45 @@ def match_benefits(profile: dict) -> list[dict]:
             if a.get("fafsa_completed") == "yes"
             else "Action needed - Complete FAFSA"
         )
-        matches.append({"id": "pell-grant", "actionStatus": action})
+        matches.append({
+            "id": "pell-grant",
+            "actionStatus": action,
+            "applicationType": "fafsa",
+            "applicationCompleted": a.get("fafsa_completed") == "yes",
+        })
 
     if (
         is_massgrant_enrollment_eligible()
-        and a.get("citizen_status") == "yes"
+        and has_state_aid_path()
         and has_qualifying_massgrant_residency()
         and a.get("prior_bachelors_degree") == "no"
     ):
-        action = (
-            "No action needed (already applied to FAFSA)"
-            if a.get("fafsa_completed") == "yes"
-            else "Action needed - Complete FAFSA"
-        )
-        matches.append({"id": "massgrant", "actionStatus": action})
+        matches.append({
+            "id": "massgrant",
+            "actionStatus": get_state_aid_action_status(),
+            "applicationType": get_state_aid_application_type(),
+            "applicationCompleted": is_state_aid_application_completed(),
+            "officialUrl": get_state_aid_official_url(),
+            "officialButtonLabel": get_state_aid_official_button_label(),
+            "checklist": build_massgrant_checklist(),
+        })
 
     if (
-        a.get("citizen_status") == "yes"
+        has_state_aid_path()
         and has_qualifying_massgrant_residency()
         and a.get("prior_bachelors_degree") == "no"
         and is_massgrant_plus_eligible_school(a.get("school_name"))
         and is_massgrant_plus_enrollment_eligible()
     ):
-        action = (
-            "No action needed (already applied to FAFSA)"
-            if a.get("fafsa_completed") == "yes"
-            else "Action needed - Complete FAFSA"
-        )
-        matches.append({"id": "massgrant-plus", "actionStatus": action})
+        matches.append({
+            "id": "massgrant-plus",
+            "actionStatus": get_state_aid_action_status(),
+            "applicationType": get_state_aid_application_type(),
+            "applicationCompleted": is_state_aid_application_completed(),
+            "officialUrl": get_state_aid_official_url(),
+            "officialButtonLabel": get_state_aid_official_button_label(),
+            "checklist": build_massgrant_plus_checklist(),
+        })
 
     if (
         is_massachusetts_resident()
@@ -414,9 +532,9 @@ def match_benefits(profile: dict) -> list[dict]:
 
     if is_student_or_future() and is_mbta_eligible_school(a.get("school_name")):
         matches.append({
-        "id": "mbta-pass",
-        "actionStatus": "Likely eligible - check with your school's transportation office",
-    })
+            "id": "mbta-pass",
+            "actionStatus": "Likely eligible - check with your school's transportation office",
+        })
 
     seen = set()
     unique_matches = []

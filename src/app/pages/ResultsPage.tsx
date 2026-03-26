@@ -20,14 +20,22 @@ import {
 import { Navbar } from '../components/layout/Navbar';
 import { PageBackdrop } from '../components/layout/PageBackdrop';
 import { renderLinkedText } from '../components/ui/render-linked-text';
+import { InlineTooltipText } from '../components/ui/inline-tooltip-text';
 import { useBenefits } from '../context/BenefitsContext';
-import { benefits } from '../data/benefitsData';
+import {
+  DHE_AFFIDAVIT_ACTION_STATUS,
+  FAFSA_STATUS_URL,
+  MASFA_START_URL,
+  MASFA_STATUS_URL,
+  benefits,
+  getBenefitApplicationType,
+  getBenefitRichTextSegments,
+  isBenefitApplicationCompleted,
+  isPositiveActionStatus,
+  shouldShowDheAffidavitActionStatus,
+} from '../data/benefitsData';
 import { useIsMobile } from '../components/ui/use-mobile';
 import { SiteFooter } from '../components/layout/SiteFooter';
-
-const FAFSA_MANAGED_BENEFIT_IDS = new Set(['pell-grant', 'massgrant', 'massgrant-plus']);
-const FAFSA_STATUS_URL =
-  'https://studentaid.gov/fsa-id/sign-in/landing?redirectTo=%2Fmy-activity';
 
 const MOBILE_ROUTE_TRANSITION = {
   duration: 0.2,
@@ -40,6 +48,8 @@ const MOBILE_DETAILS_REVEAL = {
 };
 
 const FEEDBACK_SURVEY_URL = 'https://forms.gle/x6J4fDrvWmUz6vFu9';
+const DHE_AFFIDAVIT_FORM_URL =
+  'https://www.mass.edu/tuitionequity/documents/2025-09-10%20Tuition%20Equity%20Form%20and%20Affidavit_Fillable.pdf';
 
 function getSingleBenefitPhrase(benefitId: string, fallbackTitle: string | null): string | null {
   switch (benefitId) {
@@ -61,7 +71,7 @@ function getSingleBenefitPhrase(benefitId: string, fallbackTitle: string | null)
 }
 
 export default function ResultsPage() {
-  const { matchedBenefits, screeningBenefitFilters } = useBenefits();
+  const { answers, matchedBenefits, screeningBenefitFilters } = useBenefits();
   const hasMatches = matchedBenefits.length > 0;
   const singleScreenedBenefitId = screeningBenefitFilters.length === 1 ? screeningBenefitFilters[0] : null;
   const singleScreenedBenefitTitle =
@@ -101,19 +111,77 @@ export default function ResultsPage() {
   };
 
   const getBenefitAction = (benefit: (typeof matchedBenefits)[number]) => {
-    const hasNoActionNeeded = benefit.actionStatus?.includes('No action needed');
+    const applicationType = getBenefitApplicationType(benefit.id, answers);
+    const isApplicationCompleted = isBenefitApplicationCompleted(benefit.id, answers);
 
-    if (hasNoActionNeeded && FAFSA_MANAGED_BENEFIT_IDS.has(benefit.id)) {
-      return {
-        href: FAFSA_STATUS_URL,
-        label: 'Check Application Status',
-      };
+    if (applicationType === 'masfa') {
+      return isApplicationCompleted
+        ? {
+            href: MASFA_STATUS_URL,
+            label: 'Check MASFA Status',
+          }
+        : {
+            href: MASFA_START_URL,
+            label: 'Start MASFA Application',
+          };
+    }
+
+    if (applicationType === 'fafsa') {
+      return isApplicationCompleted
+        ? {
+            href: FAFSA_STATUS_URL,
+            label: 'Check FAFSA Status',
+          }
+        : {
+            href: benefit.officialUrl,
+            label: 'Start FAFSA Application',
+          };
     }
 
     return {
       href: benefit.officialUrl,
       label: benefit.officialButtonLabel ?? 'Start Official Application',
     };
+  };
+
+  const getBenefitStatuses = (benefit: (typeof matchedBenefits)[number]) => {
+    const statuses: string[] = [];
+
+    if (benefit.id === 'snap' || benefit.id === 'mbta-pass') {
+      return statuses;
+    }
+
+    if (shouldShowDheAffidavitActionStatus(benefit.id, answers)) {
+      statuses.push(DHE_AFFIDAVIT_ACTION_STATUS);
+    }
+
+    if (benefit.actionStatus) {
+      statuses.push(benefit.actionStatus);
+    }
+
+    return statuses;
+  };
+
+  const renderStatusText = (status: string) => {
+    if (status === DHE_AFFIDAVIT_ACTION_STATUS) {
+      return (
+        <>
+          <span>Action Needed, Complete the </span>
+          <a
+            href={DHE_AFFIDAVIT_FORM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 font-semibold underline underline-offset-2 hover:opacity-80"
+          >
+            <span>DHE Affidavit</span>
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </>
+      );
+    }
+
+    const richTextSegments = getBenefitRichTextSegments(status);
+    return richTextSegments ? <InlineTooltipText segments={richTextSegments} /> : status;
   };
 
   return (
@@ -174,8 +242,7 @@ export default function ResultsPage() {
             <section aria-labelledby="results-heading" className="space-y-6">
               {matchedBenefits.map((benefit) => {
                 const action = getBenefitAction(benefit);
-                const showActionStatus =
-                  benefit.id !== 'snap' && benefit.id !== 'mbta-pass' && Boolean(benefit.actionStatus);
+                const statuses = getBenefitStatuses(benefit);
                 const isDetailsOpen = Boolean(mobileOpenDetails[benefit.id]);
 
                 const actionButton = (
@@ -217,15 +284,20 @@ export default function ResultsPage() {
 
                           <h2 className="text-xl font-bold">{benefit.title}</h2>
 
-                          {showActionStatus && (
-                            <div
-                              className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-semibold ${
-                                benefit.actionStatus?.includes('No action needed')
-                                  ? 'bg-green-100 text-green-800 dark:bg-emerald-400/18 dark:text-emerald-200 dark:ring-1 dark:ring-inset dark:ring-emerald-300/30'
-                                  : 'bg-red-100 text-red-700 dark:bg-[#ff0000]/22 dark:text-[#fff3f3] dark:ring-1 dark:ring-inset dark:ring-[#ff4d4d]/55'
-                              }`}
-                            >
-                              {benefit.actionStatus}
+                          {statuses.length > 0 && (
+                            <div className="mt-2 flex flex-col items-start gap-2">
+                              {statuses.map((status) => (
+                                <div
+                                  key={`${benefit.id}-${status}`}
+                                  className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${
+                                    isPositiveActionStatus(status)
+                                      ? 'bg-green-100 text-green-800 dark:bg-emerald-400/18 dark:text-emerald-200 dark:ring-1 dark:ring-inset dark:ring-emerald-300/30'
+                                      : 'bg-red-100 text-red-700 dark:bg-[#ff0000]/22 dark:text-[#fff3f3] dark:ring-1 dark:ring-inset dark:ring-[#ff4d4d]/55'
+                                  }`}
+                                >
+                                  {renderStatusText(status)}
+                                </div>
+                              ))}
                             </div>
                           )}
                         </div>
@@ -277,8 +349,7 @@ export default function ResultsPage() {
             <section aria-labelledby="results-heading"><Accordion type="multiple" className="space-y-6">
               {matchedBenefits.map((benefit, index) => {
                 const action = getBenefitAction(benefit);
-                const showActionStatus =
-                  benefit.id !== 'snap' && benefit.id !== 'mbta-pass' && Boolean(benefit.actionStatus);
+                const statuses = getBenefitStatuses(benefit);
 
                 const actionButton = (
                   <Button
@@ -325,15 +396,20 @@ export default function ResultsPage() {
                                 {benefit.title}
                               </CardTitle>
 
-                              {showActionStatus && (
-                                <div
-                                  className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-semibold ${
-                                    benefit.actionStatus?.includes('No action needed')
-                                      ? 'bg-green-100 text-green-800 dark:bg-emerald-400/18 dark:text-emerald-200 dark:ring-1 dark:ring-inset dark:ring-emerald-300/30'
-                                      : 'bg-red-100 text-red-700 dark:bg-[#ff0000]/22 dark:text-[#fff3f3] dark:ring-1 dark:ring-inset dark:ring-[#ff4d4d]/55'
-                                  }`}
-                                >
-                                  {benefit.actionStatus}
+                              {statuses.length > 0 && (
+                                <div className="mt-2 flex flex-col items-start gap-2">
+                                  {statuses.map((status) => (
+                                    <div
+                                      key={`${benefit.id}-${status}`}
+                                      className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${
+                                        isPositiveActionStatus(status)
+                                          ? 'bg-green-100 text-green-800 dark:bg-emerald-400/18 dark:text-emerald-200 dark:ring-1 dark:ring-inset dark:ring-emerald-300/30'
+                                          : 'bg-red-100 text-red-700 dark:bg-[#ff0000]/22 dark:text-[#fff3f3] dark:ring-1 dark:ring-inset dark:ring-[#ff4d4d]/55'
+                                      }`}
+                                    >
+                                      {renderStatusText(status)}
+                                    </div>
+                                  ))}
                                 </div>
                               )}
                             </div>

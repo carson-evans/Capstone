@@ -38,6 +38,10 @@ PROFILE_LABELS = {
     "citizen_status": "Citizen / eligible non-citizen",
     "residency_length": "Massachusetts residency status",
     "fafsa_completed": "FAFSA completed",
+    "masfa_completed": "MASFA completed",
+    "masfa_high_school_completer": "Massachusetts high school completer status",
+    "masfa_documentation_ready": "Has MASFA document option",
+    "dhe_affidavit_completed": "DHE Tuition Equity Form and Affidavit completed",
     "prior_bachelors_degree": "Already has bachelor's degree",
     "massgrant_plus_income_band": "MASSGrant Plus family income",
     "work_study": "Federal work-study",
@@ -70,6 +74,22 @@ PROFILE_VALUE_LABELS = {
         "yes": "Yes",
         "no": "No",
     },
+    "masfa_completed": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "masfa_high_school_completer": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "masfa_documentation_ready": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "dhe_affidavit_completed": {
+        "yes": "Yes",
+        "no": "No",
+    },
     "prior_bachelors_degree": {
         "yes": "Yes",
         "no": "No",
@@ -95,9 +115,16 @@ PROFILE_VALUE_LABELS = {
 
 
 def _resolve_logo_path() -> Path | None:
-    candidate = Path(__file__).with_name("CommonDark.png")
-    if candidate.exists():
-        return candidate
+    candidates = [
+        Path(__file__).with_name("Common.png"),
+        Path(__file__).resolve().parents[2] / "src" / "assets" / "Common.png",
+        Path(__file__).with_name("CommonDark.png"),
+    ]
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+
     return None
 
 
@@ -238,7 +265,8 @@ def _draw_header_band(c, width, height):
     c.setFillColor(colors.HexColor("#1e3a5f"))
     c.rect(0, height - 0.85 * inch, width, 0.85 * inch, stroke=0, fill=1)
 
-    text_x = 0.75 * inch
+    logo_x = 0.75 * inch
+    title_right_x = width - (0.75 * inch)
     logo_baseline_y = height - 0.66 * inch
     logo_height = 0.34 * inch
 
@@ -250,7 +278,7 @@ def _draw_header_band(c, width, height):
 
             c.drawImage(
                 logo,
-                text_x,
+                logo_x,
                 logo_baseline_y,
                 width=rendered_logo_width,
                 height=logo_height,
@@ -258,13 +286,12 @@ def _draw_header_band(c, width, height):
                 preserveAspectRatio=True,
             )
 
-            text_x += rendered_logo_width + 0.18 * inch
         except Exception:
             pass
 
     c.setFillColor(colors.white)
     c.setFont("Helvetica-Bold", 16)
-    c.drawString(text_x, height - 0.51 * inch, "Application Preparation Checklist Packet")
+    c.drawRightString(title_right_x, height - 0.51 * inch, "Application Preparation Checklist Packet")
     c.setFillColor(colors.black)
 
 
@@ -291,7 +318,7 @@ def _draw_small_meta(c, x, y, left_text, right_text=None):
     return y - 12
 
 
-def _draw_bullet_text(c, x, y, label, value, max_label_width=155):
+def _draw_bullet_text(c, x, y, label, value, max_label_width=205):
     c.setFont("Helvetica-Bold", 10)
     label_text = f"{label}:"
     c.drawString(x, y, label_text)
@@ -417,6 +444,10 @@ def _build_pdf_bytes(
         "school_name",
         "residency_length",
         "fafsa_completed",
+        "masfa_completed",
+        "masfa_high_school_completer",
+        "masfa_documentation_ready",
+        "dhe_affidavit_completed",
         "work_study",
         "household_sizes",
         "household_size_exact",
@@ -474,9 +505,9 @@ def _build_pdf_bytes(
                 _draw_status_pill(
                     c,
                     pill_x,
-                    y + 2,
+                    y + 7,
                     shortened_action,
-                    good=("No action needed" in action),
+                    good=("No action needed" in action or "Already Completed" in action),
                 )
 
             y -= 17

@@ -11,10 +11,13 @@
 } from './incomeThresholds';
 import type { InlineTextSegment } from './questionRichText';
 import {
+  dheAffidavitTooltip,
   eligibleNonCitizenTooltip,
   grossIncomeTooltip,
   householdSizeTooltip,
+  itinTooltip,
   residencyStatusTooltip,
+  selectiveServiceTooltip,
 } from './questionTooltipContent';
 import {
   allMassachusettsSchoolOptions,
@@ -89,6 +92,17 @@ const massGrantPlusIncomeBandOptions: QuestionOption[] = [
   { label: 'More than $100,000 per year before taxes', value: 'over_100k' },
 ];
 
+export const FAFSA_STATUS_URL =
+  'https://studentaid.gov/fsa-id/sign-in/landing?redirectTo=%2Fmy-activity';
+export const MASFA_START_URL = 'https://www.mass.edu/osfa/students/masfa.asp';
+export const MASFA_STATUS_URL = 'https://madhestudentxprod.regenteducation.net/signin';
+export const DHE_AFFIDAVIT_ACTION_STATUS = 'Action Needed, Complete DHE Affidavit';
+export const COMPLETE_DHE_AFFIDAVIT_CHECKLIST_ITEM =
+  'Complete the DHE Tuition Equity Form and Affidavit';
+export const PROVIDE_DHE_AFFIDAVIT_CHECKLIST_ITEM =
+  'Provide the completed DHE Tuition Equity Form and Affidavit';
+
+const masfaRouteBenefitIds = new Set<Benefit['id']>(['massgrant', 'massgrant-plus']);
 
 function hasMassachusettsResidency(answers: BenefitProfile): boolean {
   const residencyLength = answers['residency_length'];
@@ -100,8 +114,16 @@ function hasQualifyingGrantResidency(answers: BenefitProfile): boolean {
   return Boolean(residencyLength) && residencyLength !== 'not_ma_resident' && residencyLength !== 'under_12_months';
 }
 
+function shouldContinueGrantQuestions(answers: BenefitProfile): boolean {
+  if (answers['citizen_status'] !== 'no') {
+    return true;
+  }
+
+  return answers['masfa_high_school_completer'] === 'yes';
+}
+
 function shouldAskPriorBachelorsDegree(answers: BenefitProfile): boolean {
-  if (!hasQualifyingGrantResidency(answers)) {
+  if (!hasQualifyingGrantResidency(answers) || !shouldContinueGrantQuestions(answers)) {
     return false;
   }
 
@@ -165,12 +187,12 @@ export const benefits: Benefit[] = [
     title: 'MASSGrant',
     description: 'Need-based grant for Massachusetts residents attending college in-state. Awards range from $300 to $1,900 per year.',
     details:
-      'MASSGrant is state financial aid for eligible Massachusetts residents enrolled at approved in-state colleges. Schools typically use your FAFSA information to review eligibility, so it is important to complete the federal form and follow any requests from your financial aid office. You can review the application entry point through [StudentAid.gov](https://studentaid.gov/h/apply-for-aid/fafsa).',
+      'MASSGrant is state financial aid for eligible Massachusetts residents enrolled at approved in-state colleges. Depending on your eligibility, schools may review you through the [FAFSA](https://studentaid.gov/h/apply-for-aid/fafsa) or the [MASFA](https://www.mass.edu/osfa/students/masfa.asp). Students using MASFA may need to meet additional Tuition Equity Law high-school-completer and documentation requirements.',
     category: 'Education',
     officialUrl: 'https://studentaid.gov/h/apply-for-aid/fafsa',
     officialButtonLabel: 'Start Official Application',
     checklist: [
-      'Complete the FAFSA',
+      'Complete the FAFSA or MASFA',
       'Be a Massachusetts resident',
       'Enroll in a Massachusetts college',
       'Maintain satisfactory academic progress',
@@ -182,12 +204,12 @@ export const benefits: Benefit[] = [
     title: 'MASSGrant Plus',
     description: 'State grant that can reduce tuition and fees for eligible Massachusetts residents at participating public institutions.',
     details:
-      'This screener treats MASSGrant Plus as requiring Massachusetts residency for at least 12 months for reasons other than education before the academic year, attendance at a participating MASSGrant Plus school, at least 6 credits when family income is below $85,000, at least 12 credits when family income is $85,000 to $100,000, and no prior bachelor\'s degree. Keep your FAFSA and school records current through [StudentAid.gov](https://studentaid.gov/h/apply-for-aid/fafsa).',
+      'This screener treats MASSGrant Plus as requiring Massachusetts residency for at least 12 months for reasons other than education before the academic year, attendance at a participating MASSGrant Plus school, at least 6 credits when family income is below $85,000, at least 12 credits when family income is $85,000 to $100,000, no prior bachelor\'s degree, and the correct state-aid application path through FAFSA or MASFA.',
     category: 'Education',
     officialUrl: 'https://studentaid.gov/h/apply-for-aid/fafsa',
     officialButtonLabel: 'Start Official Application',
     checklist: [
-      'Complete the FAFSA',
+      'Complete the FAFSA or MASFA',
       'Be a Massachusetts resident for at least 12 months for reasons other than education',
       'Attend a participating MASSGrant Plus school',
       'Not already hold a bachelor\'s degree',
@@ -304,7 +326,68 @@ export const questions: Question[] = [
         values: studentOrFutureValues,
       },
     ],
-    isVisible: (answers) => hasMassachusettsResidency(answers),
+    options: yesNoOptions,
+  },
+  {
+    id: 'masfa_completed',
+    text: 'Have you completed the MASFA for the upcoming academic year?',
+    category: 'Financial',
+    benefitIds: ['massgrant', 'massgrant-plus'],
+    conditions: [
+      {
+        questionId: 'citizen_status',
+        values: ['no'],
+      },
+      {
+        questionId: 'student_status',
+        values: studentOrFutureValues,
+      },
+    ],
+    isVisible: (answers) => hasQualifyingGrantResidency(answers),
+    options: yesNoOptions,
+  },
+  {
+    id: 'masfa_high_school_completer',
+    text: 'Have you attended high school in Massachusetts for at least 3 academic years and earned a Massachusetts diploma or equivalent?',
+    category: 'Education',
+    benefitIds: ['massgrant', 'massgrant-plus'],
+    conditions: [
+      {
+        questionId: 'citizen_status',
+        values: ['no'],
+      },
+      {
+        questionId: 'student_status',
+        values: studentOrFutureValues,
+      },
+    ],
+    isVisible: (answers) => hasQualifyingGrantResidency(answers),
+    options: yesNoOptions,
+  },
+  {
+    id: 'masfa_documentation_ready',
+    text: 'MASFA documentation question',
+    category: 'Education',
+    benefitIds: ['massgrant', 'massgrant-plus'],
+    conditions: [
+      {
+        questionId: 'masfa_high_school_completer',
+        values: ['yes'],
+      },
+    ],
+    options: yesNoOptions,
+  },
+  {
+    id: 'dhe_affidavit_completed',
+    text: 'DHE affidavit question',
+    category: 'Education',
+    benefitIds: ['massgrant', 'massgrant-plus'],
+    conditions: [
+      {
+        questionId: 'masfa_documentation_ready',
+        values: ['no'],
+      },
+    ],
     options: yesNoOptions,
   },
   {
@@ -313,6 +396,10 @@ export const questions: Question[] = [
     category: 'Financial',
     benefitIds: ['snap'],
     conditions: [
+      {
+        questionId: 'citizen_status',
+        values: ['yes'],
+      },
       {
         questionId: 'student_status',
         values: studentOrFutureValues,
@@ -402,16 +489,13 @@ export const questions: Question[] = [
     benefitIds: ['massgrant-plus'],
     conditions: [
       {
-        questionId: 'citizen_status',
-        values: ['yes'],
-      },
-      {
         questionId: 'student_status',
         values: studentOrFutureValues,
       },
     ],
     isVisible: (answers) =>
       hasQualifyingGrantResidency(answers) &&
+      shouldContinueGrantQuestions(answers) &&
       isMassGrantPlusEligibleSchool(answers['school_name']) &&
       !getInferredMassGrantPlusIncomeBand(answers),
     options: massGrantPlusIncomeBandOptions,
@@ -422,10 +506,6 @@ export const questions: Question[] = [
     category: 'Education',
     benefitIds: ['massgrant', 'massgrant-plus'],
     conditions: [
-      {
-        questionId: 'citizen_status',
-        values: ['yes'],
-      },
       {
         questionId: 'student_status',
         values: studentOrFutureValues,
@@ -458,6 +538,24 @@ export function getQuestionTextSegments(question: Question, answers: BenefitProf
             getAttendancePromptPrefix(answers) === 'Will you'
               ? 'Which Massachusetts college or university will you attend?'
               : 'Which Massachusetts college or university do you attend?',
+        },
+      ];
+    case 'masfa_documentation_ready':
+      return [
+        { type: 'text', text: 'Can you provide at least one of the following: a valid SSN, documentation of an ' },
+        { type: 'tooltip', text: 'ITIN', tooltip: itinTooltip },
+        { type: 'text', text: ', or proof of registration with ' },
+        { type: 'tooltip', text: 'Selective Service', tooltip: selectiveServiceTooltip },
+        { type: 'text', text: ' if applicable?' },
+      ];
+    case 'dhe_affidavit_completed':
+      return [
+        { type: 'text', text: 'Have you already completed the ' },
+        {
+          type: 'tooltip',
+          text: 'DHE Tuition Equity Form and Affidavit',
+          tooltip: dheAffidavitTooltip,
+          trailingText: '?',
         },
       ];
     case 'household_sizes':
@@ -495,6 +593,92 @@ export function getQuestionHelperText(question: Question, answers: BenefitProfil
   }
 
   return question.helperText ?? '';
+}
+
+export function getBenefitApplicationType(
+  benefitId: string,
+  answers: BenefitProfile
+): 'fafsa' | 'masfa' | null {
+  if (benefitId === 'pell-grant') {
+    return 'fafsa';
+  }
+
+  if (masfaRouteBenefitIds.has(benefitId as Benefit['id']) && answers['citizen_status'] === 'no') {
+    return 'masfa';
+  }
+
+  if (benefitId === 'massgrant' || benefitId === 'massgrant-plus') {
+    return 'fafsa';
+  }
+
+  return null;
+}
+
+export function isBenefitApplicationCompleted(
+  benefitId: string,
+  answers: BenefitProfile
+): boolean {
+  const applicationType = getBenefitApplicationType(benefitId, answers);
+
+  if (applicationType === 'masfa') {
+    return answers['masfa_completed'] === 'yes';
+  }
+
+  if (applicationType === 'fafsa') {
+    return answers['fafsa_completed'] === 'yes';
+  }
+
+  return false;
+}
+
+export function isPositiveActionStatus(actionStatus?: string): boolean {
+  if (typeof actionStatus !== 'string') {
+    return false;
+  }
+
+  const normalizedStatus = actionStatus.toLowerCase();
+  return normalizedStatus.includes('no action needed') || normalizedStatus.includes('already completed');
+}
+
+export function shouldShowDheAffidavitActionStatus(
+  benefitId: string,
+  answers: BenefitProfile
+): boolean {
+  return (
+    masfaRouteBenefitIds.has(benefitId as Benefit['id']) &&
+    answers['citizen_status'] === 'no' &&
+    answers['masfa_high_school_completer'] === 'yes' &&
+    answers['masfa_documentation_ready'] === 'no' &&
+    answers['dhe_affidavit_completed'] === 'no'
+  );
+}
+
+export function getBenefitRichTextSegments(text: string): InlineTextSegment[] | null {
+  switch (text) {
+    case DHE_AFFIDAVIT_ACTION_STATUS:
+      return [
+        { type: 'text', text: 'Action Needed, Complete the ' },
+        {
+          type: 'tooltip',
+          text: 'DHE Affidavit',
+          tooltip: dheAffidavitTooltip,
+          triggerClassName:
+            'font-semibold text-inherit no-underline decoration-transparent hover:text-inherit dark:text-inherit dark:hover:text-inherit',
+        },
+      ];
+    case COMPLETE_DHE_AFFIDAVIT_CHECKLIST_ITEM:
+      return [
+        { type: 'text', text: 'Complete the ' },
+        { type: 'tooltip', text: 'DHE Tuition Equity Form and Affidavit', tooltip: dheAffidavitTooltip },
+      ];
+    case PROVIDE_DHE_AFFIDAVIT_CHECKLIST_ITEM:
+      return [
+        { type: 'text', text: 'Provide the completed ' },
+        { type: 'tooltip', text: 'DHE Tuition Equity Form and Affidavit', tooltip: dheAffidavitTooltip },
+      ];
+    default:
+      return null;
+  }
 }
 
 export function getQuestionsForBenefitFilters(

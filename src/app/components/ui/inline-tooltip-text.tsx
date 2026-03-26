@@ -49,7 +49,17 @@ function TooltipBody({ tooltip }: { tooltip: InlineTooltipDefinition }) {
   );
 }
 
-function InlineInfoTooltip({ text, tooltip }: { text: string; tooltip: InlineTooltipDefinition }) {
+function InlineInfoTooltip({
+  text,
+  tooltip,
+  triggerClassName,
+  trailingText,
+}: {
+  text: string;
+  tooltip: InlineTooltipDefinition;
+  triggerClassName?: string;
+  trailingText?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [lockedOpen, setLockedOpen] = useState(false);
   const closeTimeoutRef = useRef<number | null>(null);
@@ -102,26 +112,29 @@ function InlineInfoTooltip({ text, tooltip }: { text: string; tooltip: InlineToo
       }}
     >
       <PopoverAnchor asChild>
-        <button
-          type="button"
-          className={TOOLTIP_TRIGGER_CLASS_NAME}
-          onMouseEnter={openTooltip}
-          onMouseLeave={scheduleClose}
-          onFocus={openTooltip}
-          onBlur={scheduleClose}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            clearCloseTimeout();
-            setLockedOpen((previousValue) => {
-              const nextValue = !previousValue;
-              setOpen(nextValue);
-              return nextValue;
-            });
-          }}
-        >
-          {text}
-        </button>
+        <span className="inline whitespace-nowrap align-baseline">
+          <button
+            type="button"
+            className={cn(TOOLTIP_TRIGGER_CLASS_NAME, triggerClassName)}
+            onMouseEnter={openTooltip}
+            onMouseLeave={scheduleClose}
+            onFocus={openTooltip}
+            onBlur={scheduleClose}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              clearCloseTimeout();
+              setLockedOpen((previousValue) => {
+                const nextValue = !previousValue;
+                setOpen(nextValue);
+                return nextValue;
+              });
+            }}
+          >
+            {text}
+          </button>
+          {trailingText ? <span>{trailingText}</span> : null}
+        </span>
       </PopoverAnchor>
       <PopoverContent
         sideOffset={10}
@@ -162,6 +175,8 @@ export function InlineTooltipText({
             key={`tooltip-${segment.text}-${index}`}
             text={segment.text}
             tooltip={segment.tooltip}
+            triggerClassName={segment.triggerClassName}
+            trailingText={segment.trailingText}
           />
         );
       })}

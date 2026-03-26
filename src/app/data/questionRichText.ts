@@ -17,4 +17,6 @@ export type InlineTextSegment =
       type: 'tooltip';
       text: string;
       tooltip: InlineTooltipDefinition;
+      triggerClassName?: string;
+      trailingText?: string;
     };
