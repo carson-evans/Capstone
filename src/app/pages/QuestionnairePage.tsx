@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
@@ -338,8 +338,18 @@ export default function QuestionnairePage() {
         if (!interactive) {
           return (
             <div className="space-y-3">
-              <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-lg font-medium text-gray-500">
-                {question.placeholder ?? 'Search for your college or university'}
+              <div className="h-14 rounded-lg border border-gray-200 bg-white px-4 text-base font-medium text-gray-500 md:text-lg" />
+              <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+                <div className="max-h-64 min-h-64 overflow-y-auto p-2">
+                  {questionOptions.slice(0, 6).map((option) => (
+                    <div
+                      key={option.value}
+                      className="w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 md:text-base"
+                    >
+                      {option.label}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           );
@@ -347,13 +357,11 @@ export default function QuestionnairePage() {
 
         const searchTerm = selectedOption.trim().toLowerCase();
 
-        const filteredOptions = (
-          searchTerm
-            ? questionOptions.filter((option) =>
-                option.label.toLowerCase().includes(searchTerm)
-              )
-            : questionOptions
-        ).slice(0, 12);
+        const filteredOptions = searchTerm
+          ? questionOptions.filter((option) =>
+              option.label.toLowerCase().includes(searchTerm)
+            )
+          : questionOptions;
 
         const selectedSchool = findMatchingSelectOption(
           question,
@@ -371,12 +379,12 @@ export default function QuestionnairePage() {
               type="text"
               value={selectedOption}
               onChange={(event) => setSelectedOption(event.target.value)}
-              placeholder="Start typing your college or university"
+              placeholder="Start typing or scroll to select"
               autoComplete="off"
               aria-autocomplete="list"
               aria-controls="school-search-results"
               aria-expanded={filteredOptions.length > 0}
-              aria-describedby={currentValidationError ? 'school-search-error' : 'school-search-helper'}
+              aria-describedby={currentValidationError ? 'school-search-error' : undefined}
               aria-invalid={currentValidationError ? true : undefined}
               className="h-14 rounded-lg border-gray-200 bg-white px-4 text-base font-medium md:text-lg"
             />
@@ -417,18 +425,6 @@ export default function QuestionnairePage() {
               </div>
             </div>
 
-            <p id="school-search-helper" className="text-sm text-slate-600 dark:text-slate-300">
-              {selectedSchool
-                ? `Selected: ${selectedSchool.label}`
-                : 'Type to search, then choose your school from the list.'}
-            </p>
-
-            {questionOptions.length > 12 && !selectedSchool && (
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Showing the first 12 matches. Keep typing to narrow the list.
-              </p>
-            )}
-
             {currentValidationError && (
               <p id="school-search-error" role="alert" className="text-sm font-medium text-red-600 dark:text-red-400">
                 {currentValidationError}
@@ -437,7 +433,6 @@ export default function QuestionnairePage() {
           </div>
         );
       }
-
       if (!interactive) {
         return (
           <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-lg font-medium text-gray-500">

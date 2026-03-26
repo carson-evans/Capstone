@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { ChevronDown, ExternalLink, CheckSquare } from 'lucide-react';
@@ -175,7 +175,7 @@ export default function ResultsPage() {
               {matchedBenefits.map((benefit) => {
                 const action = getBenefitAction(benefit);
                 const showActionStatus =
-                  benefit.id !== 'snap' && Boolean(benefit.actionStatus);
+                  benefit.id !== 'snap' && benefit.id !== 'mbta-pass' && Boolean(benefit.actionStatus);
                 const isDetailsOpen = Boolean(mobileOpenDetails[benefit.id]);
 
                 const actionButton = (
@@ -278,7 +278,7 @@ export default function ResultsPage() {
               {matchedBenefits.map((benefit, index) => {
                 const action = getBenefitAction(benefit);
                 const showActionStatus =
-                  benefit.id !== 'snap' && Boolean(benefit.actionStatus);
+                  benefit.id !== 'snap' && benefit.id !== 'mbta-pass' && Boolean(benefit.actionStatus);
 
                 const actionButton = (
                   <Button
