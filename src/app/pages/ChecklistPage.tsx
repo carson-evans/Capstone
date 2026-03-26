@@ -9,16 +9,17 @@ import { Button } from '../components/ui/button';
 import { Checkbox } from '../components/ui/checkbox';
 import { useBenefits } from '../context/BenefitsContext';
 import { useIsMobile } from '../components/ui/use-mobile';
+import { generatePacketRequest } from '@/lib/api';
 
 const desktopChecklistItemTransition = {
-  type: 'spring',
+  type: 'spring' as const,
   stiffness: 420,
   damping: 34,
   mass: 0.45,
 };
 
 const mobileChecklistItemTransition = {
-  type: 'tween',
+  type: 'tween' as const,
   duration: 0.24,
   ease: [0.22, 1, 0.36, 1] as const,
 };
@@ -30,9 +31,9 @@ export default function ChecklistPage() {
   const isMobile = useIsMobile();
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const checklistItemTransition = (
-    isMobile ? mobileChecklistItemTransition : desktopChecklistItemTransition
-  ) as any;
+  const checklistItemTransition = isMobile
+    ? mobileChecklistItemTransition
+    : desktopChecklistItemTransition;
 
   const checklistItemLayout = isMobile ? ('position' as const) : true;
   const checklistListStyle = isMobile ? ({ overflowAnchor: 'none' } as const) : undefined;
@@ -60,9 +61,9 @@ export default function ChecklistPage() {
       .sort((a, b) => Number(a.checked) - Number(b.checked) || a.originalIndex - b.originalIndex);
 
   const handleDownload = async () => {
-    if (checklistBenefits.length === 0) return;
-
-    const apiUrl = import.meta.env.VITE_PACKET_API_URL || '/api/packet';
+    if (checklistBenefits.length === 0) {
+      return;
+    }
 
     const pendingTab = window.open('about:blank', '_blank');
 
@@ -87,57 +88,26 @@ export default function ChecklistPage() {
     setIsGenerating(true);
 
     try {
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          profile: answers,
-          matchedBenefits: checklistBenefits,
-          selectedBenefits: checklistBenefits.map((benefit) => benefit.id),
-          checklistProgress,
-        }),
+      const packetResult = await generatePacketRequest({
+        profile: answers,
+        matchedBenefits: checklistBenefits,
+        selectedBenefits: checklistBenefits.map((benefit) => benefit.id),
+        checklistProgress,
       });
 
-      const rawText = await response.text();
-
-      let raw: any = {};
-      try {
-        raw = rawText ? JSON.parse(rawText) : {};
-      } catch {
-        throw new Error('Packet API returned a non-JSON response.');
-      }
-
-      let data = raw;
-      if (typeof raw?.body === 'string') {
-        try {
-          data = JSON.parse(raw.body);
-        } catch {
-          data = raw;
-        }
-      }
-
-      if (!response.ok) {
-        throw new Error(data?.error || 'Failed to generate PDF packet.');
-      }
-
-      const url = data?.download_url || data?.url || data?.presigned_url || data?.location;
-      const pdfBase64 = data?.pdf_base64 || data?.pdfBase64;
-
-      if (typeof url === 'string' && url) {
+      if (packetResult.url) {
         if (pendingTab && !pendingTab.closed) {
-          pendingTab.location.replace(url);
+          pendingTab.location.replace(packetResult.url);
           pendingTab.focus();
         } else {
-          window.open(url, '_blank', 'noopener,noreferrer');
+          window.open(packetResult.url, '_blank', 'noopener,noreferrer');
         }
 
         return;
       }
 
-      if (typeof pdfBase64 === 'string' && pdfBase64) {
-        const binaryString = window.atob(pdfBase64);
+      if (packetResult.pdfBase64) {
+        const binaryString = window.atob(packetResult.pdfBase64);
         const pdfBytes = new Uint8Array(binaryString.length);
 
         for (let index = 0; index < binaryString.length; index += 1) {
@@ -179,7 +149,7 @@ export default function ChecklistPage() {
         `);
         pendingTab.document.close();
 
-        setTimeout(() => {
+        window.setTimeout(() => {
           if (!pendingTab.closed) {
             pendingTab.close();
           }
@@ -370,5 +340,3 @@ export default function ChecklistPage() {
     </div>
   );
 }
-
-
