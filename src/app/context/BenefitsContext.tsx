@@ -29,45 +29,6 @@ export const useBenefits = () => {
   return context;
 };
 
-// Snap helper //
-const SNAP_LIMITS: Record<string, number> = {
-  '1': 20000,
-  '2': 27000,
-  '3': 34000,
-  '4': 41400,
-};
-function isBelowSnapLimit(profile: Record<string, string>): boolean {
-  const household = profile['household_sizes'];
-  const income = parseInt(profile['income_level']);
-
-  if (!household || !income) return false;
-
-  const limit = SNAP_LIMITS[household];
-  if (!limit) return false;
-
-  return income <= limit;
-}
-
-// Masshealth helper
-const MASSHEALTH_LIMITS: Record<string, number> = {
-  '1': 20800,
-  '2': 28200,
-  '3': 35600,
-  '4': 43000,
-};
-function isBelowMassHealthLimit(profile: Record<string, string>): boolean {
-  const household = profile['household_sizes'];
-  const income = parseInt(profile['income_level']);
-
-  if (!household || !income) return false;
-
-  const limit = MASSHEALTH_LIMITS[household];
-  if (!limit) return false;
-
-  return income <= limit;
-}
-///////
-
 const getBenefitById = (id: string) => benefits.find((benefit) => benefit.id === id);
 
 const applyScreeningBenefitFilters = (
@@ -169,8 +130,10 @@ const evaluateBenefitsLocally = (profile: Record<string, string>): Benefit[] => 
 
   if (
     profile['citizen_status'] === 'yes' &&
-    profile['efc_level'] === 'zero'  &&
-    profile['massgrant-plus-uni'] === 'yes'
+    hasQualifyingMassGrantResidency &&
+    profile['prior_bachelors_degree'] === 'no' &&
+    isMassGrantPlusEligibleSchool(profile['school_name']) &&
+    isMassGrantPlusEnrollmentEligible(profile)
   ) {
     const benefit = getBenefitById('massgrant-plus');
     if (benefit) {
@@ -186,9 +149,8 @@ const evaluateBenefitsLocally = (profile: Record<string, string>): Benefit[] => 
 
   if (
     profile['citizen_status'] === 'yes' &&
-    profile['ma_resident'] === 'yes' &&
-    (profile['work_study'] === 'yes' || isBelowSnapLimit(profile))
-
+    isMassachusettsResident &&
+    (profile['work_study'] === 'yes' || isSnapIncomeEligible)
   ) {
     const benefit = getBenefitById('snap');
     if (benefit) {
@@ -202,7 +164,7 @@ const evaluateBenefitsLocally = (profile: Record<string, string>): Benefit[] => 
   if (
     isMassachusettsResident &&
     profile['citizen_status'] === 'yes' &&
-    isBelowMassHealthLimit(profile)
+    profile['masshealth_income_under_limit'] === 'yes'
   ) {
     const benefit = getBenefitById('masshealth');
     if (benefit) {
@@ -210,10 +172,7 @@ const evaluateBenefitsLocally = (profile: Record<string, string>): Benefit[] => 
     }
   }
 
-  if (
-    isStudentOrFuture &&
-    profile['mbta-uni'] === 'yes'
-  ) {
+  if (isStudentOrFuture && isMbtaEligibleSchool(profile['school_name'])) {
     const benefit = getBenefitById('mbta-pass');
     if (benefit) {
       matches.push(benefit);
@@ -385,3 +344,5 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
     </BenefitsContext.Provider>
   );
 };
+
+

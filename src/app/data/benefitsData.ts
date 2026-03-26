@@ -1,4 +1,25 @@
-import { Value } from "@radix-ui/react-select";
+import {
+  formatCurrency,
+  getEffectiveMassGrantPlusIncomeBand,
+  getExactHouseholdSize,
+  getIncomeQuestionHelperText,
+  getIncomeQuestionText,
+  getIncomeThreshold,
+  getInferredMassGrantPlusIncomeBand,
+  hasResolvedHouseholdSize,
+  type BenefitProfile,
+} from './incomeThresholds';
+import type { InlineTextSegment } from './questionRichText';
+import {
+  eligibleNonCitizenTooltip,
+  grossIncomeTooltip,
+  householdSizeTooltip,
+  residencyStatusTooltip,
+} from './questionTooltipContent';
+import {
+  allMassachusettsSchoolOptions,
+  isMassGrantPlusEligibleSchool,
+} from './massachusettsSchools';
 
 export interface Benefit {
   id: string;
@@ -225,7 +246,6 @@ export const benefits: Benefit[] = [
   },
 ];
 
-
 export const questions: Question[] = [
   {
     id: 'student_status',
@@ -235,22 +255,11 @@ export const questions: Question[] = [
     options: [
       { label: 'Yes, full-time', value: 'full_time' },
       { label: 'Yes, part-time', value: 'part_time' },
-      { label: 'I will be enrolled within the next year', value: 'future' },
+      { label: 'I will be enrolled full-time within the next year', value: 'future_full_time' },
+      { label: 'I will be enrolled part-time within the next year', value: 'future_part_time' },
       { label: 'No', value: 'no' },
     ],
   },
-
-  {
-    id: 'age',
-    text: 'Choose your age group?',
-    category: 'General',
-    options: [
-      { label: 'Under 18', value: 'low' },
-      { label: '18 to 64', value: 'medium' },
-      { label: 'Over 64', value: 'high' },
-    ],
-  },
-
   {
     id: 'citizen_status',
     text: 'Are you a U.S. citizen or an eligible non-citizen?',
@@ -265,101 +274,69 @@ export const questions: Question[] = [
     benefitIds: ['pell-grant', 'massgrant', 'massgrant-plus', 'snap', 'masshealth', 'mbta-pass'],
     options: residencyLengthOptions,
   },
-
   {
-    id: 'residency_length',
-    text: 'How many years have you lived in MA?',
-    category: 'General',
-    conditions: [
-      {
-      questionId : 'ma_resident',
-      values: ['yes']
-      }
-    ],
-    options: [
-      { label: 'Less than 5 years', value: 'low' },
-      { label: '5 - 10 years', value: 'medium' },
-      { label: 'More than 10 years', value: 'high' },
-    ],
-  },
-  {
-    id: 'fafsa_completed',
-    text: 'Have you completed the FAFSA for the current academic year?',
-    category: 'Financial',
+    id: 'school_name',
+    text: 'Which Massachusetts college or university do you attend?',
+    category: 'Education',
+    benefitIds: ['massgrant-plus', 'mbta-pass'],
+    control: 'select',
+    placeholder: 'Select your college or university',
     conditions: [
       {
         questionId: 'citizen_status',
         values: ['yes'],
       },
       {
-        questionId: 'ma_resident',
+        questionId: 'student_status',
+        values: studentOrFutureValues,
+      },
+    ],
+    isVisible: (answers) => hasMassachusettsResidency(answers),
+    options: allMassachusettsSchoolOptions,
+  },
+  {
+    id: 'fafsa_completed',
+    text: 'Have you completed the FAFSA for the upcoming academic year?',
+    category: 'Financial',
+    benefitIds: ['pell-grant', 'massgrant', 'massgrant-plus'],
+    conditions: [
+      {
+        questionId: 'citizen_status',
         values: ['yes'],
       },
       {
         questionId: 'student_status',
-        values: ['full_time', 'part_time', 'future'],
+        values: studentOrFutureValues,
+      },
+    ],
+    isVisible: (answers) => hasMassachusettsResidency(answers),
+    options: yesNoOptions,
+  },
+  {
+    id: 'work_study',
+    text: 'Are you participating in Federal Work-Study?',
+    category: 'Financial',
+    benefitIds: ['snap'],
+    conditions: [
+      {
+        questionId: 'student_status',
+        values: studentOrFutureValues,
       },
     ],
     options: yesNoOptions,
   },
-
   {
-  id: 'efc_level',
-  text: 'What is your Expected Family Contribution (EFC) from FAFSA?',
-  category: 'Financial',
-  conditions: [
-    {
-        questionId: 'student_status',
-        values: ['full_time', 'part_time', 'future'],
-      },
-  ],
-  options: [
-    { label: '$0', value: 'zero' },
-    { label: 'Above $0', value: '1' },
-  ],
-},
-
-{
-  id: 'mbta-uni',
-  text: 'Do you or will you attend any of these universities?(MBTA)',
-  category: 'General',
-  conditions: [
-    {
-      questionId: 'citizen_status',
-      values: ['yes'],
-    },
-    {
-      questionId: 'ma_resident',
-      values: ['yes'],
-    },
-    {
-      questionId: 'student_status',
-      values: ['full_time', 'part_time', 'future'],
-    }
-  ],
-  options: [
-    { label: 'Yes', value: 'yes' },
-    { label: 'No', value: 'no' },
-  ],
-  },
-
-  {
-    id: 'massgrant-plus-uni',
-    text: 'Do you or will you attend any of these universities?(MassGrantPlus)',
-    category: 'General',
+    id: 'household_sizes',
+    text: 'What is your household size?',
+    category: 'Financial',
+    benefitIds: ['snap', 'masshealth'],
+    control: 'select',
+    placeholder: 'Select household size',
     conditions: [
       {
         questionId: 'citizen_status',
         values: ['yes'],
       },
-      {
-        questionId: 'ma_resident',
-        values: ['yes'],
-      },
-      {
-        questionId: 'student_status',
-        values: ['full_time', 'part_time', 'future'],
-      }
     ],
     isVisible: (answers) => hasMassachusettsResidency(answers),
     options: householdSizeOptions,
@@ -368,10 +345,13 @@ export const questions: Question[] = [
     id: 'household_size_exact',
     text: 'Enter your exact household size.',
     category: 'Financial',
-    conditions:[
+    benefitIds: ['snap', 'masshealth'],
+    control: 'number',
+    placeholder: 'Enter a household size of 9 or greater',
+    conditions: [
       {
-        questionId: 'citizen_status',
-        values: ['yes'],
+        questionId: 'household_sizes',
+        values: ['9_plus'],
       },
     ],
     validate: (value) => {
@@ -391,8 +371,8 @@ export const questions: Question[] = [
     benefitIds: ['snap', 'masshealth'],
     conditions: [
       {
-        questionId: 'student_status',
-        values: ['full_time', 'part_time','future'],
+        questionId: 'citizen_status',
+        values: ['yes'],
       },
     ],
     isVisible: (answers) => hasMassachusettsResidency(answers) && hasResolvedHouseholdSize(answers),
@@ -401,25 +381,15 @@ export const questions: Question[] = [
     options: yesNoOptions,
   },
   {
-    id: 'household_sizes',
-    text: 'What is your household size?',
+    id: 'snap_income_under_limit',
+    text: 'SNAP income threshold question',
     category: 'Financial',
-    conditions:[
+    benefitIds: ['snap'],
+    conditions: [
       {
         questionId: 'citizen_status',
         values: ['yes'],
       },
-      {
-        questionId: 'ma_resident',
-        values: ['yes'],
-      },
-    ],
-
-    options: [
-      { label: '1', value: '1' },
-      { label: '2', value: '2' },
-      { label: '3', value: '3' },
-      { label: '4', value: '4' },
     ],
     isVisible: (answers) =>
       hasMassachusettsResidency(answers) &&
@@ -430,11 +400,11 @@ export const questions: Question[] = [
     getHelperText: (answers) => getIncomeQuestionHelperText('snap', answers),
     options: yesNoOptions,
   },
-
   {
-    id: 'housing_status',
-    text: 'What is or will be your living situation while attending college/university?',
-    category: 'Housing',
+    id: 'massgrant_plus_income_band',
+    text: 'Which family income range fits you best for MASSGrant Plus?',
+    category: 'Education',
+    benefitIds: ['massgrant-plus'],
     conditions: [
       {
         questionId: 'citizen_status',
@@ -442,7 +412,7 @@ export const questions: Question[] = [
       },
       {
         questionId: 'student_status',
-        values: ['full_time', 'part_time','future'],
+        values: studentOrFutureValues,
       },
     ],
     isVisible: (answers) =>
@@ -451,30 +421,24 @@ export const questions: Question[] = [
       !getInferredMassGrantPlusIncomeBand(answers),
     options: massGrantPlusIncomeBandOptions,
   },
-
   {
-    id: 'income_level',
-    text: 'What is your estimated annual income for your household?',
-    category: 'Financial',
+    id: 'prior_bachelors_degree',
+    text: 'Have you already received a bachelor\'s degree or equivalent?',
+    category: 'Education',
+    benefitIds: ['massgrant', 'massgrant-plus'],
     conditions: [
       {
         questionId: 'citizen_status',
         values: ['yes'],
       },
       {
-        questionId: 'ma_resident',
-        values: ['yes'],
+        questionId: 'student_status',
+        values: studentOrFutureValues,
       },
     ],
-    options: [
-    { label: 'Under $20,000', value: '20000' },
-    { label: '$20,000 - $27,000', value: '27000' },
-    { label: '$27,000 - $34,000', value: '34000' },
-    { label: '$34,000 - $41,400,', value: '41400' },
-    { label: 'Above 41,400$', value: '999999' }
-  ],
+    isVisible: (answers) => shouldAskPriorBachelorsDegree(answers),
+    options: yesNoOptions,
   },
-
 ];
 
 export function getQuestionTextSegments(question: Question, answers: BenefitProfile): InlineTextSegment[] {
