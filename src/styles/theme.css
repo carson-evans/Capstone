@@ -135,9 +135,8 @@
 
   html {
     font-size: var(--font-size);
-    scrollbar-gutter: stable both-edges;
+    scrollbar-gutter: stable;
   }
-
   h1 {
     font-size: var(--text-2xl);
     font-weight: var(--font-weight-medium);

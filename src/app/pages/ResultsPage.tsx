@@ -23,6 +23,7 @@ import { renderLinkedText } from '../components/ui/render-linked-text';
 import { useBenefits } from '../context/BenefitsContext';
 import { benefits } from '../data/benefitsData';
 import { useIsMobile } from '../components/ui/use-mobile';
+import { SiteFooter } from '../components/layout/SiteFooter';
 
 const FAFSA_MANAGED_BENEFIT_IDS = new Set(['pell-grant', 'massgrant', 'massgrant-plus']);
 const FAFSA_STATUS_URL =
@@ -120,7 +121,7 @@ export default function ResultsPage() {
       <PageBackdrop />
       <Navbar />
 
-      <div className="container mx-auto max-w-4xl px-6 py-12">
+      <main id="main-content" tabIndex={-1} className="container mx-auto max-w-4xl px-6 py-12">
         <div className="relative mb-14">
           <motion.div
             initial={heroEnterInitial}
@@ -137,7 +138,7 @@ export default function ResultsPage() {
               }}
             >
               <div className="relative z-10">
-                <h1 className="mb-4 text-[2.6rem] font-bold tracking-tight md:text-[2.85rem]">
+                <h1 id="results-heading" className="mb-4 text-[2.6rem] font-bold tracking-tight md:text-[2.85rem]">
                   Your Results
                 </h1>
 
@@ -170,7 +171,7 @@ export default function ResultsPage() {
 
         {hasMatches ? (
           isMobile ? (
-            <div className="space-y-6">
+            <section aria-labelledby="results-heading" className="space-y-6">
               {matchedBenefits.map((benefit) => {
                 const action = getBenefitAction(benefit);
                 const showActionStatus =
@@ -242,6 +243,7 @@ export default function ResultsPage() {
                     <button
                       type="button"
                       aria-expanded={isDetailsOpen}
+                      aria-controls={`${benefit.id}-details`}
                       onClick={() => toggleMobileDetails(benefit.id)}
                       className="flex w-full items-start justify-between gap-4 border-t border-gray-100 px-5 py-3.5 text-left text-sm font-semibold text-[#355b8a] transition-colors dark:border-white/10 dark:text-sky-200"
                     >
@@ -258,6 +260,9 @@ export default function ResultsPage() {
                         initial={{ opacity: 0, y: -6 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={MOBILE_DETAILS_REVEAL}
+                        id={`${benefit.id}-details`}
+                        role="region"
+                        aria-label={`${benefit.title} details`}
                         className="px-5 pb-5 pt-1"
                         style={{ contain: 'paint' }}
                       >
@@ -267,9 +272,9 @@ export default function ResultsPage() {
                   </div>
                 );
               })}
-            </div>
+            </section>
           ) : (
-            <Accordion type="multiple" className="space-y-6">
+            <section aria-labelledby="results-heading"><Accordion type="multiple" className="space-y-6">
               {matchedBenefits.map((benefit, index) => {
                 const action = getBenefitAction(benefit);
                 const showActionStatus =
@@ -356,15 +361,17 @@ export default function ResultsPage() {
                   </motion.div>
                 );
               })}
-            </Accordion>
+            </Accordion></section>
           )
         ) : (
           <div className="rounded-[1.75rem] border border-dashed border-gray-300 bg-white/72 py-20 text-center shadow-[0_24px_60px_-42px_rgba(15,23,42,0.28)] backdrop-blur-none dark:border-slate-700 dark:bg-slate-900/70 md:backdrop-blur-sm">
             <p className="mb-4 text-gray-500 dark:text-slate-400">
               We couldn&apos;t find any specific benefits matching your profile at this time.
             </p>
-            <Button variant="outline" onClick={() => (window.location.href = '/')}>
-              Start Over
+            <Button asChild variant="outline">
+              <Link to="/">
+                Start Over
+              </Link>
             </Button>
           </div>
         )}
@@ -386,7 +393,9 @@ export default function ResultsPage() {
             </a>
           </Button>
         </motion.div>
-      </div>
+      </main>
+
+      <SiteFooter />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { useBenefits } from '../context/BenefitsContext';
 import { useIsMobile } from '../components/ui/use-mobile';
 import { generatePacketRequest } from '@/lib/api';
+import { SiteFooter } from '../components/layout/SiteFooter';
 
 const desktopChecklistItemTransition = {
   type: 'spring' as const,
@@ -30,6 +31,7 @@ export default function ChecklistPage() {
   const { matchedBenefits, answers, checklistProgress, setChecklistItemChecked } = useBenefits();
   const isMobile = useIsMobile();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   const checklistItemTransition = isMobile
     ? mobileChecklistItemTransition
@@ -85,6 +87,7 @@ export default function ChecklistPage() {
       pendingTab.document.close();
     }
 
+    setGenerationError(null);
     setIsGenerating(true);
 
     try {
@@ -156,7 +159,7 @@ export default function ChecklistPage() {
         }, 1800);
       }
 
-      alert(
+      setGenerationError(
         error instanceof Error
           ? error.message
           : 'Something went wrong while generating the PDF packet.'
@@ -173,7 +176,7 @@ export default function ChecklistPage() {
         <Navbar />
       </div>
 
-      <div className="container mx-auto max-w-3xl px-6 py-12 print:max-w-none print:py-0">
+      <main id="main-content" tabIndex={-1} className="container mx-auto max-w-3xl px-6 py-12 print:max-w-none print:py-0">
         <div className="relative mb-12 print:mb-8">
           <div
             className="relative overflow-hidden rounded-t-[2rem] border-x border-t border-white/70 bg-white/72 p-8 pb-20 shadow-[0_34px_80px_-60px_rgba(15,23,42,0.42)] backdrop-blur-sm print:border-none print:bg-transparent print:p-0 print:pb-0 print:shadow-none dark:border-white/10 dark:bg-slate-900/58"
@@ -203,8 +206,14 @@ export default function ChecklistPage() {
               </p>
 
               {checklistBenefits.length > 0 && (
-                <p className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-400">
+                <p role="status" aria-live="polite" className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-400">
                   {completedChecklistItems} of {totalChecklistItems} checklist items completed.
+                </p>
+              )}
+
+              {generationError && (
+                <p role="alert" className="mt-4 text-sm font-medium text-red-600 dark:text-red-400">
+                  {generationError}
                 </p>
               )}
 
@@ -214,6 +223,7 @@ export default function ChecklistPage() {
                     size="lg"
                     onClick={handleDownload}
                     disabled={isGenerating}
+                    aria-busy={isGenerating}
                     className="cursor-pointer bg-[#1e3a5f] text-white hover:bg-[#152a45] dark:bg-sky-300 dark:text-slate-950 dark:hover:bg-sky-200 dark:shadow-[0_18px_36px_-24px_rgba(125,211,252,0.55)]"
                   >
                     <Download className="h-5 w-5" />
@@ -336,6 +346,10 @@ export default function ChecklistPage() {
             </a>
           </Button>
         </div>
+      </main>
+
+      <div className="print:hidden">
+        <SiteFooter />
       </div>
     </div>
   );
