@@ -1,3 +1,5 @@
+import { Value } from "@radix-ui/react-select";
+
 export interface Benefit {
   id: string;
   title: string;
@@ -125,6 +127,7 @@ export const benefits: Benefit[] = [
   },
 ];
 
+
 export const questions: Question[] = [
   {
     id: 'student_status',
@@ -133,20 +136,22 @@ export const questions: Question[] = [
     options: [
       { label: 'Yes, full-time', value: 'full_time' },
       { label: 'Yes, part-time', value: 'part_time' },
-      { label: 'Yes, in future', value: 'future' },
+      { label: 'I will be enrolled within the next year', value: 'future' },
       { label: 'No', value: 'no' },
     ],
   },
+
   {
-    id: 'residency_length',
-    text: 'How many years have you lived in MA?',
+    id: 'age',
+    text: 'Choose your age group?',
     category: 'General',
     options: [
-      { label: '1 - 5 years', value: 'low' },
-      { label: '5 - 10 years', value: 'medium' },
-      { label: 'more than 10 years', value: 'high' },
+      { label: 'Under 18', value: 'low' },
+      { label: '18 to 64', value: 'medium' },
+      { label: 'Over 64', value: 'high' },
     ],
   },
+
   {
     id: 'citizen_status',
     text: 'Are you a U.S. citizen or an eligible non-citizen?',
@@ -165,14 +170,40 @@ export const questions: Question[] = [
       { label: 'No', value: 'no' },
     ],
   },
+
+  {
+    id: 'residency_length',
+    text: 'How many years have you lived in MA?',
+    category: 'General',
+    conditions: [
+      {
+      questionId : 'ma_resident',
+      values: ['yes']
+      }
+    ],
+    options: [
+      { label: 'Less than 5 years', value: 'low' },
+      { label: '5 - 10 years', value: 'medium' },
+      { label: 'More than 10 years', value: 'high' },
+    ],
+  },
+
   {
     id: 'fafsa_completed',
     text: 'Have you completed the FAFSA for the current academic year?',
     category: 'Financial',
     conditions: [
       {
+        questionId: 'citizen_status',
+        values: ['yes'],
+      },
+      {
+        questionId: 'ma_resident',
+        values: ['yes'],
+      },
+      {
         questionId: 'student_status',
-        values: ['full_time', 'part_time'],
+        values: ['full_time', 'part_time', 'future'],
       },
     ],
     options: [
@@ -182,82 +213,62 @@ export const questions: Question[] = [
   },
 
   {
-    id: 'mbta-specials',
-    text: 'Are you blind, military, police, firefighter, government official?',
-    category: 'General',
-    options: [
-      { label: 'Yes', value: 'yes' },
-      { label: 'No', value: 'no' },
-    ],
+  id: 'efc_level',
+  text: 'What is your Expected Family Contribution (EFC) from FAFSA?',
+  category: 'Financial',
+  conditions: [
+    {
+        questionId: 'student_status',
+        values: ['full_time', 'part_time', 'future'],
+      },
+  ],
+  options: [
+    { label: '$0', value: 'zero' },
+    { label: 'Above $0', value: '1' },
+  ],
+},
+
+{
+  id: 'mbta-uni',
+  text: 'Do you or will you attend any of these universities?(MBTA)',
+  category: 'General',
+  conditions: [
+    {
+      questionId: 'citizen_status',
+      values: ['yes'],
+    },
+    {
+      questionId: 'ma_resident',
+      values: ['yes'],
+    },
+    {
+      questionId: 'student_status',
+      values: ['full_time', 'part_time', 'future'],
+    }
+  ],
+  options: [
+    { label: 'Yes', value: 'yes' },
+    { label: 'No', value: 'no' },
+  ],
   },
 
   {
-    id: 'mbta-disability',
-    text: 'Do you have Medicare or a disability?',
+    id: 'massgrant-plus-uni',
+    text: 'Do you or will you attend any of these universities?(MassGrantPlus)',
     category: 'General',
     conditions: [
       {
-        questionId: 'mbta-specials',
-        values: ['no'],
-      },
-    ],
-    options: [
-      { label: 'Yes', value: 'yes' },
-      { label: 'No', value: 'no' },
-    ],
-  },
-
-  {
-    id: 'age',
-    text: 'Choose your age group?',
-    category: 'General',
-    options: [
-      { label: 'Under 18', value: 'low' },
-      { label: '18 to 64', value: 'medium' },
-      { label: 'Over 64', value: 'high' },
-    ],
-  },
-
-  {
-    id: 'mbta-program',
-    text: 'Are you enrolled in an MBTA income-eligible program?',
-    category: 'General',
-    conditions: [
-      {
-        questionId: 'mbta-specials',
-        values: ['no']
+        questionId: 'citizen_status',
+        values: ['yes'],
       },
       {
-        questionId: 'mbta-disability',
-        values: ['no']
+        questionId: 'ma_resident',
+        values: ['yes'],
       },
       {
-        questionId: 'age',
-        values: ['medium']
-      },
-    ],
-    options: [
-      { label: 'Yes', value: 'yes' },
-      { label: 'No', value: 'no' },
-    ],
-  },
-  {
-    id: 'mbta-uni',
-    text: 'Is your University eligible for MBTA?',
-    category: 'General',
-    conditions: [
-      {
-        questionId: 'mbta-specials',
-        values: ['no']
-      },
-      {
-        questionId: 'mbta-disability',
-        values: ['no']
-      },
-      {
-        questionId: 'mbta-program',
-        values: ['no']
-      },
+        questionId: 'student_status',
+        values: ['full_time', 'part_time', 'future'],
+      }
     ],
     options: [
       { label: 'Yes', value: 'yes' },
@@ -269,10 +280,10 @@ export const questions: Question[] = [
     id: 'dependent_status',
     text: "Are you claimed as a dependent on someone else's tax return?",
     category: 'Financial',
-    conditions: [
+    conditions:[
       {
-        questionId: 'student_status',
-        values: ['full_time', 'part_time'],
+        questionId: 'citizen_status',
+        values: ['yes'],
       },
     ],
     options: [
@@ -287,7 +298,7 @@ export const questions: Question[] = [
     conditions: [
       {
         questionId: 'student_status',
-        values: ['full_time', 'part_time'],
+        values: ['full_time', 'part_time','future'],
       },
     ],
     options: [
@@ -296,23 +307,36 @@ export const questions: Question[] = [
     ],
   },
   {
-    id: 'income_level',
-    text: 'What is your estimated annual income?',
+    id: 'household_sizes',
+    text: 'What is your household size?',
     category: 'Financial',
+    conditions:[
+      {
+        questionId: 'citizen_status',
+        values: ['yes'],
+      },
+      {
+        questionId: 'ma_resident',
+        values: ['yes'],
+      },
+    ],
+
     options: [
-      { label: 'Below $20,000', value: 'low' },
-      { label: 'Between $20,000 and $40,000', value: 'medium' },
-      { label: 'Above $40,000', value: 'high' },
+      { label: '1', value: '1' },
+      { label: '2', value: '2' },
+      { label: '3', value: '3' },
+      { label: '4', value: '4' },
     ],
   },
+
   {
     id: 'housing_status',
-    text: 'What is your current living situation?',
+    text: 'What is or will be your living situation while attending college/university?',
     category: 'Housing',
     conditions: [
       {
         questionId: 'student_status',
-        values: ['full_time', 'part_time'],
+        values: ['full_time', 'part_time','future'],
       },
     ],
     options: [
@@ -321,36 +345,30 @@ export const questions: Question[] = [
       { label: 'Living with family', value: 'family' },
     ],
   },
+
   {
-    id: 'transportation',
-    text: 'Do you use public transportation to get to school?',
-    category: 'Transport',
+    id: 'income_level',
+    text: 'What is your estimated annual income for your household?',
+    category: 'Financial',
     conditions: [
+      {
+        questionId: 'citizen_status',
+        values: ['yes'],
+      },
       {
         questionId: 'ma_resident',
         values: ['yes'],
       },
-      {
-        questionId: 'student_status',
-        values: ['full_time', 'part_time'],
-      },
     ],
     options: [
-      { label: 'Yes, regularly', value: 'yes' },
-      { label: 'Sometimes', value: 'sometimes' },
-      { label: 'No', value: 'no' },
-    ],
+    { label: 'Under $20,000', value: '20000' },
+    { label: '$20,000 - $27,000', value: '27000' },
+    { label: '$27,000 - $34,000', value: '34000' },
+    { label: '$34,000 - $41,400,', value: '41400' },
+    { label: 'Above 41,400$', value: '999999' }
+  ],
   },
-  {
-    id: 'health_insurance',
-    text: 'Do you currently have health insurance?',
-    category: 'Health',
-    options: [
-      { label: 'Yes, through parents', value: 'parents' },
-      { label: 'Yes, through school', value: 'school' },
-      { label: 'No', value: 'no' },
-    ],
-  },
+
 ];
 
 /**
