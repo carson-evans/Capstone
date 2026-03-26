@@ -1,4 +1,4 @@
-﻿import {
+import {
   formatCurrency,
   getEffectiveMassGrantPlusIncomeBand,
   getExactHouseholdSize,
@@ -296,6 +296,7 @@ export const questions: Question[] = [
     id: 'residency_length',
     text: 'Which best describes your Massachusetts residency status?',
     category: 'General',
+    
     benefitIds: ['pell-grant', 'massgrant', 'massgrant-plus', 'snap', 'masshealth'],
     options: residencyLengthOptions,
   },
