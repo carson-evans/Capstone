@@ -187,6 +187,21 @@ export default function QuestionnairePage() {
     visibleQuestions.length > 0 && currentStep === visibleQuestions.length - 1;
 
   const willSubmitCurrentStep = React.useMemo(() => {
+    const benefitsThatRequireCitizenship = ['pell-grant', 'snap', 'masshealth'];
+
+  const requiresCitizenshipOnly =
+    screeningBenefitFilters.length > 0 &&
+    screeningBenefitFilters.every((id) =>
+      benefitsThatRequireCitizenship.includes(id)
+    );
+
+  if (
+    currentQuestion?.id === 'citizen_status' &&
+    normalizedSelectedOption === 'no' &&
+    requiresCitizenshipOnly
+  ) {
+    return true;
+  }
     if (!currentQuestion || !normalizedSelectedOption || currentValidationError) {
       return isLastStep;
     }
@@ -324,7 +339,35 @@ export default function QuestionnairePage() {
       ...answers,
       [currentQuestion.id]: normalizedAnswerValue,
     });
+    const benefitsThatRequireCitizenship = ['pell-grant', 'snap', 'masshealth'];
 
+    const requiresCitizenshipOnly =
+      screeningBenefitFilters.length > 0 &&
+      screeningBenefitFilters.every((id) =>
+        benefitsThatRequireCitizenship.includes(id)
+      );
+
+    if (
+      currentQuestion.id === 'citizen_status' &&
+      normalizedAnswerValue === 'no' &&
+      requiresCitizenshipOnly
+    ) {
+      setSubmissionError(null);
+      setAnswers(nextAnswers);
+
+      try {
+        await evaluateBenefits(nextAnswers);
+        navigate('/results');
+      } catch (error) {
+        console.error('Eligibility evaluation error:', error);
+        setSubmissionError(
+          error instanceof Error
+            ? error.message
+            : 'Something went wrong while checking eligibility.'
+        );
+      }
+      return;
+    }
     const nextVisibleQuestions = getVisibleQuestions(
       screeningQuestions,
       nextAnswers
