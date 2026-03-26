@@ -264,14 +264,14 @@ export const questions: Question[] = [
     id: 'citizen_status',
     text: 'Are you a U.S. citizen or an eligible non-citizen?',
     category: 'General',
-    benefitIds: ['pell-grant', 'massgrant', 'massgrant-plus', 'snap', 'masshealth', 'mbta-pass'],
+    benefitIds: ['pell-grant', 'massgrant', 'massgrant-plus', 'snap', 'masshealth'],    
     options: yesNoOptions,
   },
   {
     id: 'residency_length',
     text: 'Which best describes your Massachusetts residency status?',
     category: 'General',
-    benefitIds: ['pell-grant', 'massgrant', 'massgrant-plus', 'snap', 'masshealth', 'mbta-pass'],
+    benefitIds: ['pell-grant', 'massgrant', 'massgrant-plus', 'snap', 'masshealth'],
     options: residencyLengthOptions,
   },
   {
@@ -283,15 +283,10 @@ export const questions: Question[] = [
     placeholder: 'Select your college or university',
     conditions: [
       {
-        questionId: 'citizen_status',
-        values: ['yes'],
-      },
-      {
         questionId: 'student_status',
         values: studentOrFutureValues,
       },
     ],
-    isVisible: (answers) => hasMassachusettsResidency(answers),
     options: allMassachusettsSchoolOptions,
   },
   {
