@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
+
 import { Button } from '../components/ui/button';
 import { Progress } from '../components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
@@ -16,6 +17,9 @@ import {
 } from '../components/ui/select';
 import { Navbar } from '../components/layout/Navbar';
 import { PageBackdrop } from '../components/layout/PageBackdrop';
+import { InlineTooltipText } from '../components/ui/inline-tooltip-text';
+import { useIsMobile } from '../components/ui/use-mobile';
+
 import { useBenefits } from '../context/BenefitsContext';
 import {
   getQuestionHelperText,
@@ -26,9 +30,7 @@ import {
   questions,
   type Question,
 } from '../data/benefitsData';
-import { InlineTooltipText } from '../components/ui/inline-tooltip-text';
 import { getMassachusettsSchoolOptions } from '../data/massachusettsSchools';
-import { useIsMobile } from '../components/ui/use-mobile';
 
 const MOBILE_PAGE_TRANSITION = {
   duration: 0.24,
@@ -38,6 +40,7 @@ const MOBILE_PAGE_TRANSITION = {
 export default function QuestionnairePage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+
   const {
     setAnswers,
     answers,
@@ -45,57 +48,94 @@ export default function QuestionnairePage() {
     isEvaluating,
     screeningBenefitFilters,
   } = useBenefits();
+
   const measurementRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const [currentStep, setCurrentStep] = useState(0);
-  const [selectedOption, setSelectedOption] = useState<string>('');
+  const [selectedOption, setSelectedOption] = useState('');
   const [contentHeight, setContentHeight] = useState<number | null>(null);
-
-  const getQuestionOptions = React.useCallback((question: Question, questionAnswers: Record<string, string>) => {
-    if (question.id === 'school_name') {
-      const isFutureStudent =
-        questionAnswers['student_status'] === 'future_full_time' ||
-        questionAnswers['student_status'] === 'future_part_time';
-
-      return getMassachusettsSchoolOptions(isFutureStudent);
-    }
-
-    return question.options ?? [];
-  }, []);
-
-  const getPrunedAnswers = (nextAnswers: Record<string, string>) => {
-    let currentAnswers = pruneHiddenAnswers(screeningQuestions, nextAnswers);
-    let didChange = true;
-
-    while (didChange) {
-      didChange = false;
-      const nextVisibleQuestions = getVisibleQuestions(screeningQuestions, currentAnswers);
-
-      for (const question of nextVisibleQuestions) {
-        const answer = currentAnswers[question.id];
-
-        if (!answer) {
-          continue;
-        }
-
-        const questionOptions = getQuestionOptions(question, currentAnswers);
-        if (questionOptions.length > 0 && !questionOptions.some((option) => option.value === answer)) {
-          delete currentAnswers[question.id];
-          didChange = true;
-        }
-      }
-
-      if (didChange) {
-        currentAnswers = pruneHiddenAnswers(screeningQuestions, currentAnswers);
-      }
-    }
-
-    return currentAnswers;
-  };
 
   const screeningQuestions = React.useMemo(() => {
     return getQuestionsForBenefitFilters(questions, screeningBenefitFilters);
   }, [screeningBenefitFilters]);
+
+  const getQuestionOptions = React.useCallback(
+    (question: Question, questionAnswers: Record<string, string>) => {
+      if (question.id === 'school_name') {
+        const isFutureStudent =
+          questionAnswers['student_status'] === 'future_full_time' ||
+          questionAnswers['student_status'] === 'future_part_time';
+
+        return getMassachusettsSchoolOptions(isFutureStudent);
+      }
+
+      return question.options ?? [];
+    },
+    []
+  );
+
+  const findMatchingSelectOption = React.useCallback(
+    (
+      question: Question,
+      value: string,
+      questionAnswers: Record<string, string>
+    ) => {
+      const normalizedValue = value.trim().toLowerCase();
+
+      if (!normalizedValue || question.control !== 'select') {
+        return null;
+      }
+
+      return (
+        getQuestionOptions(question, questionAnswers).find(
+          (option) =>
+            option.value.toLowerCase() === normalizedValue ||
+            option.label.toLowerCase() === normalizedValue
+        ) ?? null
+      );
+    },
+    [getQuestionOptions]
+  );
+
+  const getPrunedAnswers = React.useCallback(
+    (nextAnswers: Record<string, string>) => {
+      let currentAnswers = pruneHiddenAnswers(screeningQuestions, nextAnswers);
+      let didChange = true;
+
+      while (didChange) {
+        didChange = false;
+        const nextVisibleQuestions = getVisibleQuestions(
+          screeningQuestions,
+          currentAnswers
+        );
+
+        for (const question of nextVisibleQuestions) {
+          const answer = currentAnswers[question.id];
+
+          if (!answer) {
+            continue;
+          }
+
+          const questionOptions = getQuestionOptions(question, currentAnswers);
+
+          if (
+            questionOptions.length > 0 &&
+            !questionOptions.some((option) => option.value === answer)
+          ) {
+            delete currentAnswers[question.id];
+            didChange = true;
+          }
+        }
+
+        if (didChange) {
+          currentAnswers = pruneHiddenAnswers(screeningQuestions, currentAnswers);
+        }
+      }
+
+      return currentAnswers;
+    },
+    [getQuestionOptions, screeningQuestions]
+  );
 
   const visibleQuestions = React.useMemo(() => {
     return getVisibleQuestions(screeningQuestions, answers);
@@ -108,22 +148,44 @@ export default function QuestionnairePage() {
   }, [visibleQuestions.length, currentStep]);
 
   const currentQuestion = visibleQuestions[currentStep];
+
   const currentQuestionTextSegments = currentQuestion
     ? getQuestionTextSegments(currentQuestion, answers)
     : [];
+
   const currentQuestionHelperText = currentQuestion
     ? getQuestionHelperText(currentQuestion, answers)
     : '';
+
   const currentQuestionOptions = currentQuestion
     ? getQuestionOptions(currentQuestion, answers)
     : [];
+
   const normalizedSelectedOption = selectedOption.trim();
+
   const currentValidationError =
-    currentQuestion && normalizedSelectedOption && currentQuestion.validate
-      ? currentQuestion.validate(normalizedSelectedOption, answers)
+    currentQuestion && normalizedSelectedOption
+      ? currentQuestion.validate
+        ? currentQuestion.validate(normalizedSelectedOption, answers)
+        : currentQuestion.control === 'select' &&
+          !findMatchingSelectOption(
+            currentQuestion,
+            normalizedSelectedOption,
+            answers
+          )
+        ? currentQuestion.id === 'school_name'
+          ? 'Select a school from the list.'
+          : 'Please select a valid option.'
+        : null
       : null;
-  const isLastStep = visibleQuestions.length > 0 && currentStep === visibleQuestions.length - 1;
-  const progress = visibleQuestions.length > 0 ? ((currentStep + 1) / visibleQuestions.length) * 100 : 0;
+
+  const isLastStep =
+    visibleQuestions.length > 0 && currentStep === visibleQuestions.length - 1;
+
+  const progress =
+    visibleQuestions.length > 0
+      ? ((currentStep + 1) / visibleQuestions.length) * 100
+      : 0;
 
   useEffect(() => {
     if (!currentQuestion) {
@@ -136,7 +198,24 @@ export default function QuestionnairePage() {
       currentQuestionOptions.length === 0 ||
       currentQuestionOptions.some((option) => option.value === nextSelectedOption);
 
-    setSelectedOption(isValidSelectedOption ? nextSelectedOption : '');
+    if (!isValidSelectedOption) {
+      setSelectedOption('');
+      return;
+    }
+
+    if (
+      currentQuestion.control === 'select' &&
+      currentQuestion.id === 'school_name' &&
+      nextSelectedOption
+    ) {
+      const matchedOption = currentQuestionOptions.find(
+        (option) => option.value === nextSelectedOption
+      );
+      setSelectedOption(matchedOption?.label ?? nextSelectedOption);
+      return;
+    }
+
+    setSelectedOption(nextSelectedOption);
   }, [answers, currentQuestion, currentQuestionOptions, currentStep]);
 
   useLayoutEffect(() => {
@@ -165,21 +244,43 @@ export default function QuestionnairePage() {
   }, [visibleQuestions, answers]);
 
   const handleNext = async () => {
-    if (!currentQuestion || !normalizedSelectedOption || currentValidationError || isEvaluating) {
+    if (
+      !currentQuestion ||
+      !normalizedSelectedOption ||
+      currentValidationError ||
+      isEvaluating
+    ) {
       return;
     }
 
+    const normalizedAnswerValue =
+      currentQuestion.control === 'select'
+        ? findMatchingSelectOption(
+            currentQuestion,
+            normalizedSelectedOption,
+            answers
+          )?.value ?? normalizedSelectedOption
+        : normalizedSelectedOption;
+
     const nextAnswers = getPrunedAnswers({
       ...answers,
-      [currentQuestion.id]: normalizedSelectedOption,
+      [currentQuestion.id]: normalizedAnswerValue,
     });
 
-    const nextVisibleQuestions = getVisibleQuestions(screeningQuestions, nextAnswers);
+    const nextVisibleQuestions = getVisibleQuestions(
+      screeningQuestions,
+      nextAnswers
+    );
+
     const currentQuestionIndex = nextVisibleQuestions.findIndex(
       (question) => question.id === currentQuestion.id
     );
-    const safeCurrentQuestionIndex = currentQuestionIndex >= 0 ? currentQuestionIndex : currentStep;
-    const isLastVisibleStep = safeCurrentQuestionIndex >= nextVisibleQuestions.length - 1;
+
+    const safeCurrentQuestionIndex =
+      currentQuestionIndex >= 0 ? currentQuestionIndex : currentStep;
+
+    const isLastVisibleStep =
+      safeCurrentQuestionIndex >= nextVisibleQuestions.length - 1;
 
     setAnswers(nextAnswers);
 
@@ -203,7 +304,9 @@ export default function QuestionnairePage() {
   };
 
   const handleBack = () => {
-    if (isEvaluating) return;
+    if (isEvaluating) {
+      return;
+    }
 
     if (currentStep > 0) {
       setCurrentStep((prev) => prev - 1);
@@ -216,6 +319,94 @@ export default function QuestionnairePage() {
     const questionOptions = getQuestionOptions(question, answers);
 
     if (question.control === 'select') {
+      if (question.id === 'school_name') {
+        if (!interactive) {
+          return (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-lg font-medium text-gray-500">
+                {question.placeholder ?? 'Search for your college or university'}
+              </div>
+            </div>
+          );
+        }
+
+        const searchTerm = selectedOption.trim().toLowerCase();
+
+        const filteredOptions = (
+          searchTerm
+            ? questionOptions.filter((option) =>
+                option.label.toLowerCase().includes(searchTerm)
+              )
+            : questionOptions
+        ).slice(0, 12);
+
+        const selectedSchool = findMatchingSelectOption(
+          question,
+          selectedOption,
+          answers
+        );
+
+        return (
+          <div className="space-y-3">
+            <Input
+              type="text"
+              value={selectedOption}
+              onChange={(event) => setSelectedOption(event.target.value)}
+              placeholder="Start typing your college or university"
+              autoComplete="off"
+              className="h-14 rounded-lg border-gray-200 bg-white px-4 text-base font-medium md:text-lg"
+            />
+
+            <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+              <div className="max-h-64 overflow-y-auto p-2">
+                {filteredOptions.length > 0 ? (
+                  filteredOptions.map((option) => {
+                    const isSelected = selectedSchool?.value === option.value;
+
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setSelectedOption(option.label)}
+                        className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors md:text-base ${
+                          isSelected
+                            ? 'bg-[#1e3a5f] text-white'
+                            : 'text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <p className="px-3 py-2 text-sm text-slate-500 md:text-base">
+                    No matching schools found.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              {selectedSchool
+                ? `Selected: ${selectedSchool.label}`
+                : 'Type to search, then choose your school from the list.'}
+            </p>
+
+            {questionOptions.length > 12 && !selectedSchool && (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Showing the first 12 matches. Keep typing to narrow the list.
+              </p>
+            )}
+
+            {currentValidationError && (
+              <p className="text-sm font-medium text-red-600 dark:text-red-400">
+                {currentValidationError}
+              </p>
+            )}
+          </div>
+        );
+      }
+
       if (!interactive) {
         return (
           <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-lg font-medium text-gray-500">
@@ -310,7 +501,9 @@ export default function QuestionnairePage() {
     );
   };
 
-  if (!currentQuestion) return <div>Loading...</div>;
+  if (!currentQuestion) {
+    return <div>Loading...</div>;
+  }
 
   const questionContent = (
     <>
@@ -345,6 +538,7 @@ export default function QuestionnairePage() {
             </span>
             <span>{Math.round(progress)}% Complete</span>
           </div>
+
           <Progress
             value={progress}
             className="h-2 bg-slate-200/90 shadow-inner dark:bg-slate-800/90 md:h-2.5"
@@ -379,7 +573,11 @@ export default function QuestionnairePage() {
 
             <Button
               onClick={handleNext}
-              disabled={!normalizedSelectedOption || Boolean(currentValidationError) || isEvaluating}
+              disabled={
+                !normalizedSelectedOption ||
+                Boolean(currentValidationError) ||
+                isEvaluating
+              }
               className="rounded-md bg-[#1e3a5f] px-8 text-white transition-all hover:bg-[#f97316] dark:shadow-[0_18px_36px_-24px_rgba(15,23,42,0.95)] disabled:opacity-50 md:text-base"
             >
               {isLastStep ? (isEvaluating ? 'Checking...' : 'See Results') : 'Next'}
@@ -433,7 +631,3 @@ export default function QuestionnairePage() {
     </div>
   );
 }
-
-
-
-
