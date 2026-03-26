@@ -17,9 +17,8 @@ from reportlab.pdfgen import canvas
 
 from commonmass_backend import (
     detect_bucket_region,
+    get_authoritative_matches,
     load_catalog,
-    match_benefits,
-    normalize_requested_matches,
 )
 
 PACKETS_BUCKET = os.environ.get("PACKETS_BUCKET", "")
@@ -475,7 +474,8 @@ def _build_pdf_bytes(
         for match in matches:
             title = match.get("title", match["id"])
             description = match.get("description", "")
-            action = match.get("actionStatus", "")
+            action_statuses = match.get("actionStatuses") or []
+            primary_action = action_statuses[0] if action_statuses else ""
 
             y = _ensure_space(c, y, height, 82)
 
@@ -483,10 +483,10 @@ def _build_pdf_bytes(
             c.setFillColor(colors.HexColor("#111827"))
             c.drawString(margin_x, y, title)
 
-            if action:
+            if primary_action:
                 pill_x = margin_x + 170
                 max_pill_width = width - margin_x - pill_x
-                shortened_action = action
+                shortened_action = primary_action
 
                 if c.stringWidth(shortened_action, "Helvetica", 8) + 12 > max_pill_width:
                     words = shortened_action.split()
@@ -507,7 +507,7 @@ def _build_pdf_bytes(
                     pill_x,
                     y + 7,
                     shortened_action,
-                    good=("No action needed" in action or "Already Completed" in action),
+                    good=("No action needed" in primary_action or "Already Completed" in primary_action),
                 )
 
             y -= 17
@@ -517,6 +517,13 @@ def _build_pdf_bytes(
             for line in _wrap_text(c, description, width - 2 * margin_x - 12, font_size=9):
                 c.drawString(margin_x + 12, y, line)
                 y -= 12
+
+            for extra_status in action_statuses[1:]:
+                y = _ensure_space(c, y, height, 18)
+                c.setFont("Helvetica-Oblique", 8)
+                c.setFillColor(colors.HexColor("#4b5563"))
+                c.drawString(margin_x + 12, y, f"- {extra_status}")
+                y -= 10
 
             y -= 10
 
@@ -596,9 +603,6 @@ def lambda_handler(event, context):
     profile = payload.get("profile") or {}
     selected = payload.get("selectedBenefits") or payload.get("selected_benefits") or []
     checklist_progress = payload.get("checklistProgress") or payload.get("checklist_progress") or {}
-    requested_matches = payload.get("matchedBenefits")
-    if requested_matches is None:
-        requested_matches = payload.get("matched_benefits")
 
     if not isinstance(profile, dict):
         return _resp(400, {"error": "profile must be an object"}, event=event)
@@ -608,9 +612,6 @@ def lambda_handler(event, context):
 
     if checklist_progress is not None and not isinstance(checklist_progress, dict):
         return _resp(400, {"error": "checklistProgress must be an object if provided"}, event=event)
-
-    if requested_matches is not None and not isinstance(requested_matches, list):
-        return _resp(400, {"error": "matchedBenefits must be a list if provided"}, event=event)
 
     region_source_bucket = PACKETS_BUCKET or RULES_BUCKET
     region = detect_bucket_region(region_source_bucket)
@@ -625,14 +626,11 @@ def lambda_handler(event, context):
 
     catalog = load_catalog(s3, RULES_BUCKET, BENEFITS_CATALOG_KEY)
 
-    if requested_matches is not None:
-        matches = normalize_requested_matches(requested_matches, catalog)
-    else:
-        matches = normalize_requested_matches(match_benefits(profile), catalog)
-
-    if selected:
-        selected_set = {str(value) for value in selected}
-        matches = [match for match in matches if match["id"] in selected_set]
+    matches = get_authoritative_matches(
+        profile=profile,
+        catalog=catalog,
+        selected_benefit_ids=selected,
+    )
 
     normalized_progress = _normalize_checklist_progress(checklist_progress, matches)
 
@@ -707,4 +705,3 @@ def lambda_handler(event, context):
         },
         event=event,
     )
-    

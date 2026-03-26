@@ -6,9 +6,8 @@ from botocore.config import Config
 
 from commonmass_backend import (
     detect_bucket_region,
+    get_authoritative_matches,
     load_catalog,
-    match_benefits,
-    normalize_requested_matches,
 )
 
 RULES_BUCKET = os.environ.get("RULES_BUCKET", "")
@@ -130,7 +129,7 @@ def lambda_handler(event, context):
         )
 
     catalog = load_catalog(s3, RULES_BUCKET, BENEFITS_CATALOG_KEY)
-    matched_benefits = normalize_requested_matches(match_benefits(profile), catalog)
+    matched_benefits = get_authoritative_matches(profile, catalog)
 
     return _resp(
         200,
