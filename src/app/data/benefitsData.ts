@@ -1,4 +1,4 @@
-import {
+﻿import {
   formatCurrency,
   getEffectiveMassGrantPlusIncomeBand,
   getExactHouseholdSize,
@@ -216,7 +216,7 @@ export const benefits: Benefit[] = [
     title: 'MBTA Student Pass',
     description: 'Discounted monthly passes for full-time students using MBTA services in the Greater Boston area.',
     details:
-      'The MBTA student pass is usually coordinated through participating colleges, not just through an individual checkout page. Your school may have its own process or transportation office instructions, so check the [official MBTA student pass page](https://www.mbta.com/fares/college-student-semester-passes) and confirm the steps your campus requires.',
+      'The MBTA student pass is usually coordinated through participating colleges, not just through an individual checkout page. Start with your school\'s transportation page or transportation office instructions, then check the [official MBTA student pass page](https://www.mbta.com/fares/college-student-semester-passes) to confirm the steps your campus requires.',
     category: 'Transport',
     officialUrl: 'https://www.mbta.com/fares/college-student-semester-passes',
     officialButtonLabel: 'Visit Official Site',

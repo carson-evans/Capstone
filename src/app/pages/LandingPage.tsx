@@ -731,19 +731,13 @@ export default function LandingPage() {
                       <button
                         type="button"
                         onClick={() => setIsHeroAutoplayEnabled((current) => !current)}
-                        aria-pressed={isHeroAutoplayEnabled}
-                        className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-[#1e3a5f] transition-colors hover:border-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/35 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-950 dark:text-sky-100 dark:hover:border-sky-200 dark:hover:bg-slate-900"
+                        aria-label={isHeroAutoplayEnabled ? "Pause slideshow" : "Play slideshow"}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 bg-white text-[#1e3a5f] transition-colors hover:border-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/35 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-950 dark:text-sky-100 dark:hover:border-sky-200 dark:hover:bg-slate-900"
                       >
                         {isHeroAutoplayEnabled ? (
-                          <>
-                            <Pause className="mr-1.5 h-3.5 w-3.5" />
-                            Pause
-                          </>
+                          <Pause className="h-3.5 w-3.5" />
                         ) : (
-                          <>
-                            <Play className="mr-1.5 h-3.5 w-3.5" />
-                            Play
-                          </>
+                          <Play className="h-3.5 w-3.5" />
                         )}
                       </button>
                     </div>
@@ -849,84 +843,29 @@ export default function LandingPage() {
                 </div>
               </motion.div>
             </div>
-          </div>
-        </section>
-
-        <section className="relative border-t border-gray-100 bg-white/70 px-6 py-16 dark:border-white/10 dark:bg-slate-900/38 md:py-20">
-          <div className="mx-auto max-w-7xl">
-            <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
-              <motion.div {...getLandingRevealProps(0.03, 0.22, 24)}>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#355b8a] dark:text-sky-200">
-                  Privacy at a glance
-                </p>
-                <h2 className="mt-3 text-3xl font-bold tracking-tight text-[#1e3a5f] dark:text-slate-100 md:text-4xl">
-                  What we collect
-                </h2>
-                <p className="mt-4 max-w-2xl text-lg leading-relaxed text-gray-600 dark:text-slate-300">
-                  We try to keep this limited to what the screener and checklist
-                  packet need to work: the answers you submit, the benefit
-                  matches and checklist choices tied to your packet, and basic
-                  technical data needed to operate, monitor, and secure the app.
+            <motion.div
+              {...getLandingRevealProps(0.18, 0.22, 18)}
+              className="mx-auto mt-8 max-w-5xl md:mt-10"
+            >
+              <div className="flex flex-col gap-4 rounded-2xl border border-[#1e3a5f]/10 bg-white/82 px-5 py-4 shadow-[0_20px_48px_-36px_rgba(15,23,42,0.2)] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-6 dark:border-sky-200/12 dark:bg-slate-900/78 dark:shadow-[0_24px_60px_-40px_rgba(2,6,23,0.92)]">
+                <p className="max-w-3xl text-sm leading-relaxed text-gray-600 dark:text-slate-300 sm:text-[0.95rem]">
+                  <span className="font-semibold text-[#1e3a5f] dark:text-slate-100">
+                    We respect your privacy.
+                  </span>{" "}
+                  We only collect what the screener and checklist need to work.
                 </p>
 
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <Link
-                    to="/privacy"
-                    className="inline-flex items-center rounded-full bg-[#1e3a5f] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#16304f] dark:bg-sky-200 dark:text-slate-950 dark:hover:bg-sky-100"
-                  >
-                    Read Privacy Policy
-                  </Link>
-
-                  <Link
-                    to="/cookies"
-                    className="inline-flex items-center rounded-full border border-[#1e3a5f]/15 bg-white px-5 py-3 text-sm font-semibold text-[#1e3a5f] shadow-sm transition-all hover:bg-[#f8fafc] dark:border-sky-200/20 dark:bg-slate-950 dark:text-sky-200 dark:hover:bg-slate-900"
-                  >
-                    Read Cookie Policy
-                  </Link>
-                </div>
-              </motion.div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                {[
-                  {
-                    title: "Screener answers",
-                    text: "Information you enter in the questionnaire, like student status, residency, school, and household details.",
-                  },
-                  {
-                    title: "Packet choices",
-                    text: "Matched benefits, selected benefits, and checklist progress used to build your downloadable packet.",
-                  },
-                  {
-                    title: "Technical data",
-                    text: "Limited request, error, and performance data used to keep the service reliable and secure.",
-                  },
-                  {
-                    title: "Short-lived downloads",
-                    text: "Generated packets may be delivered directly or through temporary protected download links.",
-                  },
-                ].map((item, index) => (
-                  <motion.div
-                    key={item.title}
-                    {...getLandingRevealProps(
-                      0.05 + Math.min(index * 0.04, 0.14),
-                      0.2,
-                      20,
-                    )}
-                    className="rounded-3xl border border-slate-200 bg-white/92 p-5 shadow-[0_20px_48px_-34px_rgba(15,23,42,0.26)] dark:border-white/10 dark:bg-slate-900/82 dark:shadow-[0_24px_60px_-36px_rgba(2,6,23,0.88)]"
-                  >
-                    <h3 className="text-lg font-bold text-[#1e3a5f] dark:text-slate-100">
-                      {item.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-slate-300">
-                      {item.text}
-                    </p>
-                  </motion.div>
-                ))}
+                <Link
+                  to="/privacy"
+                  className="group inline-flex items-center gap-2 self-start text-sm font-semibold text-[#1e3a5f] underline-offset-4 transition-colors hover:text-[#16304f] hover:underline dark:text-sky-200 dark:hover:text-sky-100"
+                >
+                  Learn more
+                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                </Link>
               </div>
-            </div>
+            </motion.div>
           </div>
         </section>
-
         <section
           aria-labelledby="benefits-heading"
           className="relative overflow-hidden border-t border-gray-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_28%,#ffffff_100%)] px-6 py-16 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.96)_0%,rgba(15,23,42,0.96)_30%,rgba(2,6,23,0.98)_100%)] md:py-20"
