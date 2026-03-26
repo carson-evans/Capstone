@@ -1,10 +1,15 @@
 import React, { createContext, useContext, useState, type ReactNode } from 'react';
 import type { Benefit } from '../data/benefitsData';
 import { benefits } from '../data/benefitsData';
+import { getEffectiveMassGrantPlusIncomeBand } from '../data/incomeThresholds';
+import { isMassGrantPlusEligibleSchool, isMbtaEligibleSchool } from '../data/massachusettsSchools';
 
 interface BenefitsContextType {
   answers: Record<string, string>;
   setAnswer: (questionId: string, answer: string) => void;
+  setAnswers: (nextAnswers: Record<string, string>) => void;
+  screeningBenefitFilters: Benefit['id'][];
+  setScreeningBenefitFilters: (nextFilters: Benefit['id'][]) => void;
   matchedBenefits: Benefit[];
   isEvaluating: boolean;
   evaluationError: string | null;
@@ -65,16 +70,71 @@ function isBelowMassHealthLimit(profile: Record<string, string>): boolean {
 
 const getBenefitById = (id: string) => benefits.find((benefit) => benefit.id === id);
 
+const applyScreeningBenefitFilters = (
+  matches: Benefit[],
+  selectedBenefitFilters: Benefit['id'][]
+): Benefit[] => {
+  if (!selectedBenefitFilters.length) {
+    return matches;
+  }
+
+  const selectedBenefitIdSet = new Set(selectedBenefitFilters);
+  return matches.filter((benefit) => selectedBenefitIdSet.has(benefit.id));
+};
+
+const getMassGrantPlusEnrollmentStatus = (profile: Record<string, string>): 'full_time' | 'part_time' | null => {
+  if (profile['student_status'] === 'full_time' || profile['student_status'] === 'future_full_time') {
+    return 'full_time';
+  }
+
+  if (profile['student_status'] === 'part_time' || profile['student_status'] === 'future_part_time') {
+    return 'part_time';
+  }
+
+  return null;
+};
+
+const isMassGrantPlusEnrollmentEligible = (profile: Record<string, string>): boolean => {
+  const enrollmentStatus = getMassGrantPlusEnrollmentStatus(profile);
+  const incomeBand = getEffectiveMassGrantPlusIncomeBand(profile);
+
+  if (!incomeBand || incomeBand === 'over_100k') {
+    return false;
+  }
+
+  if (incomeBand === '85k_to_100k') {
+    return enrollmentStatus === 'full_time';
+  }
+
+  if (enrollmentStatus === 'full_time') {
+    return true;
+  }
+
+  return enrollmentStatus === 'part_time';
+};
+
+const isMassGrantEnrollmentEligible = (profile: Record<string, string>): boolean =>
+  profile['student_status'] === 'full_time' || profile['student_status'] === 'future_full_time';
+
 const evaluateBenefitsLocally = (profile: Record<string, string>): Benefit[] => {
   const matches: Benefit[] = [];
 
   const isEnrolled =
     profile['student_status'] === 'full_time' || profile['student_status'] === 'part_time';
 
-  const isStudentOrFuture = isEnrolled || profile['student_status'] === 'future';
+  const isStudentOrFuture =
+    isEnrolled ||
+    profile['student_status'] === 'future_full_time' ||
+    profile['student_status'] === 'future_part_time';
 
-  const isFullTimeOrFuture =
-    profile['student_status'] === 'full_time' || profile['student_status'] === 'future';
+  const isSnapIncomeEligible =
+    profile['masshealth_income_under_limit'] === 'yes' ||
+    profile['snap_income_under_limit'] === 'yes';
+
+  const residencyLength = profile['residency_length'];
+  const isMassachusettsResident = Boolean(residencyLength) && residencyLength !== 'not_ma_resident';
+  const hasQualifyingMassGrantResidency =
+    isMassachusettsResident && residencyLength !== 'under_12_months';
 
   if (isStudentOrFuture && profile['citizen_status'] === 'yes') {
     const benefit = getBenefitById('pell-grant');
@@ -90,9 +150,10 @@ const evaluateBenefitsLocally = (profile: Record<string, string>): Benefit[] => 
   }
 
   if (
-    isStudentOrFuture &&
-    profile['ma_resident'] === 'yes' &&
-    profile['citizen_status'] === 'yes'
+    isMassGrantEnrollmentEligible(profile) &&
+    profile['citizen_status'] === 'yes' &&
+    hasQualifyingMassGrantResidency &&
+    profile['prior_bachelors_degree'] === 'no'
   ) {
     const benefit = getBenefitById('massgrant');
     if (benefit) {
@@ -107,8 +168,6 @@ const evaluateBenefitsLocally = (profile: Record<string, string>): Benefit[] => 
   }
 
   if (
-    isFullTimeOrFuture &&
-    profile['ma_resident'] === 'yes' &&
     profile['citizen_status'] === 'yes' &&
     profile['efc_level'] === 'zero'  &&
     profile['massgrant-plus-uni'] === 'yes'
@@ -141,7 +200,7 @@ const evaluateBenefitsLocally = (profile: Record<string, string>): Benefit[] => 
   }
 
   if (
-    profile['ma_resident'] === 'yes' &&
+    isMassachusettsResident &&
     profile['citizen_status'] === 'yes' &&
     isBelowMassHealthLimit(profile)
   ) {
@@ -197,17 +256,26 @@ const parseEligibilityResponse = async (response: Response) => {
 };
 
 export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswersState] = useState<Record<string, string>>({});
   const [matchedBenefits, setMatchedBenefits] = useState<Benefit[]>([]);
+  const [screeningBenefitFilters, setScreeningBenefitFiltersState] = useState<Benefit['id'][]>([]);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evaluationError, setEvaluationError] = useState<string | null>(null);
   const [checklistProgress, setChecklistProgress] = useState<Record<string, boolean[]>>({});
 
   const setAnswer = (questionId: string, answer: string) => {
-    setAnswers((prev) => ({
+    setAnswersState((prev) => ({
       ...prev,
       [questionId]: answer,
     }));
+  };
+
+  const setAnswers = (nextAnswers: Record<string, string>) => {
+    setAnswersState(nextAnswers);
+  };
+
+  const setScreeningBenefitFilters = (nextFilters: Benefit['id'][]) => {
+    setScreeningBenefitFiltersState(Array.from(new Set(nextFilters)));
   };
 
   const evaluateBenefits = async (
@@ -225,10 +293,11 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
       );
 
       const fallbackMatches = evaluateBenefitsLocally(profile);
-      setMatchedBenefits(fallbackMatches);
+      const filteredMatches = applyScreeningBenefitFilters(fallbackMatches, screeningBenefitFilters);
+      setMatchedBenefits(filteredMatches);
       setEvaluationError(null);
       setIsEvaluating(false);
-      return fallbackMatches;
+      return filteredMatches;
     }
 
     try {
@@ -252,8 +321,9 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Eligibility API returned an invalid matches payload.');
       }
 
-      setMatchedBenefits(nextMatches);
-      return nextMatches;
+      const filteredMatches = applyScreeningBenefitFilters(nextMatches as Benefit[], screeningBenefitFilters);
+      setMatchedBenefits(filteredMatches);
+      return filteredMatches;
     } catch (error) {
       console.error(
         'Eligibility API failed. Falling back to local eligibility evaluation.',
@@ -261,9 +331,10 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
       );
 
       const fallbackMatches = evaluateBenefitsLocally(profile);
-      setMatchedBenefits(fallbackMatches);
+      const filteredMatches = applyScreeningBenefitFilters(fallbackMatches, screeningBenefitFilters);
+      setMatchedBenefits(filteredMatches);
       setEvaluationError(null);
-      return fallbackMatches;
+      return filteredMatches;
     } finally {
       setIsEvaluating(false);
     }
@@ -286,9 +357,10 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const reset = () => {
-    setAnswers({});
+    setAnswersState({});
     setMatchedBenefits([]);
     setChecklistProgress({});
+    setScreeningBenefitFiltersState([]);
     setEvaluationError(null);
   };
 
@@ -297,6 +369,9 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
       value={{
         answers,
         setAnswer,
+        setAnswers,
+        screeningBenefitFilters,
+        setScreeningBenefitFilters,
         matchedBenefits,
         isEvaluating,
         evaluationError,

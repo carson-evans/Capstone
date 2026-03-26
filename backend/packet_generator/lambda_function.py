@@ -1,8 +1,10 @@
-import os
+﻿import os
+import base64
 import json
 import uuid
 import boto3
 from io import BytesIO
+from pathlib import Path
 from datetime import datetime, timezone
 from botocore.config import Config
 from botocore.exceptions import ClientError
@@ -11,6 +13,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 from reportlab.lib import colors
+from reportlab.lib.utils import ImageReader
 
 
 # -----------------------------
@@ -27,6 +30,103 @@ REQUIRE_SHARED_SECRET = os.environ.get("REQUIRE_SHARED_SECRET", "false").lower()
 SHARED_SECRET_HEADER = os.environ.get("SHARED_SECRET_HEADER", "x-commonmass-secret")
 SHARED_SECRET_VALUE = os.environ.get("SHARED_SECRET_VALUE", "")
 
+MASSGRANT_PLUS_UNDER_85K_LIMIT = 85000
+SNAP_THRESHOLDS = {
+    1: 2608,
+    2: 3525,
+    3: 4442,
+    4: 5358,
+    5: 6275,
+    6: 7192,
+    7: 8108,
+    8: 9025,
+}
+SNAP_ADDITIONAL_PERSON_INCREMENT = 917
+MASSHEALTH_THRESHOLDS = {
+    1: 21228,
+    2: 28788,
+    3: 36336,
+    4: 43896,
+    5: 51456,
+    6: 59004,
+    7: 66564,
+    8: 74112,
+}
+MASSHEALTH_ADDITIONAL_PERSON_INCREMENT = 7560
+
+SCHOOL_ALIASES = {
+    "Benjamin Franklin Institute of Technology": "Franklin Cummings Tech",
+    "Harvard Graduate School of Arts and Sciences": "Harvard University",
+    "Harvard Divinity School": "Harvard University",
+    "Harvard Graduate School of Education": "Harvard University",
+    "Harvard Kennedy School": "Harvard University",
+    "Harvard Law School": "Harvard University",
+    "Harvard Medical School": "Harvard University",
+    "Harvard School of Dental Medicine": "Harvard University",
+    "Harvard T.H. Chan School of Public Health": "Harvard University",
+    "Harvard University Graduate School of Design": "Harvard University",
+    "Lasell College": "Lasell University",
+    "New England Conservatory": "New England Conservatory of Music",
+    "Simmons College": "Simmons University",
+    "Suffolk University Boston": "Suffolk University",
+    "Suffolk University Law School": "Suffolk University",
+}
+
+MASSGRANT_PLUS_ELIGIBLE_SCHOOLS = {
+    "Bridgewater State University",
+    "Fitchburg State University",
+    "Framingham State University",
+    "Massachusetts College of Art and Design",
+    "Massachusetts College of Liberal Arts",
+    "Massachusetts Maritime Academy",
+    "Salem State University",
+    "University of Massachusetts Amherst",
+    "University of Massachusetts Boston",
+    "University of Massachusetts Dartmouth",
+    "University of Massachusetts Lowell",
+    "Westfield State University",
+    "Worcester State University",
+}
+
+MBTA_ELIGIBLE_SCHOOLS = {
+    "Berklee College of Music",
+    "Boston Architectural College",
+    "Boston College",
+    "Boston Graduate School of Psychoanalysis",
+    "Boston University",
+    "Bridgewater State University",
+    "Bunker Hill Community College",
+    "Curry College",
+    "Emerson College",
+    "Emmanuel College",
+    "Endicott College",
+    "Fisher College",
+    "Franklin Cummings Tech",
+    "Harvard University",
+    "Hebrew College",
+    "Lasell University",
+    "Lesley University",
+    "Longy School of Music of Bard College",
+    "Massachusetts College of Art and Design",
+    "Massachusetts Institute of Technology",
+    "MCPHS University",
+    "MGH Institute of Health Professions",
+    "New England College of Optometry",
+    "New England Conservatory of Music",
+    "New England Law | Boston",
+    "Northeastern University",
+    "Quincy College",
+    "Salem State University",
+    "Simmons University",
+    "Stonehill College",
+    "Suffolk University",
+    "Tufts University",
+    "University of Massachusetts Boston",
+    "Wentworth Institute of Technology",
+}
+
+
+
 
 # -----------------------------
 # Friendly labels
@@ -34,15 +134,54 @@ SHARED_SECRET_VALUE = os.environ.get("SHARED_SECRET_VALUE", "")
 FIELD_LABELS = {
     "student_status": "Student Status",
     "citizen_status": "Citizen Status",
-    "ma_resident": "Massachusetts Resident",
+    "residency_length": "Massachusetts Residency Status",
     "fafsa_completed": "FAFSA Completed",
+    "prior_bachelors_degree": "Prior Bachelor's Degree",
+    "massgrant_plus_income_band": "MASSGrant Plus Income Band",
     "work_study": "Work Study",
-    "income_level": "Income Level",
-    "transportation": "Transportation Need",
-    "housing_status": "Housing Status",
-    "dependent_status": "Dependent Status",
-    "health_insurance": "Health Insurance",
+    "household_sizes": "Household Size",
+    "household_size_exact": "Exact Household Size",
+    "masshealth_income_under_limit": "MassHealth Income Threshold",
+    "snap_income_under_limit": "SNAP Income Threshold",
+    "school_name": "College or University",
 }
+
+
+def _resolve_logo_path() -> Path | None:
+    candidate_paths = [
+        Path(__file__).with_name("CommonDark.png"),
+        Path(__file__).resolve().parents[2] / "src" / "assets" / "CommonDark.png",
+    ]
+
+    for candidate_path in candidate_paths:
+        if candidate_path.exists():
+            return candidate_path
+
+    return None
+
+
+LOGO_PATH = _resolve_logo_path()
+
+
+def _normalize_school_name(value) -> str:
+    if value is None:
+        return ""
+
+    trimmed = str(value).strip()
+    if not trimmed:
+        return ""
+
+    return SCHOOL_ALIASES.get(trimmed, trimmed)
+
+
+def _is_massgrant_plus_school_eligible(value) -> bool:
+    school_name = _normalize_school_name(value)
+    return bool(school_name) and school_name in MASSGRANT_PLUS_ELIGIBLE_SCHOOLS
+
+
+def _is_mbta_school_eligible(value) -> bool:
+    school_name = _normalize_school_name(value)
+    return bool(school_name) and school_name in MBTA_ELIGIBLE_SCHOOLS
 
 
 # -----------------------------
@@ -177,15 +316,15 @@ FALLBACK_CATALOG = {
         "id": "massgrant-plus",
         "title": "MASSGrant Plus",
         "category": "Education",
-        "description": "Additional need-based grant for Massachusetts residents with exceptional financial need.",
+        "description": "State grant that can reduce tuition and fees for eligible Massachusetts residents at participating public institutions.",
         "officialUrl": "https://studentaid.gov/h/apply-for-aid/fafsa",
         "officialButtonLabel": "Start Official Application",
         "checklist": [
             "Complete the FAFSA",
-            "Demonstrate exceptional financial need",
-            "Enroll full-time at a Massachusetts public college",
-            "Maintain good academic standing",
-            "Review eligibility with financial aid office",
+            "Be a Massachusetts resident for at least 12 months for reasons other than education",
+            "Attend a participating MASSGrant Plus school",
+            "Not already hold a bachelor's degree",
+            "Review eligibility with your financial aid office",
         ],
     },
     "masshealth": {
@@ -305,12 +444,119 @@ def _match_benefits(profile: dict) -> list[dict]:
     def is_enrolled():
         return a.get("student_status") in ("full_time", "part_time")
 
-    def is_full_time():
-        return a.get("student_status") == "full_time"
+    def is_student_or_future():
+        return is_enrolled() or a.get("student_status") in ("future_full_time", "future_part_time")
+
+    def get_massgrant_plus_enrollment_status():
+        if a.get("student_status") in ("full_time", "future_full_time"):
+            return "full_time"
+        if a.get("student_status") in ("part_time", "future_part_time"):
+            return "part_time"
+        return None
+
+    def get_exact_household_size():
+        raw_household_size = a.get("household_sizes")
+        if not raw_household_size:
+            return None
+
+        exact_value = a.get("household_size_exact") if raw_household_size == "9_plus" else raw_household_size
+        try:
+            parsed_value = int(exact_value)
+        except (TypeError, ValueError):
+            return None
+
+        if parsed_value < 1:
+            return None
+        if raw_household_size == "9_plus" and parsed_value < 9:
+            return None
+
+        return parsed_value
+
+    def get_income_threshold(program: str):
+        household_size = get_exact_household_size()
+        if not household_size:
+            return None
+
+        if program == "masshealth":
+            thresholds = MASSHEALTH_THRESHOLDS
+            increment = MASSHEALTH_ADDITIONAL_PERSON_INCREMENT
+        else:
+            thresholds = SNAP_THRESHOLDS
+            increment = SNAP_ADDITIONAL_PERSON_INCREMENT
+
+        if household_size <= 8:
+            return thresholds.get(household_size)
+
+        household_size_eight_threshold = thresholds.get(8)
+        if household_size_eight_threshold is None:
+            return None
+
+        return household_size_eight_threshold + (household_size - 8) * increment
+
+    def get_inferred_massgrant_plus_income_band():
+        masshealth_threshold = get_income_threshold("masshealth")
+        if (
+            a.get("masshealth_income_under_limit") == "yes"
+            and masshealth_threshold is not None
+            and masshealth_threshold <= MASSGRANT_PLUS_UNDER_85K_LIMIT
+        ):
+            return "under_85k"
+
+        snap_threshold = get_income_threshold("snap")
+        if (
+            a.get("snap_income_under_limit") == "yes"
+            and snap_threshold is not None
+            and snap_threshold * 12 <= MASSGRANT_PLUS_UNDER_85K_LIMIT
+        ):
+            return "under_85k"
+
+        return None
+
+    def get_effective_massgrant_plus_income_band():
+        inferred_band = get_inferred_massgrant_plus_income_band()
+        if inferred_band:
+            return inferred_band
+
+        explicit_band = a.get("massgrant_plus_income_band")
+        if explicit_band in ("under_85k", "85k_to_100k", "over_100k"):
+            return explicit_band
+
+        return None
+
+    def is_massgrant_plus_enrollment_eligible():
+        enrollment_status = get_massgrant_plus_enrollment_status()
+        income_band = get_effective_massgrant_plus_income_band()
+
+        if not income_band or income_band == "over_100k":
+            return False
+        if income_band == "85k_to_100k":
+            return enrollment_status == "full_time"
+        if enrollment_status == "full_time":
+            return True
+        if enrollment_status == "part_time":
+            return enrollment_status == "part_time"
+        return False
+
+    def is_massgrant_enrollment_eligible():
+        return a.get("student_status") in ("full_time", "future_full_time")
+
+    def is_massachusetts_resident():
+        residency_length = a.get("residency_length")
+        return bool(residency_length) and residency_length != "not_ma_resident"
+
+    def has_qualifying_massgrant_residency():
+        residency_length = a.get("residency_length")
+        return bool(residency_length) and residency_length not in ("not_ma_resident", "under_12_months")
+
+    def is_snap_income_eligible():
+        return (
+            a.get("masshealth_income_under_limit") == "yes"
+            or a.get("snap_income_under_limit") == "yes"
+        )
 
     matches: list[dict] = []
 
-    if is_enrolled() and a.get("citizen_status") == "yes":
+    if is_student_or_future() and a.get("citizen_status") == "yes":
         action = (
             "No action needed (already applied to FAFSA)"
             if a.get("fafsa_completed") == "yes"
@@ -318,7 +564,12 @@ def _match_benefits(profile: dict) -> list[dict]:
         )
         matches.append({"id": "pell-grant", "actionStatus": action})
 
-    if is_enrolled() and a.get("ma_resident") == "yes" and a.get("citizen_status") == "yes":
+    if (
+        is_massgrant_enrollment_eligible()
+        and a.get("citizen_status") == "yes"
+        and has_qualifying_massgrant_residency()
+        and a.get("prior_bachelors_degree") == "no"
+    ):
         action = (
             "No action needed (already applied to FAFSA)"
             if a.get("fafsa_completed") == "yes"
@@ -327,10 +578,11 @@ def _match_benefits(profile: dict) -> list[dict]:
         matches.append({"id": "massgrant", "actionStatus": action})
 
     if (
-        is_full_time()
-        and a.get("ma_resident") == "yes"
-        and a.get("citizen_status") == "yes"
-        and a.get("income_level") == "low"
+        a.get("citizen_status") == "yes"
+        and has_qualifying_massgrant_residency()
+        and a.get("prior_bachelors_degree") == "no"
+        and _is_massgrant_plus_school_eligible(a.get("school_name"))
+        and is_massgrant_plus_enrollment_eligible()
     ):
         action = (
             "No action needed (already applied to FAFSA)"
@@ -340,9 +592,9 @@ def _match_benefits(profile: dict) -> list[dict]:
         matches.append({"id": "massgrant-plus", "actionStatus": action})
 
     if (
-        a.get("ma_resident") == "yes"
-        and a.get("income_level") in ("low", "medium")
-        and (a.get("work_study") == "yes" or a.get("income_level") == "low")
+        is_massachusetts_resident()
+        and a.get("citizen_status") == "yes"
+        and (a.get("work_study") == "yes" or is_snap_income_eligible())
     ):
         matches.append({
             "id": "snap",
@@ -350,13 +602,13 @@ def _match_benefits(profile: dict) -> list[dict]:
         })
 
     if (
-        a.get("ma_resident") == "yes"
+        is_massachusetts_resident()
         and a.get("citizen_status") == "yes"
-        and a.get("income_level") in ("low", "medium")
+        and a.get("masshealth_income_under_limit") == "yes"
     ):
         matches.append({"id": "masshealth"})
 
-    if is_enrolled() and a.get("transportation") in ("yes", "sometimes"):
+    if is_student_or_future() and _is_mbta_school_eligible(a.get("school_name")):
         matches.append({"id": "mbta-pass"})
 
     seen = set()
@@ -369,6 +621,50 @@ def _match_benefits(profile: dict) -> list[dict]:
     return unique
 
 
+def _get_match_item(match: dict, catalog: dict) -> dict:
+    benefit_id = ""
+    if isinstance(match, dict):
+        benefit_id = str(match.get("id") or "").strip()
+
+    catalog_item = catalog.get(benefit_id, {}) if benefit_id else {}
+    if not isinstance(catalog_item, dict):
+        catalog_item = {}
+
+    merged = dict(catalog_item)
+    if isinstance(match, dict):
+        merged.update(match)
+
+    if benefit_id:
+        merged["id"] = benefit_id
+
+    checklist = merged.get("checklist")
+    if not isinstance(checklist, list):
+        merged["checklist"] = catalog_item.get("checklist") or []
+
+    return merged
+
+
+def _normalize_requested_matches(raw_matches, catalog: dict) -> list[dict]:
+    normalized: list[dict] = []
+    seen: set[str] = set()
+
+    if not isinstance(raw_matches, list):
+        return normalized
+
+    for raw_match in raw_matches:
+        if not isinstance(raw_match, dict):
+            continue
+
+        benefit_id = str(raw_match.get("id") or "").strip()
+        if not benefit_id or benefit_id in seen:
+            continue
+
+        seen.add(benefit_id)
+        normalized.append(_get_match_item({**raw_match, "id": benefit_id}, catalog))
+
+    return normalized
+
+
 # -----------------------------
 # Checklist progress normalization
 # -----------------------------
@@ -377,8 +673,9 @@ def _normalize_checklist_progress(checklist_progress: dict, matches: list[dict],
     incoming = checklist_progress if isinstance(checklist_progress, dict) else {}
 
     for m in matches:
-        benefit_id = m["id"]
-        checklist = catalog.get(benefit_id, {}).get("checklist") or []
+        match_item = _get_match_item(m, catalog)
+        benefit_id = match_item["id"]
+        checklist = match_item.get("checklist") or []
         raw_progress = incoming.get(benefit_id, [])
 
         if not isinstance(raw_progress, list):
@@ -392,33 +689,66 @@ def _normalize_checklist_progress(checklist_progress: dict, matches: list[dict],
     return normalized
 
 
+def _get_ordered_checklist_items(checklist: list[str], progress: list[bool]) -> list[tuple[str, bool]]:
+    ordered_items = [
+        {
+            "item": item,
+            "checked": progress[index] if index < len(progress) else False,
+            "original_index": index,
+        }
+        for index, item in enumerate(checklist)
+    ]
+    ordered_items.sort(key=lambda item: (bool(item["checked"]), item["original_index"]))
+    return [(item["item"], bool(item["checked"])) for item in ordered_items]
+
+
 # -----------------------------
 # PDF helpers
 # -----------------------------
 PROFILE_LABELS = {
     "student_status": "Student status",
     "citizen_status": "Citizen / eligible non-citizen",
-    "ma_resident": "Massachusetts resident",
+    "residency_length": "Massachusetts residency status",
     "fafsa_completed": "FAFSA completed",
+    "prior_bachelors_degree": "Already has bachelor's degree",
+    "massgrant_plus_income_band": "MASSGrant Plus family income",
     "work_study": "Federal work-study",
-    "income_level": "Estimated annual income",
-    "transportation": "Uses public transportation",
-    "housing_status": "Housing status",
-    "dependent_status": "Claimed as dependent",
-    "health_insurance": "Health insurance",
+    "household_sizes": "Household size",
+    "household_size_exact": "Exact household size",
+    "masshealth_income_under_limit": "Below MassHealth yearly threshold",
+    "snap_income_under_limit": "Below SNAP monthly threshold",
+    "school_name": "College or university",
 }
 
 PROFILE_VALUE_LABELS = {
-    "student_status": {"full_time": "Yes, full-time", "part_time": "Yes, part-time", "no": "No"},
-    "citizen_status": {"yes": "Yes", "no": "No"},
-    "ma_resident": {"yes": "Yes", "no": "No"},
+    "student_status": {
+        "full_time": "Yes, full-time",
+        "part_time": "Yes, part-time",
+        "future_full_time": "Will enroll full-time within the next year",
+        "future_part_time": "Will enroll part-time within the next year",
+        "no": "No",
+    },
+    "residency_length": {
+        "not_ma_resident": "Not a Massachusetts resident",
+        "under_12_months": "Less than 12 months",
+        "one_to_five_years": "12 months or more",
+        "over_five_years": "12 months or more",
+    },
     "fafsa_completed": {"yes": "Yes", "no": "No"},
-    "work_study": {"yes": "Yes", "no": "No"},
-    "income_level": {"low": "Below $20,000", "medium": "Between $20,000 and $40,000", "high": "Above $40,000"},
-    "transportation": {"yes": "Yes, regularly", "sometimes": "Sometimes", "no": "No"},
-    "housing_status": {"on_campus": "On-campus housing", "off_campus": "Off-campus (renting)", "family": "Living with family"},
-    "dependent_status": {"yes": "Yes", "no": "No"},
-    "health_insurance": {"parents": "Yes, through parents", "school": "Yes, through school", "no": "No"},
+    "prior_bachelors_degree": {"yes": "Yes", "no": "No"},
+    "massgrant_plus_income_band": {
+        "under_85k": "Less than $85,000 per year before taxes",
+        "85k_to_100k": "$85,000 to $100,000 per year before taxes",
+        "over_100k": "More than $100,000 per year before taxes",
+    },
+    "masshealth_income_under_limit": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "snap_income_under_limit": {
+        "yes": "Yes",
+        "no": "No",
+    },
 }
 
 
@@ -466,13 +796,31 @@ def _draw_header_band(c, width, height):
     c.setFillColor(colors.HexColor("#1e3a5f"))
     c.rect(0, height - 0.85 * inch, width, 0.85 * inch, stroke=0, fill=1)
 
+    text_x = 0.75 * inch
+    logo_baseline_y = height - 0.66 * inch
+    logo_height = 0.34 * inch
+
+    if LOGO_PATH is not None:
+        try:
+            logo = ImageReader(str(LOGO_PATH))
+            image_width, image_height = logo.getSize()
+            rendered_logo_width = logo_height * (image_width / image_height)
+            c.drawImage(
+                logo,
+                text_x,
+                logo_baseline_y,
+                width=rendered_logo_width,
+                height=logo_height,
+                mask='auto',
+                preserveAspectRatio=True,
+            )
+            text_x += rendered_logo_width + 0.18 * inch
+        except Exception:
+            pass
+
     c.setFillColor(colors.white)
-    c.setFont("Helvetica-Bold", 20)
-    c.drawString(0.75 * inch, height - 0.52 * inch, "CommonMASS Packet")
-
-    c.setFont("Helvetica", 9)
-    c.drawRightString(width - 0.75 * inch, height - 0.52 * inch, "Generated Benefit Summary")
-
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(text_x, height - 0.51 * inch, "Application Preparation Checklist Packet")
     c.setFillColor(colors.black)
 
 
@@ -546,7 +894,7 @@ def _draw_checkbox(c, x, y, checked: bool):
         c.rect(x, y - size, size, size, stroke=1, fill=1)
         c.setFillColor(colors.white)
         c.setFont("Helvetica-Bold", 8)
-        c.drawString(x + 2, y - 8, "✓")
+        c.drawString(x + 2, y - 8, "X")
         c.setFillColor(colors.black)
     else:
         c.setStrokeColor(colors.HexColor("#6b7280"))
@@ -586,16 +934,17 @@ def _build_pdf_bytes(
     ordered_keys = [
         "student_status",
         "citizen_status",
-        "ma_resident",
+        "school_name",
+        "residency_length",
         "fafsa_completed",
         "work_study",
-        "income_level",
-        "transportation",
-        "housing_status",
-        "dependent_status",
-        "health_insurance",
+        "household_sizes",
+        "household_size_exact",
+        "masshealth_income_under_limit",
+        "snap_income_under_limit",
+        "massgrant_plus_income_band",
+        "prior_bachelors_degree",
     ]
-
     for k in ordered_keys:
         if k in profile:
             y = _ensure_space(c, y, height, 22)
@@ -613,10 +962,10 @@ def _build_pdf_bytes(
     else:
         for m in matches:
             bid = m["id"]
-            item = catalog.get(bid, {})
+            item = _get_match_item(m, catalog)
             title = item.get("title", bid)
             desc = item.get("description", "")
-            action = m.get("actionStatus", "")
+            action = item.get("actionStatus", "")
 
             y = _ensure_space(c, y, height, 82)
 
@@ -669,7 +1018,7 @@ def _build_pdf_bytes(
     else:
         for m in matches:
             bid = m["id"]
-            item = catalog.get(bid, {})
+            item = _get_match_item(m, catalog)
             title = item.get("title", bid)
             checklist = item.get("checklist") or []
             progress = checklist_progress.get(bid, [False] * len(checklist))
@@ -694,9 +1043,7 @@ def _build_pdf_bytes(
             )
             y -= 20
 
-            for idx, step in enumerate(checklist):
-                checked = progress[idx] if idx < len(progress) else False
-
+            for step, checked in _get_ordered_checklist_items(checklist, progress):
                 wrapped = _wrap_text(c, step, width - 2 * margin_x - 24, font_size=10)
                 needed_height = max(18, len(wrapped) * 12) + 8
                 y = _ensure_space(c, y, height, needed_height + 18)
@@ -715,7 +1062,7 @@ def _build_pdf_bytes(
 
             y -= 14
 
-    c.setTitle("CommonMASS Packet")
+    c.setTitle("Application Preparation Checklist Packet")
     c.save()
     return buf.getvalue()
 
@@ -728,9 +1075,6 @@ def lambda_handler(event, context):
     if method == "OPTIONS":
         return _resp(200, "", event=event, content_type="text/plain")
 
-    if not PACKETS_BUCKET:
-        return _resp(500, {"error": "PACKETS_BUCKET env var not set"}, event=event)
-
     if REQUIRE_SHARED_SECRET:
         header_val = _get_header(event or {}, SHARED_SECRET_HEADER)
         if not SHARED_SECRET_VALUE or header_val != SHARED_SECRET_VALUE:
@@ -741,6 +1085,9 @@ def lambda_handler(event, context):
     profile = payload.get("profile") or {}
     selected = payload.get("selectedBenefits") or payload.get("selected_benefits") or []
     checklist_progress = payload.get("checklistProgress") or payload.get("checklist_progress") or {}
+    requested_matches = payload.get("matchedBenefits")
+    if requested_matches is None:
+        requested_matches = payload.get("matched_benefits")
 
     if not isinstance(profile, dict):
         return _resp(400, {"error": "profile must be an object"}, event=event)
@@ -751,17 +1098,30 @@ def lambda_handler(event, context):
     if checklist_progress is not None and not isinstance(checklist_progress, dict):
         return _resp(400, {"error": "checklistProgress must be an object if provided"}, event=event)
 
-    region = _detect_bucket_region(PACKETS_BUCKET)
+    if requested_matches is not None and not isinstance(requested_matches, list):
+        return _resp(400, {"error": "matchedBenefits must be a list if provided"}, event=event)
 
-    s3 = boto3.client(
-        "s3",
-        region_name=region,
-        config=Config(signature_version="s3v4", retries={"max_attempts": 2}),
+    region_source_bucket = PACKETS_BUCKET or RULES_BUCKET
+    region = (
+        _detect_bucket_region(region_source_bucket)
+        if region_source_bucket
+        else os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
     )
 
-    catalog = _load_catalog(s3, RULES_BUCKET, BENEFITS_CATALOG_KEY)
+    s3 = None
+    if PACKETS_BUCKET or RULES_BUCKET:
+        s3 = boto3.client(
+            "s3",
+            region_name=region,
+            config=Config(signature_version="s3v4", retries={"max_attempts": 2}),
+        )
 
-    matches = _match_benefits(profile)
+    catalog = _load_catalog(s3, RULES_BUCKET, BENEFITS_CATALOG_KEY) if s3 else dict(FALLBACK_CATALOG)
+
+    if requested_matches is not None:
+        matches = _normalize_requested_matches(requested_matches, catalog)
+    else:
+        matches = _normalize_requested_matches(_match_benefits(profile), catalog)
 
     if selected:
         selected_set = {str(x) for x in selected}
@@ -781,6 +1141,20 @@ def lambda_handler(event, context):
         checklist_progress=normalized_progress,
     )
 
+    if not PACKETS_BUCKET:
+        return _resp(
+            200,
+            {
+                "run_id": run_id,
+                "expires_in": URL_EXPIRES_SECONDS,
+                "bucket_region_used": region,
+                "matched_benefits": matches,
+                "filename": "CommonMASS-Packet.pdf",
+                "pdf_base64": base64.b64encode(pdf_bytes).decode("ascii"),
+            },
+            event=event,
+        )
+
     try:
         s3.put_object(
             Bucket=PACKETS_BUCKET,
@@ -790,10 +1164,17 @@ def lambda_handler(event, context):
             CacheControl="no-store",
             ServerSideEncryption="AES256",
         )
-    except ClientError as e:
+    except ClientError:
         return _resp(
-            500,
-            {"error": "Failed to write PDF to S3", "details": str(e)},
+            200,
+            {
+                "run_id": run_id,
+                "expires_in": URL_EXPIRES_SECONDS,
+                "bucket_region_used": region,
+                "matched_benefits": matches,
+                "filename": "CommonMASS-Packet.pdf",
+                "pdf_base64": base64.b64encode(pdf_bytes).decode("ascii"),
+            },
             event=event,
         )
 
@@ -820,3 +1201,5 @@ def lambda_handler(event, context):
         },
         event=event,
     )
+
+

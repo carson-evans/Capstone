@@ -451,13 +451,14 @@ export default function FAQPage() {
         </section>
       </main>
 
-      <footer className="border-t border-white/50 bg-white/78 py-12 backdrop-blur-none dark:border-white/10 dark:bg-slate-950/92 md:backdrop-blur-sm">
-        <div className="container mx-auto px-6 text-center text-sm text-gray-500 dark:text-slate-400">
+      <footer className="border-t border-[#16304f] bg-[#1e3a5f] py-12">
+        <div className="container mx-auto px-6 text-center text-sm text-white">
           <p>Copyright 2026 CommonMASS. All rights reserved.</p>
         </div>
       </footer>
     </div>
   );
 }
+
 
 

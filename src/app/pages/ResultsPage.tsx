@@ -21,6 +21,7 @@ import { Navbar } from '../components/layout/Navbar';
 import { PageBackdrop } from '../components/layout/PageBackdrop';
 import { renderLinkedText } from '../components/ui/render-linked-text';
 import { useBenefits } from '../context/BenefitsContext';
+import { benefits } from '../data/benefitsData';
 import { useIsMobile } from '../components/ui/use-mobile';
 
 const FAFSA_MANAGED_BENEFIT_IDS = new Set(['pell-grant', 'massgrant', 'massgrant-plus']);
@@ -37,9 +38,45 @@ const MOBILE_DETAILS_REVEAL = {
   ease: [0.22, 1, 0.36, 1] as const,
 };
 
+const FEEDBACK_SURVEY_URL = 'https://forms.gle/x6J4fDrvWmUz6vFu9';
+
+function getSingleBenefitPhrase(benefitId: string, fallbackTitle: string | null): string | null {
+  switch (benefitId) {
+    case 'mbta-pass':
+      return 'the MBTA Student Pass';
+    case 'pell-grant':
+      return 'the Pell Grant';
+    case 'snap':
+      return 'SNAP';
+    case 'masshealth':
+      return 'MassHealth';
+    case 'massgrant':
+      return 'MASSGrant';
+    case 'massgrant-plus':
+      return 'MASSGrant Plus';
+    default:
+      return fallbackTitle;
+  }
+}
+
 export default function ResultsPage() {
-  const { matchedBenefits } = useBenefits();
+  const { matchedBenefits, screeningBenefitFilters } = useBenefits();
   const hasMatches = matchedBenefits.length > 0;
+  const singleScreenedBenefitId = screeningBenefitFilters.length === 1 ? screeningBenefitFilters[0] : null;
+  const singleScreenedBenefitTitle =
+    singleScreenedBenefitId
+      ? benefits.find((benefit) => benefit.id === singleScreenedBenefitId)?.title ?? null
+      : null;
+  const singleScreenedBenefitPhrase = singleScreenedBenefitId
+    ? getSingleBenefitPhrase(singleScreenedBenefitId, singleScreenedBenefitTitle)
+    : null;
+  const heroDescription = singleScreenedBenefitPhrase
+    ? hasMatches
+      ? `Based on your answers, you may qualify for ${singleScreenedBenefitPhrase}.`
+      : `Based on your answers, we couldn't find a current match for ${singleScreenedBenefitPhrase}.`
+    : hasMatches
+      ? `Based on your answers, you may qualify for the following ${matchedBenefits.length} benefit${matchedBenefits.length === 1 ? '' : 's'}.`
+      : "Based on your answers, we couldn't find any specific benefits matching your profile at this time.";
   const isMobile = useIsMobile();
   const [mobileOpenDetails, setMobileOpenDetails] = useState<Record<string, boolean>>({});
 
@@ -91,15 +128,21 @@ export default function ResultsPage() {
             transition={heroEnterTransition()}
             className="relative"
           >
-            <div className="relative overflow-hidden rounded-t-[2rem] border-x border-t border-white/70 bg-white/72 p-8 pb-20 shadow-[0_34px_80px_-60px_rgba(15,23,42,0.42)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/58 md:p-10 md:pb-24">
+            <div
+              className="relative overflow-hidden rounded-t-[2rem] border-x border-t border-white/70 bg-white/72 p-8 pb-20 shadow-[0_34px_80px_-60px_rgba(15,23,42,0.42)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/58 md:p-10 md:pb-24"
+              style={{
+                WebkitMaskImage:
+                  'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)',
+                maskImage: 'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)',
+              }}
+            >
               <div className="relative z-10">
                 <h1 className="mb-4 text-[2.6rem] font-bold tracking-tight md:text-[2.85rem]">
                   Your Results
                 </h1>
 
                 <p className="max-w-2xl text-lg text-gray-600 dark:text-slate-300">
-                  Based on your answers, you may qualify for the following{' '}
-                  {matchedBenefits.length} benefits.
+                  {heroDescription}
                 </p>
 
                 {hasMatches && (
@@ -325,6 +368,24 @@ export default function ResultsPage() {
             </Button>
           </div>
         )}
+
+        <motion.div
+          initial={heroEnterInitial}
+          animate={{ opacity: 1, y: 0 }}
+          transition={heroEnterTransition(hasMatches ? 0.16 : 0.08)}
+          className="mt-10 flex justify-center"
+        >
+          <Button
+            asChild
+            variant="outline"
+            className="group border-[#355b8a] bg-white/92 px-6 py-5 text-[#1e3a5f] shadow-sm transition-all duration-300 hover:border-[#f97316] hover:bg-[#f97316] hover:text-white hover:shadow-[0_14px_32px_-20px_rgba(249,115,22,0.44)] dark:border-sky-200/55 dark:bg-slate-900/82 dark:text-sky-100 dark:hover:border-[#f97316] dark:hover:bg-[#f97316] dark:hover:text-white"
+          >
+            <a href={FEEDBACK_SURVEY_URL} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              Take Our Feedback Survey
+            </a>
+          </Button>
+        </motion.div>
       </div>
     </div>
   );

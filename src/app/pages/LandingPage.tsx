@@ -1,4 +1,4 @@
-import { type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent, useEffect, useRef, useState } from 'react';
+﻿import { type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from 'framer-motion';
 import {
@@ -23,6 +23,8 @@ import studentsThreeImage from '@/assets/Images/Students3.jpg';
 import { Navbar } from '@/app/components/layout/Navbar';
 import { Button } from '@/app/components/ui/button';
 import { useIsMobile } from '@/app/components/ui/use-mobile';
+import type { Benefit } from '@/app/data/benefitsData';
+import { useBenefits } from '@/app/context/BenefitsContext';
 import { useTheme } from '@/app/context/ThemeContext';
 
 const HERO_SLIDES = [
@@ -51,14 +53,24 @@ const HERO_SLIDES = [
 
 type BenefitSpotlight = (typeof BENEFIT_SPOTLIGHTS)[number];
 
-const HERO_BADGES = [
-  'Pell Grant',
-  'MASSGrant',
-  'MASSGrant Plus',
-  'SNAP',
-  'MassHealth',
-  'MBTA Student Pass',
-] as const;
+type HeroBenefitFilterOption = {
+  id: Benefit['id'] | 'all';
+  label: string;
+};
+
+const HERO_BENEFIT_FILTERS: HeroBenefitFilterOption[] = [
+  { id: 'all', label: 'All' },
+  { id: 'pell-grant', label: 'Pell Grant' },
+  { id: 'massgrant', label: 'MASSGrant' },
+  { id: 'massgrant-plus', label: 'MASSGrant Plus' },
+  { id: 'snap', label: 'SNAP' },
+  { id: 'masshealth', label: 'MassHealth' },
+  { id: 'mbta-pass', label: 'MBTA Student Pass' },
+];
+
+const INDIVIDUAL_HERO_BENEFIT_FILTER_IDS = HERO_BENEFIT_FILTERS.flatMap((filterOption) =>
+  filterOption.id === 'all' ? [] : [filterOption.id]
+);
 
 const BENEFIT_SPOTLIGHTS = [
   {
@@ -131,6 +143,7 @@ const BENEFIT_SPOTLIGHTS = [
 
 export default function LandingPage() {
   const { theme } = useTheme();
+  const { screeningBenefitFilters, setScreeningBenefitFilters } = useBenefits();
   const shouldReduceMotion = useReducedMotion();
   const isMobile = useIsMobile();
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
@@ -206,6 +219,33 @@ export default function LandingPage() {
             ease: [0.22, 1, 0.36, 1] as const,
           },
         };
+
+  const isAllBenefitFilterSelected = screeningBenefitFilters.length === 0;
+
+  const handleBenefitFilterToggle = (filterId: HeroBenefitFilterOption['id']) => {
+    if (filterId === 'all') {
+      setScreeningBenefitFilters([]);
+      return;
+    }
+
+    const nextFilters = screeningBenefitFilters.includes(filterId)
+      ? screeningBenefitFilters.filter((benefitId) => benefitId !== filterId)
+      : [...screeningBenefitFilters, filterId];
+
+    const uniqueNextFilters = Array.from(new Set(nextFilters));
+    const hasEveryIndividualFilterSelected =
+      uniqueNextFilters.length === INDIVIDUAL_HERO_BENEFIT_FILTER_IDS.length &&
+      INDIVIDUAL_HERO_BENEFIT_FILTER_IDS.every((benefitId) => uniqueNextFilters.includes(benefitId));
+
+    setScreeningBenefitFilters(hasEveryIndividualFilterSelected ? [] : uniqueNextFilters);
+  };
+
+  const getBenefitFilterChipClassName = (isActive: boolean) =>
+    `touch-manipulation transform-gpu whitespace-nowrap rounded-full border px-2.5 py-1.5 text-[0.72rem] font-semibold backdrop-blur transition-[transform,background-color,border-color,box-shadow,color] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f8fafc] sm:px-4 sm:py-2 sm:text-sm sm:duration-250 dark:focus-visible:ring-sky-200/40 dark:focus-visible:ring-offset-slate-950 ${
+      isActive
+        ? 'border-[#1e3a5f] bg-[#1e3a5f] text-white shadow-[0_20px_38px_-18px_rgba(30,58,95,0.56)] hover:-translate-y-0.5 hover:scale-[1.04] hover:bg-[#16304f] hover:shadow-[0_26px_46px_-18px_rgba(30,58,95,0.62)] dark:border-sky-200 dark:bg-sky-200 dark:text-slate-950 dark:shadow-[0_22px_42px_-20px_rgba(125,211,252,0.62)] dark:hover:bg-sky-100 dark:hover:shadow-[0_28px_50px_-20px_rgba(125,211,252,0.72)]'
+        : 'border-[#1e3a5f]/20 bg-white/92 text-[#1e3a5f] shadow-[0_16px_34px_-22px_rgba(30,58,95,0.38)] ring-1 ring-[#1e3a5f]/6 hover:-translate-y-0.5 hover:scale-[1.035] hover:border-[#1e3a5f]/38 hover:bg-white hover:shadow-[0_24px_44px_-22px_rgba(30,58,95,0.46)] hover:ring-[#1e3a5f]/12 dark:border-sky-200/42 dark:bg-slate-900/84 dark:text-sky-100 dark:shadow-[0_22px_44px_-24px_rgba(2,6,23,0.98),0_0_0_1px_rgba(125,211,252,0.2)] dark:ring-1 dark:ring-sky-200/10 dark:hover:border-sky-200/70 dark:hover:bg-slate-900 dark:hover:shadow-[0_28px_54px_-24px_rgba(2,6,23,1),0_0_0_1px_rgba(125,211,252,0.32)] dark:hover:ring-sky-200/22'
+    }`;
 
   const renderBenefitCard = (benefit: BenefitSpotlight) => {
     const Icon = benefit.icon;
@@ -338,7 +378,7 @@ export default function LandingPage() {
       <Navbar />
 
       <main>
-        <section className="relative overflow-hidden pb-4 pt-10 md:pb-6 md:pt-14 lg:pb-8 lg:pt-16">
+        <section className="relative overflow-hidden pb-1 pt-6 sm:pt-8 md:pb-6 md:pt-14 lg:pb-8 lg:pt-16">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_32%,_rgba(191,219,254,0.7),_transparent_34%),radial-gradient(circle_at_88%_18%,_rgba(254,215,170,0.56),_transparent_24%),linear-gradient(180deg,_rgba(255,255,255,1)_0%,_rgba(248,250,252,0.98)_66%,_rgba(248,250,252,0.94)_100%)] dark:bg-[radial-gradient(circle_at_14%_32%,_rgba(56,189,248,0.16),_transparent_32%),radial-gradient(circle_at_88%_18%,_rgba(251,146,60,0.16),_transparent_22%),linear-gradient(180deg,_rgba(2,6,23,1)_0%,_rgba(15,23,42,0.98)_66%,_rgba(15,23,42,0.95)_100%)]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent via-[#f8fafc]/82 to-[#f8fafc] dark:via-slate-900/80 dark:to-slate-900/72" />
 
@@ -357,18 +397,18 @@ export default function LandingPage() {
         />
 
         <div className="relative mx-auto max-w-7xl px-6">
-          <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-x-10 lg:gap-y-8">
+          <div className="grid items-center gap-4 sm:gap-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-x-10 lg:gap-y-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55 }}
-              className="relative z-10 text-center lg:col-start-1 lg:row-start-1 lg:text-left"
+              className="order-1 relative z-10 text-center lg:col-start-1 lg:row-start-1 lg:text-left"
             >
-              <div className="mb-5 inline-flex rounded-full border border-[#fb923c]/55 bg-[linear-gradient(135deg,rgba(219,234,254,0.72),rgba(255,255,255,0.95)_38%,rgba(255,237,213,0.96))] px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-[#355b8a] shadow-[0_12px_28px_-22px_rgba(194,65,12,0.28)] ring-1 ring-white/70 backdrop-blur dark:border-orange-300/28 dark:bg-[linear-gradient(135deg,rgba(30,41,59,0.92),rgba(15,23,42,0.84)_40%,rgba(194,65,12,0.34))] dark:text-sky-100 dark:ring-white/5">
+              <div className="mb-4 inline-flex whitespace-nowrap rounded-full border border-[#fb923c]/55 bg-[linear-gradient(135deg,rgba(219,234,254,0.72),rgba(255,255,255,0.95)_38%,rgba(255,237,213,0.96))] px-2.5 py-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-[#355b8a] shadow-[0_12px_28px_-22px_rgba(194,65,12,0.28)] ring-1 ring-white/70 backdrop-blur sm:px-4 sm:py-2 sm:text-sm sm:tracking-[0.18em] dark:border-orange-300/28 dark:bg-[linear-gradient(135deg,rgba(30,41,59,0.92),rgba(15,23,42,0.84)_40%,rgba(194,65,12,0.34))] dark:text-sky-100 dark:ring-white/5">
                 Massachusetts Benefits Screener, for Students
               </div>
 
-              <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-[#1e3a5f] dark:text-slate-100 md:text-6xl md:leading-[0.95] lg:text-[5.15rem]">
+              <h1 className="max-w-4xl text-[2.7rem] font-bold leading-[0.97] tracking-tight text-[#1e3a5f] dark:text-slate-100 sm:text-4xl md:text-6xl md:leading-[0.95] lg:text-[5.15rem]">
                 Discover{' '}
                 <span className="bg-gradient-to-r from-[#1e3a5f] to-[#f97316] bg-clip-text text-transparent dark:from-sky-200 dark:to-orange-300">
                   Benefits
@@ -380,7 +420,7 @@ export default function LandingPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.55, delay: 0.1 }}
-                className="mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-gray-600 dark:text-slate-300 md:text-2xl lg:mx-0"
+                className="mx-auto mt-4 max-w-3xl text-[0.95rem] leading-relaxed text-gray-600 dark:text-slate-300 sm:mt-5 sm:text-lg md:text-2xl lg:mx-0"
               >
                 A simple, secure way to check your eligibility for student aid, food assistance, MBTA
                 discounts and more. Get matched in minutes.
@@ -390,12 +430,12 @@ export default function LandingPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.55, delay: 0.2 }}
-                className="mt-10"
+                className="mt-5 sm:mt-7 md:mt-10"
               >
                 <Link to="/screener">
                   <Button
                     size="lg"
-                    className="group cursor-pointer rounded-full bg-[#f97316] px-10 py-7 text-xl text-white shadow-[0_10px_26px_-10px_rgba(249,115,22,0.52)] transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:bg-[#ea580c] hover:shadow-[0_24px_36px_-12px_rgba(249,115,22,0.58)] dark:shadow-[0_14px_34px_-14px_rgba(251,146,60,0.6)] dark:hover:shadow-[0_24px_40px_-16px_rgba(251,146,60,0.76)] md:px-12 md:py-8 md:text-[1.35rem]"
+                    className="group cursor-pointer rounded-full bg-[#f97316] px-9 py-5.5 text-[1.12rem] text-white shadow-[0_10px_26px_-10px_rgba(249,115,22,0.52)] transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:bg-[#ea580c] hover:shadow-[0_24px_36px_-12px_rgba(249,115,22,0.58)] sm:px-10 sm:py-7 sm:text-xl dark:shadow-[0_14px_34px_-14px_rgba(251,146,60,0.6)] dark:hover:shadow-[0_24px_40px_-16px_rgba(251,146,60,0.76)] md:px-12 md:py-8 md:text-[1.35rem]"
                   >
                     Start Screening
                     <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1.5" />
@@ -405,7 +445,7 @@ export default function LandingPage() {
 
             </motion.div>
 
-            <div className="relative mx-auto w-full max-w-[58rem] lg:col-start-2 lg:row-span-2" onMouseMove={handleHeroVisualMove} onMouseLeave={resetHeroVisualHover} onTouchStart={handleHeroTouchStart} onTouchEnd={handleHeroTouchEnd} style={{ touchAction: 'pan-y pinch-zoom' }}>
+            <div className="order-3 relative mx-auto w-full max-w-[34rem] sm:max-w-[58rem] lg:col-start-2 lg:row-span-2 lg:max-w-[58rem]" onMouseMove={handleHeroVisualMove} onMouseLeave={resetHeroVisualHover} onTouchStart={handleHeroTouchStart} onTouchEnd={handleHeroTouchEnd} style={{ touchAction: 'pan-y pinch-zoom' }}>
               <motion.div
                 className="absolute -left-2 top-10 hidden w-72 transform-gpu overflow-hidden rounded-[2rem] border border-white/85 bg-white/92 p-2.5 shadow-[0_30px_80px_-40px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-slate-900/84 dark:shadow-[0_34px_96px_-44px_rgba(2,6,23,0.92)] md:block lg:-left-24"
                 style={{
@@ -481,7 +521,7 @@ export default function LandingPage() {
                 }
                 transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.8 }}
               >
-                <div className="relative aspect-[5/6] overflow-hidden rounded-[1.6rem] bg-slate-200 dark:bg-slate-800 sm:aspect-[16/10] md:rounded-[1.85rem]">
+                <div className="relative aspect-[16/11] overflow-hidden rounded-[1.45rem] bg-slate-200 dark:bg-slate-800 sm:aspect-[16/10] md:rounded-[1.85rem]">
                   {HERO_SLIDES.map((slide, index) => {
                     const isActive = activeSlideIndex === index;
 
@@ -551,7 +591,7 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3 px-1.5 pb-1 pt-3 sm:flex-row sm:items-center sm:justify-between sm:px-2 sm:pt-4">
+                <div className="flex flex-col gap-2 px-1.5 pb-1 pt-2 sm:flex-row sm:items-center sm:justify-between sm:px-2 sm:pt-4">
                   <div className="flex items-center gap-2">
                     {HERO_SLIDES.map((slide, index) => {
                       const isActive = activeSlideIndex === index;
@@ -583,16 +623,32 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55, delay: 0.3 }}
-              className="mt-1 flex flex-wrap justify-center gap-3 lg:col-start-1 lg:row-start-2 lg:mt-0 lg:justify-start"
+              className="order-2 mt-1 flex flex-col items-center gap-1.5 sm:mt-3 lg:col-start-1 lg:row-start-2 lg:mt-0 lg:items-start"
             >
-              {HERO_BADGES.map((badge) => (
-                <span
-                  key={badge}
-                  className="rounded-full border border-gray-200 bg-white/92 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-200"
-                >
-                  {badge}
-                </span>
-              ))}
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-[#355b8a] dark:text-sky-100/90">
+                Screen For
+              </p>
+
+              <div className="flex flex-wrap justify-center gap-1 sm:gap-2 lg:justify-start">
+                {HERO_BENEFIT_FILTERS.map((filterOption) => {
+                  const isActive =
+                    filterOption.id === 'all'
+                      ? isAllBenefitFilterSelected
+                      : screeningBenefitFilters.includes(filterOption.id);
+
+                  return (
+                    <button
+                      key={filterOption.id}
+                      type="button"
+                      aria-pressed={isActive}
+                      onClick={() => handleBenefitFilterToggle(filterOption.id)}
+                      className={getBenefitFilterChipClassName(isActive)}
+                    >
+                      {filterOption.label}
+                    </button>
+                  );
+                })}
+              </div>
             </motion.div>
           </div>
         </div>
@@ -747,15 +803,26 @@ export default function LandingPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.5 }}
-        className="border-t border-gray-200 bg-white py-12 dark:border-white/10 dark:bg-slate-950"
+        className="border-t border-[#16304f] bg-[#1e3a5f] py-12"
       >
-        <div className="container mx-auto px-6 text-center text-sm text-gray-500 dark:text-slate-400 md:text-base">
+        <div className="container mx-auto px-6 text-center text-sm text-white md:text-base">
           <p>Copyright 2026 CommonMASS. All rights reserved.</p>
         </div>
       </motion.footer>
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 

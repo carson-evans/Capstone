@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { Download, ExternalLink } from 'lucide-react';
@@ -23,6 +23,8 @@ const mobileChecklistItemTransition = {
   ease: [0.22, 1, 0.36, 1] as const,
 };
 
+const FEEDBACK_SURVEY_URL = 'https://forms.gle/x6J4fDrvWmUz6vFu9';
+
 export default function ChecklistPage() {
   const { matchedBenefits, answers, checklistProgress, setChecklistItemChecked } = useBenefits();
   const isMobile = useIsMobile();
@@ -35,20 +37,14 @@ export default function ChecklistPage() {
   const checklistItemLayout = isMobile ? ('position' as const) : true;
   const checklistListStyle = isMobile ? ({ overflowAnchor: 'none' } as const) : undefined;
 
-  const actionableBenefits = useMemo(
-    () =>
-      matchedBenefits.filter(
-        (benefit) => !benefit.actionStatus?.includes('No action needed')
-      ),
-    [matchedBenefits]
-  );
+  const checklistBenefits = matchedBenefits;
 
-  const totalChecklistItems = actionableBenefits.reduce(
+  const totalChecklistItems = checklistBenefits.reduce(
     (count, benefit) => count + benefit.checklist.length,
     0
   );
 
-  const completedChecklistItems = actionableBenefits.reduce(
+  const completedChecklistItems = checklistBenefits.reduce(
     (count, benefit) =>
       count + (checklistProgress[benefit.id]?.filter((checked) => checked).length ?? 0),
     0
@@ -64,7 +60,7 @@ export default function ChecklistPage() {
       .sort((a, b) => Number(a.checked) - Number(b.checked) || a.originalIndex - b.originalIndex);
 
   const handleDownload = async () => {
-    if (actionableBenefits.length === 0) return;
+    if (checklistBenefits.length === 0) return;
 
     const apiUrl = import.meta.env.VITE_PACKET_API_URL || '/api/packet';
 
@@ -98,7 +94,8 @@ export default function ChecklistPage() {
         },
         body: JSON.stringify({
           profile: answers,
-          selectedBenefits: actionableBenefits.map((benefit) => benefit.id),
+          matchedBenefits: checklistBenefits,
+          selectedBenefits: checklistBenefits.map((benefit) => benefit.id),
           checklistProgress,
         }),
       });
@@ -126,17 +123,42 @@ export default function ChecklistPage() {
       }
 
       const url = data?.download_url || data?.url || data?.presigned_url || data?.location;
+      const pdfBase64 = data?.pdf_base64 || data?.pdfBase64;
 
-      if (!url || typeof url !== 'string') {
-        throw new Error('No download URL returned from API.');
+      if (typeof url === 'string' && url) {
+        if (pendingTab && !pendingTab.closed) {
+          pendingTab.location.replace(url);
+          pendingTab.focus();
+        } else {
+          window.open(url, '_blank', 'noopener,noreferrer');
+        }
+
+        return;
       }
 
-      if (pendingTab && !pendingTab.closed) {
-        pendingTab.location.replace(url);
-        pendingTab.focus();
-      } else {
-        window.open(url, '_blank', 'noopener,noreferrer');
+      if (typeof pdfBase64 === 'string' && pdfBase64) {
+        const binaryString = window.atob(pdfBase64);
+        const pdfBytes = new Uint8Array(binaryString.length);
+
+        for (let index = 0; index < binaryString.length; index += 1) {
+          pdfBytes[index] = binaryString.charCodeAt(index);
+        }
+
+        const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const objectUrl = window.URL.createObjectURL(pdfBlob);
+
+        if (pendingTab && !pendingTab.closed) {
+          pendingTab.location.replace(objectUrl);
+          pendingTab.focus();
+        } else {
+          window.open(objectUrl, '_blank', 'noopener,noreferrer');
+        }
+
+        window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 60_000);
+        return;
       }
+
+      throw new Error('No PDF data returned from API.');
     } catch (error) {
       console.error('Packet generation error:', error);
 
@@ -210,13 +232,13 @@ export default function ChecklistPage() {
                 items as completed.
               </p>
 
-              {actionableBenefits.length > 0 && (
+              {checklistBenefits.length > 0 && (
                 <p className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-400">
                   {completedChecklistItems} of {totalChecklistItems} checklist items completed.
                 </p>
               )}
 
-              {actionableBenefits.length > 0 && (
+              {checklistBenefits.length > 0 && (
                 <div className="mt-6 flex justify-center print:hidden">
                   <Button
                     size="lg"
@@ -233,9 +255,9 @@ export default function ChecklistPage() {
           </div>
         </div>
 
-        {actionableBenefits.length > 0 ? (
+        {checklistBenefits.length > 0 ? (
           <div className="space-y-12 print:space-y-8">
-            {actionableBenefits.map((benefit, index) => {
+            {checklistBenefits.map((benefit, index) => {
               const completedSteps =
                 checklistProgress[benefit.id]?.filter((checked) => checked).length ?? 0;
 
@@ -323,19 +345,30 @@ export default function ChecklistPage() {
         ) : (
           <div className="rounded-[1.75rem] border border-dashed border-gray-300 bg-white/72 py-20 text-center shadow-[0_24px_60px_-42px_rgba(15,23,42,0.28)] backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/70">
             <p className="mb-4 text-gray-500 dark:text-slate-400">
-              {matchedBenefits.length > 0
-                ? 'Your current matches do not need any checklist steps right now.'
-                : 'Complete the screener first to generate a personalized checklist.'}
+              Complete the screener first to generate a personalized checklist.
             </p>
 
             <Button asChild variant="outline">
-              <Link to={matchedBenefits.length > 0 ? '/results' : '/screener'}>
-                {matchedBenefits.length > 0 ? 'Back to Results' : 'Go to Screener'}
-              </Link>
+              <Link to="/screener">Go to Screener</Link>
             </Button>
           </div>
         )}
+
+        <div className="mt-10 flex justify-center print:hidden">
+          <Button
+            asChild
+            variant="outline"
+            className="group border-[#355b8a] bg-white/92 px-6 py-5 text-[#1e3a5f] shadow-sm transition-all duration-300 hover:border-[#f97316] hover:bg-[#f97316] hover:text-white hover:shadow-[0_14px_32px_-20px_rgba(249,115,22,0.44)] dark:border-sky-200/55 dark:bg-slate-900/82 dark:text-sky-100 dark:hover:border-[#f97316] dark:hover:bg-[#f97316] dark:hover:text-white"
+          >
+            <a href={FEEDBACK_SURVEY_URL} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              Take Our Feedback Survey
+            </a>
+          </Button>
+        </div>
       </div>
     </div>
   );
 }
+
+
