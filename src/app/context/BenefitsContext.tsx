@@ -1,145 +1,164 @@
-import React, { createContext, useContext, useMemo, useState, ReactNode } from 'react';
-import { Benefit, benefits } from '../data/benefitsData';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
+
+import type { Benefit } from '../data/benefitsData';
+import {
+  evaluateEligibilityRequest,
+  type AnswerMap,
+  type ChecklistProgressMap,
+} from '@/lib/api';
 
 interface BenefitsContextType {
-  answers: Record<string, string>;
+  answers: AnswerMap;
   setAnswer: (questionId: string, answer: string) => void;
+  setAnswers: (nextAnswers: AnswerMap) => void;
+  screeningBenefitFilters: Benefit['id'][];
+  setScreeningBenefitFilters: (nextFilters: Benefit['id'][]) => void;
   matchedBenefits: Benefit[];
-  checklistProgress: Record<string, boolean[]>;
+  isEvaluating: boolean;
+  evaluationError: string | null;
+  evaluateBenefits: (overrideAnswers?: AnswerMap) => Promise<Benefit[]>;
+  checklistProgress: ChecklistProgressMap;
   setChecklistItemChecked: (benefitId: string, itemIndex: number, checked: boolean) => void;
   reset: () => void;
 }
 
 const BenefitsContext = createContext<BenefitsContextType | undefined>(undefined);
 
+function uniqueBenefitIds(values: Benefit['id'][]): Benefit['id'][] {
+  return Array.from(new Set(values));
+}
+
+function applyScreeningBenefitFilters(
+  matches: Benefit[],
+  selectedBenefitFilters: Benefit['id'][]
+): Benefit[] {
+  if (!selectedBenefitFilters.length) {
+    return matches;
+  }
+
+  const selectedBenefitIdSet = new Set(selectedBenefitFilters);
+  return matches.filter((benefit) => selectedBenefitIdSet.has(benefit.id));
+}
+
+function buildChecklistProgress(
+  matches: Benefit[],
+  previousProgress: ChecklistProgressMap
+): ChecklistProgressMap {
+  return matches.reduce<ChecklistProgressMap>((accumulator, benefit) => {
+    accumulator[benefit.id] = benefit.checklist.map(
+      (_, index) => previousProgress[benefit.id]?.[index] ?? false
+    );
+
+    return accumulator;
+  }, {});
+}
+
 export const useBenefits = () => {
   const context = useContext(BenefitsContext);
+
   if (!context) {
     throw new Error('useBenefits must be used within a BenefitsProvider');
   }
+
   return context;
 };
 
 export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [checklistProgress, setChecklistProgress] = useState<Record<string, boolean[]>>({});
+  const [answers, setAnswersState] = useState<AnswerMap>({});
+  const [serverMatchedBenefits, setServerMatchedBenefits] = useState<Benefit[]>([]);
+  const [screeningBenefitFilters, setScreeningBenefitFiltersState] = useState<Benefit['id'][]>([]);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evaluationError, setEvaluationError] = useState<string | null>(null);
+  const [checklistProgress, setChecklistProgress] = useState<ChecklistProgressMap>({});
+
+  const matchedBenefits = useMemo(
+    () => applyScreeningBenefitFilters(serverMatchedBenefits, screeningBenefitFilters),
+    [serverMatchedBenefits, screeningBenefitFilters]
+  );
+
+  useEffect(() => {
+    setChecklistProgress((previousProgress) =>
+      buildChecklistProgress(matchedBenefits, previousProgress)
+    );
+  }, [matchedBenefits]);
 
   const setAnswer = (questionId: string, answer: string) => {
-    setAnswers((prev) => ({
-      ...prev,
+    setAnswersState((previousAnswers) => ({
+      ...previousAnswers,
       [questionId]: answer,
     }));
   };
 
-  const setChecklistItemChecked = (benefitId: string, itemIndex: number, checked: boolean) => {
-    setChecklistProgress((prev) => {
-      const nextBenefitProgress = [...(prev[benefitId] || [])];
+  const setAnswers = (nextAnswers: AnswerMap) => {
+    setAnswersState(nextAnswers);
+  };
+
+  const setScreeningBenefitFilters = (nextFilters: Benefit['id'][]) => {
+    setScreeningBenefitFiltersState(uniqueBenefitIds(nextFilters));
+  };
+
+  const evaluateBenefits = async (overrideAnswers?: AnswerMap): Promise<Benefit[]> => {
+    const profile = overrideAnswers ?? answers;
+
+    setIsEvaluating(true);
+    setEvaluationError(null);
+
+    try {
+      const nextMatches = await evaluateEligibilityRequest(profile);
+      const filteredMatches = applyScreeningBenefitFilters(
+        nextMatches,
+        screeningBenefitFilters
+      );
+
+      setServerMatchedBenefits(nextMatches);
+      setEvaluationError(null);
+
+      return filteredMatches;
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Something went wrong while checking eligibility.';
+
+      console.error('Eligibility API error:', error);
+      setServerMatchedBenefits([]);
+      setEvaluationError(message);
+
+      throw new Error(message);
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
+
+  const setChecklistItemChecked = (
+    benefitId: string,
+    itemIndex: number,
+    checked: boolean
+  ) => {
+    setChecklistProgress((previousProgress) => {
+      const nextBenefitProgress = [...(previousProgress[benefitId] || [])];
       nextBenefitProgress[itemIndex] = checked;
 
       return {
-        ...prev,
+        ...previousProgress,
         [benefitId]: nextBenefitProgress,
       };
     });
   };
 
-  const matchedBenefits = useMemo(() => {
-    const matches: Benefit[] = [];
-
-    const isEnrolled = () =>
-      answers['student_status'] === 'full_time' || answers['student_status'] === 'part_time';
-
-    const isFullTime = () => answers['student_status'] === 'full_time';
-
-    if (isEnrolled() && answers['citizen_status'] === 'yes') {
-      const benefit = benefits.find((b) => b.id === 'pell-grant');
-      if (benefit) {
-        matches.push({
-          ...benefit,
-          actionStatus:
-            answers['fafsa_completed'] === 'yes'
-              ? 'No action needed (already applied to FAFSA)'
-              : 'Action needed - Complete FAFSA',
-        });
-      }
-    }
-
-    if (
-      isEnrolled() &&
-      answers['ma_resident'] === 'yes' &&
-      answers['citizen_status'] === 'yes'
-    ) {
-      const benefit = benefits.find((b) => b.id === 'massgrant');
-      if (benefit) {
-        matches.push({
-          ...benefit,
-          actionStatus:
-            answers['fafsa_completed'] === 'yes'
-              ? 'No action needed (already applied to FAFSA)'
-              : 'Action needed - Complete FAFSA',
-        });
-      }
-    }
-
-    if (
-      isFullTime() &&
-      answers['ma_resident'] === 'yes' &&
-      answers['citizen_status'] === 'yes' &&
-      answers['income_level'] === 'low'
-    ) {
-      const benefit = benefits.find((b) => b.id === 'massgrant-plus');
-      if (benefit) {
-        matches.push({
-          ...benefit,
-          actionStatus:
-            answers['fafsa_completed'] === 'yes'
-              ? 'No action needed (already applied to FAFSA)'
-              : 'Action needed - Complete FAFSA',
-        });
-      }
-    }
-
-    if (
-      answers['ma_resident'] === 'yes' &&
-      (answers['income_level'] === 'low' || answers['income_level'] === 'medium') &&
-      (answers['work_study'] === 'yes' || answers['income_level'] === 'low')
-    ) {
-      const benefit = benefits.find((b) => b.id === 'snap');
-      if (benefit) {
-        matches.push({
-          ...benefit,
-          actionStatus: 'You likely qualify for SNAP. Apply through your state SNAP portal.',
-        });
-      }
-    }
-
-    if (
-      answers['ma_resident'] === 'yes' &&
-      answers['citizen_status'] === 'yes' &&
-      (answers['income_level'] === 'low' || answers['income_level'] === 'medium')
-    ) {
-      const benefit = benefits.find((b) => b.id === 'masshealth');
-      if (benefit) matches.push(benefit);
-    }
-
-    if (
-      isEnrolled() &&
-      (answers['transportation'] === 'yes' || answers['transportation'] === 'sometimes')
-    ) {
-      const benefit = benefits.find((b) => b.id === 'mbta-pass');
-      if (benefit) matches.push(benefit);
-    }
-
-    const uniqueMatches = Array.from(new Set(matches.map((b) => b.id)))
-      .map((id) => matches.find((b) => b.id === id))
-      .filter((b): b is Benefit => b !== undefined);
-
-    return uniqueMatches;
-  }, [answers]);
-
   const reset = () => {
-    setAnswers({});
+    setAnswersState({});
+    setServerMatchedBenefits([]);
     setChecklistProgress({});
+    setScreeningBenefitFiltersState([]);
+    setEvaluationError(null);
   };
 
   return (
@@ -147,7 +166,13 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
       value={{
         answers,
         setAnswer,
+        setAnswers,
+        screeningBenefitFilters,
+        setScreeningBenefitFilters,
         matchedBenefits,
+        isEvaluating,
+        evaluationError,
+        evaluateBenefits,
         checklistProgress,
         setChecklistItemChecked,
         reset,

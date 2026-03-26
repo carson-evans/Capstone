@@ -100,6 +100,8 @@ const URLS = {
   MASSGRANT_TERMS: 'https://www.mass.edu/osfa/programs/massgrantawardterms.asp',
   MASSGRANT_PLUS: 'https://www.mass.edu/osfa/programs/massgrantplus.asp',
   MASFA: 'https://www.mass.edu/osfa/students/masfa.asp',
+  TUITION_EQUITY: 'https://www.mass.edu/tuitionequity/',
+  DHE_AFFIDAVIT: 'https://www.mass.edu/tuitionequity/documents/2025-09-10%20Tuition%20Equity%20Form%20and%20Affidavit_Fillable.pdf',
   MASSHEALTH_CONNECTOR: 'https://www.mahix.org/individual/',
   MASSHEALTH_REPORT_CHANGES: 'https://www.mass.gov/how-to/report-changes-to-masshealth',
   MASSHEALTH_HELP: 'https://www.mass.gov/how-to/find-help-with-your-masshealth-insurance-application',
@@ -212,7 +214,7 @@ const BENEFIT_GUIDANCE: Record<Benefit['id'], ProgramGuidance> = {
     studentStatus:
       'Part-time students can still receive Pell, but the amount is often lower than for full-time enrollment. Pell is not automatically limited to full-time students.',
     citizenship:
-      'To receive federal aid like Pell, you generally must be a U.S. citizen or eligible noncitizen and meet the rest of the federal student-aid rules.',
+      'To receive federal aid like Pell, you generally must be a U.S. citizen or eligible noncitizen and meet the rest of the federal student-aid rules. Students who cannot complete the FAFSA because of immigration or citizenship status are generally not eligible for Pell, though they may still review MASFA for Massachusetts state aid.',
     notes: [
       'A lower or negative Student Aid Index usually means a higher chance of Pell eligibility.',
       'Your FAFSA Submission Summary is not your final financial aid offer.',
@@ -233,13 +235,14 @@ const BENEFIT_GUIDANCE: Record<Benefit['id'], ProgramGuidance> = {
     estimate:
       'I cannot predict your personal MASSGrant amount from income alone. Massachusetts says the award varies by Student Aid Index and institution type, and your school usually handles the final packaging.',
     eligibility:
-      'To be eligible, students are generally expected to be Massachusetts residents, enrolled full-time as undergraduates in eligible programs, making satisfactory academic progress, and eligible for Title IV funds or Massachusetts state aid under the Tuition Equity Law.',
+      'To be eligible, students are generally expected to be Massachusetts residents, enrolled full-time as undergraduates in eligible programs, making satisfactory academic progress, and eligible for Title IV funds or Massachusetts state aid under the Tuition Equity Law. Students using MASFA may also need to meet the Massachusetts High School Completer and documentation rules.',
     apply:
-      'The normal starting point is your FAFSA or MASFA, and then your school financial aid office handles the award packaging.',
+      'The normal starting point is your FAFSA or MASFA, and then your school financial aid office handles the award packaging. If you are using MASFA and cannot provide the other listed documents, the DHE Tuition Equity Form and Affidavit can be part of that path.',
     documents: [
       'FAFSA or MASFA information',
       'Massachusetts residency information',
       'school enrollment information',
+      'Massachusetts High School Completer and document records if you are using MASFA under the Tuition Equity Law',
       'anything your financial aid office requests to finish packaging',
     ],
     nextSteps: [
@@ -258,7 +261,7 @@ const BENEFIT_GUIDANCE: Record<Benefit['id'], ProgramGuidance> = {
     studentStatus:
       'MASSGrant is generally built around full-time undergraduate enrollment. The Massachusetts award terms say full-time means at least 12 semester credits or the equivalent.',
     citizenship:
-      'The Massachusetts award terms say students generally must be eligible for Title IV funds or qualified for Massachusetts state aid under the Tuition Equity Law.',
+      'The Massachusetts award terms say students generally must be eligible for Title IV funds or qualified for Massachusetts state aid under the Tuition Equity Law. For students using MASFA, that can mean Massachusetts residency for the program, at least 3 academic years of Massachusetts high school, a Massachusetts diploma or equivalent, and a valid SSN, ITIN document, Selective Service registration if applicable, or a completed DHE Tuition Equity Form and Affidavit when needed.',
     notes: [
       'State aid rules can be stricter about enrollment level than Pell Grant.',
       'If you transfer schools, the award can change based on institution type.',
@@ -267,6 +270,8 @@ const BENEFIT_GUIDANCE: Record<Benefit['id'], ProgramGuidance> = {
       { label: 'Massachusetts MASSGrant overview', url: URLS.MASSGRANT },
       { label: 'MASSGrant terms and conditions', url: URLS.MASSGRANT_TERMS },
       { label: 'MASFA for eligible Massachusetts students', url: URLS.MASFA },
+      { label: 'Massachusetts Tuition Equity overview', url: URLS.TUITION_EQUITY },
+      { label: 'DHE Tuition Equity Form and Affidavit', url: URLS.DHE_AFFIDAVIT },
     ],
   },
   'massgrant-plus': {
@@ -279,13 +284,14 @@ const BENEFIT_GUIDANCE: Record<Benefit['id'], ProgramGuidance> = {
     estimate:
       'I cannot promise a personal MASSGrant Plus amount from one message because the exact result depends on your school, residency, credit load, and the financial information used for aid review.',
     eligibility:
-      'The official page says students generally must live in Massachusetts for at least one year, enroll in an eligible undergraduate program at an eligible public institution, and meet the program credit and aid-status rules.',
+      'The official page says students generally must live in Massachusetts for at least one year, enroll in an eligible undergraduate program at an eligible public institution, and meet the program credit and aid-status rules. Students using MASFA may also need to meet the Massachusetts High School Completer and documentation rules.',
     apply:
-      'Students are usually considered through the FAFSA or MASFA, and their school determines whether they meet the current program rules.',
+      'Students are usually considered through the FAFSA or MASFA, and their school determines whether they meet the current program rules. If you are using MASFA and cannot provide the other listed documents, the DHE Tuition Equity Form and Affidavit can be part of that path.',
     documents: [
       'FAFSA or MASFA information',
       'Massachusetts residency information',
       'school enrollment and aid records',
+      'Massachusetts High School Completer and document records if you are using MASFA under the Tuition Equity Law',
     ],
     nextSteps: [
       'submit the FAFSA or MASFA early',
@@ -303,7 +309,7 @@ const BENEFIT_GUIDANCE: Record<Benefit['id'], ProgramGuidance> = {
     studentStatus:
       'The official page says the minimum credit requirement depends on family income. If family income is under about $85,000, the minimum is 6 credits per term. If family income is between about $85,000 and $100,000, the minimum is 12 credits per term.',
     citizenship:
-      'The official program page says students generally must be a U.S. citizen, lawful permanent resident, noncitizen eligible under Title IV rules, or have an approved status under the Massachusetts Tuition Equity Law.',
+      'The official program page says students generally must be a U.S. citizen, lawful permanent resident, noncitizen eligible under Title IV rules, or have an approved status under the Massachusetts Tuition Equity Law. For students using MASFA, that can mean Massachusetts residency for the program, at least 3 academic years of Massachusetts high school, a Massachusetts diploma or equivalent, and a valid SSN, ITIN document, Selective Service registration if applicable, or a completed DHE Tuition Equity Form and Affidavit when needed.',
     notes: [
       'This program is more specific than Pell Grant, so school type and credit load matter a lot.',
       'Room and board are not included in the core tuition-and-fee promise.',
@@ -312,6 +318,8 @@ const BENEFIT_GUIDANCE: Record<Benefit['id'], ProgramGuidance> = {
       { label: 'MASSGrant Plus overview', url: URLS.MASSGRANT_PLUS },
       { label: 'FAFSA form', url: URLS.FAFSA },
       { label: 'MASFA for eligible Massachusetts students', url: URLS.MASFA },
+      { label: 'Massachusetts Tuition Equity overview', url: URLS.TUITION_EQUITY },
+      { label: 'DHE Tuition Equity Form and Affidavit', url: URLS.DHE_AFFIDAVIT },
     ],
   },
   masshealth: {
@@ -502,25 +510,28 @@ const SPECIAL_TOPIC_GUIDANCE: Record<SpecialTopicId, ProgramGuidance> = {
   },
   masfa: {
     title: 'MASFA',
-    aliases: ['masfa', 'massachusetts application for state financial aid', 'tuition equity'],
+    aliases: ['masfa', 'massachusetts application for state financial aid', 'tuition equity', 'undocumented aid', 'dhe affidavit'],
     summary:
-      'MASFA is the Massachusetts application used by certain students who cannot complete the FAFSA because of citizenship or immigration status but may still qualify for Massachusetts state aid.',
+      'MASFA is the Massachusetts application used by certain students who cannot complete the FAFSA because of citizenship or immigration status but may still qualify for Massachusetts state aid under the Tuition Equity Law.',
     amount:
       'MASFA is an application, not a direct award. The amount depends on which Massachusetts state aid programs you qualify for through that application.',
     estimate:
       'I cannot predict a personal MASFA-based award from one message because the outcome depends on the program, your school, and your financial information.',
     eligibility:
-      'MASFA is meant for students who are not able to complete the FAFSA because of citizenship or immigration status but may qualify for Massachusetts aid under the Tuition Equity Law.',
+      'MASFA is meant for students who are not able to complete the FAFSA because of citizenship or immigration status but may qualify for Massachusetts aid under the Tuition Equity Law. For the High School Completer path, Massachusetts says students generally need at least 3 academic years of Massachusetts high school, a Massachusetts diploma or equivalent, and a valid SSN, ITIN document, Selective Service registration if applicable, or a completed DHE Tuition Equity Form and Affidavit when needed.',
     apply:
-      'Complete the MASFA rather than the FAFSA if MASFA is the application that matches your eligibility situation.',
+      'Complete the MASFA rather than the FAFSA if MASFA is the application that matches your eligibility situation. If your school requires it, send the DHE Tuition Equity Form and Affidavit to the Massachusetts colleges you want to attend.',
     documents: [
       'the information requested by the MASFA application',
-      'school and identity information',
+      'Massachusetts high school attendance and diploma or equivalent information',
+      'a valid SSN, ITIN document, or Selective Service registration if applicable',
+      'the completed DHE Tuition Equity Form and Affidavit if you cannot provide the other listed document options',
       'financial information needed for the state aid review',
     ],
     nextSteps: [
       'confirm that MASFA is the right form for your situation',
       'complete the MASFA as early as possible',
+      'complete the DHE Tuition Equity Form and Affidavit if you cannot provide the other listed document options',
       'watch for any requests from your school or state aid office',
     ],
     deadline:
@@ -528,18 +539,21 @@ const SPECIAL_TOPIC_GUIDANCE: Record<SpecialTopicId, ProgramGuidance> = {
     renewal:
       'If you want to stay in consideration for aid, you usually need to submit the appropriate state aid application each academic year.',
     status:
-      'Status updates often flow through your school financial aid office because the final packaging is school-specific.',
+      'Status updates often flow through your school financial aid office because the final packaging is school-specific. Keep an eye on the MASFA portal you used and on any messages from your college.',
     correction:
       'If you entered something incorrectly, follow the school or state guidance for updating the MASFA-related record.',
     studentStatus:
       'Whether MASFA leads to aid depends on the rules of the underlying state program. Some programs require full-time enrollment and others are more flexible.',
     citizenship:
-      'MASFA exists because some students are not eligible to complete the FAFSA but may still qualify for Massachusetts state aid.',
+      'MASFA exists because some students are not eligible to complete the FAFSA but may still qualify for Massachusetts state aid. It does not create Pell Grant eligibility by itself.',
     notes: [
       'Do not assume FAFSA and MASFA are interchangeable. Use the application that matches your eligibility situation.',
+      'For some students, the DHE Tuition Equity Form and Affidavit is part of the MASFA path rather than a separate aid program.',
     ],
     links: [
       { label: 'MASFA information', url: URLS.MASFA },
+      { label: 'Massachusetts Tuition Equity overview', url: URLS.TUITION_EQUITY },
+      { label: 'DHE Tuition Equity Form and Affidavit', url: URLS.DHE_AFFIDAVIT },
       { label: 'Massachusetts MASSGrant overview', url: URLS.MASSGRANT },
       { label: 'MASSGrant Plus overview', url: URLS.MASSGRANT_PLUS },
     ],
@@ -678,9 +692,12 @@ const FAQ_TOPIC_GUIDANCE: Partial<Record<FAQItem['id'], TopicGuidance>> = {
       'If you cannot complete the FAFSA because of immigration or citizenship status, Massachusetts may direct you to the MASFA instead.',
     details: [
       'Students should complete the application that matches their eligibility situation rather than trying to submit both.',
+      'For the Tuition Equity Law state-aid path, Massachusetts says students generally need at least 3 academic years of Massachusetts high school, a Massachusetts diploma or equivalent, and a valid SSN, ITIN document, Selective Service registration if applicable, or a completed DHE Tuition Equity Form and Affidavit when needed.',
     ],
     links: [
       { label: 'MASFA information', url: URLS.MASFA },
+      { label: 'Massachusetts Tuition Equity overview', url: URLS.TUITION_EQUITY },
+      { label: 'DHE Tuition Equity Form and Affidavit', url: URLS.DHE_AFFIDAVIT },
       { label: 'FAFSA form', url: URLS.FAFSA },
     ],
   },

@@ -1,14 +1,31 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import App from "./app/App";
-import "./styles/index.css"; // keep if this exists; otherwise remove/adjust
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './app/App';
+import './styles/index.css';
 
-import { initRum } from "./lib/rum";
+async function bootstrap() {
+  document.documentElement.lang = 'en';
 
-initRum();
+  if (!import.meta.env.DEV) {
+    try {
+      const { initRum } = await import('./lib/rum');
+      initRum();
+    } catch (error) {
+      console.warn('RUM init failed:', error);
+    }
+  }
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+  const rootElement = document.getElementById('root');
+
+  if (!rootElement) {
+    throw new Error('Root element #root was not found.');
+  }
+
+  ReactDOM.createRoot(rootElement).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
+}
+
+bootstrap();
