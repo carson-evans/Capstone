@@ -65,18 +65,36 @@ function isBelowMassHealthLimit(profile: Record<string, string>): boolean {
 
 const getBenefitById = (id: string) => benefits.find((benefit) => benefit.id === id);
 
+function parseSelectedBenefitIds(profile: Record<string, string>): string[] | null {
+  const raw = profile['selected_benefits'];
+  // If the user hasn't picked anything yet, don't filter.
+  if (raw === undefined) return null;
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 const evaluateBenefitsLocally = (profile: Record<string, string>): Benefit[] => {
   const matches: Benefit[] = [];
 
-  const isEnrolled =
+  const isStudentEligible =
     profile['student_status'] === 'full_time' || profile['student_status'] === 'part_time';
 
-  const isStudentOrFuture = isEnrolled || profile['student_status'] === 'future';
+  const maResident = profile['ma_resident'] === 'yes';
+  const residencyLength = profile['residency_length']; // '0' | '1_plus'
+  const planningMoveMA = profile['planning_move_ma']; // 'yes' | 'no'
 
-  const isFullTimeOrFuture =
-    profile['student_status'] === 'full_time' || profile['student_status'] === 'future';
+  // MA is considered eligible if they are MA residents, OR they are new (0 years) but plan to move to MA.
+  const isMAEligible = maResident && (residencyLength !== '0' || planningMoveMA === 'yes');
 
-  if (isStudentOrFuture && profile['citizen_status'] === 'yes') {
+  // Screener only applies to eligible MA residents and students.
+  if (!isStudentEligible || !isMAEligible) return [];
+
+  const isEnrolled = isStudentEligible;
+  const isFullTimeOrFuture = profile['student_status'] === 'full_time';
+
+  if (isEnrolled && profile['citizen_status'] === 'yes') {
     const benefit = getBenefitById('pell-grant');
     if (benefit) {
       matches.push({
@@ -89,11 +107,7 @@ const evaluateBenefitsLocally = (profile: Record<string, string>): Benefit[] => 
     }
   }
 
-  if (
-    isStudentOrFuture &&
-    profile['ma_resident'] === 'yes' &&
-    profile['citizen_status'] === 'yes'
-  ) {
+  if (profile['ma_resident'] === 'yes' && profile['citizen_status'] === 'yes') {
     const benefit = getBenefitById('massgrant');
     if (benefit) {
       matches.push({
@@ -152,12 +166,15 @@ const evaluateBenefitsLocally = (profile: Record<string, string>): Benefit[] => 
   }
 
   if (
-    isStudentOrFuture &&
+    isEnrolled &&
     profile['mbta-uni'] === 'yes'
   ) {
-    const benefit = getBenefitById('mbta-pass');
-    if (benefit) {
-      matches.push(benefit);
+    const mbtaRole = profile['mbta_special_role'];
+    if (mbtaRole) {
+      const benefit = getBenefitById('mbta-pass');
+      if (benefit) {
+        matches.push(benefit);
+      }
     }
   }
 
@@ -165,7 +182,11 @@ const evaluateBenefitsLocally = (profile: Record<string, string>): Benefit[] => 
     .map((id) => matches.find((benefit) => benefit.id === id))
     .filter((benefit): benefit is Benefit => benefit !== undefined);
 
-  return uniqueMatches;
+  const selectedBenefitIds = parseSelectedBenefitIds(profile);
+  if (selectedBenefitIds === null) return uniqueMatches;
+
+  const selectedSet = new Set(selectedBenefitIds);
+  return uniqueMatches.filter((b) => selectedSet.has(b.id));
 };
 
 const parseEligibilityResponse = async (response: Response) => {
@@ -252,8 +273,36 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Eligibility API returned an invalid matches payload.');
       }
 
-      setMatchedBenefits(nextMatches);
-      return nextMatches;
+      const isStudentEligible =
+        profile['student_status'] === 'full_time' || profile['student_status'] === 'part_time';
+
+      const maResident = profile['ma_resident'] === 'yes';
+      const residencyLength = profile['residency_length']; // '0' | '1_plus'
+      const planningMoveMA = profile['planning_move_ma']; // 'yes' | 'no'
+
+      const isMAEligible = maResident && (residencyLength !== '0' || planningMoveMA === 'yes');
+
+      // Keep screener scope consistent even if the external API returns broader matches.
+      if (!isStudentEligible || !isMAEligible) {
+        setMatchedBenefits([]);
+        return [];
+      }
+
+      const selectedBenefitIds = parseSelectedBenefitIds(profile);
+      const filteredMatches =
+        selectedBenefitIds === null
+          ? nextMatches
+          : nextMatches.filter((b: any) => selectedBenefitIds.includes(b?.id));
+
+      const mbtaRole = profile['mbta_special_role'];
+      const isMbtaSelected = profile['mbta-uni'] === 'yes';
+
+      const mbtaConstrainedMatches = isMbtaSelected && mbtaRole
+        ? filteredMatches
+        : filteredMatches.filter((b: any) => b?.id !== 'mbta-pass');
+
+      setMatchedBenefits(mbtaConstrainedMatches);
+      return mbtaConstrainedMatches;
     } catch (error) {
       console.error(
         'Eligibility API failed. Falling back to local eligibility evaluation.',

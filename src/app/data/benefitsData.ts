@@ -131,36 +131,15 @@ export const benefits: Benefit[] = [
 export const questions: Question[] = [
   {
     id: 'student_status',
-    text: 'Are you currently enrolled in a college or university?',
+    text: 'Are you currently enrolled in a college or university? If you plan to enroll in the future, select “Yes” and choose full-time or part-time.',
     category: 'General',
     options: [
       { label: 'Yes, full-time', value: 'full_time' },
       { label: 'Yes, part-time', value: 'part_time' },
-      { label: 'I will be enrolled within the next year', value: 'future' },
       { label: 'No', value: 'no' },
     ],
   },
 
-  {
-    id: 'age',
-    text: 'Choose your age group?',
-    category: 'General',
-    options: [
-      { label: 'Under 18', value: 'low' },
-      { label: '18 to 64', value: 'medium' },
-      { label: 'Over 64', value: 'high' },
-    ],
-  },
-
-  {
-    id: 'citizen_status',
-    text: 'Are you a U.S. citizen or an eligible non-citizen?',
-    category: 'General',
-    options: [
-      { label: 'Yes', value: 'yes' },
-      { label: 'No', value: 'no' },
-    ],
-  },
   {
     id: 'ma_resident',
     text: 'Are you a Massachusetts resident?',
@@ -173,7 +152,7 @@ export const questions: Question[] = [
 
   {
     id: 'residency_length',
-    text: 'How many years have you lived in MA?',
+    text: 'How long have you lived in Massachusetts (MA)?',
     category: 'General',
     conditions: [
       {
@@ -182,9 +161,25 @@ export const questions: Question[] = [
       }
     ],
     options: [
-      { label: 'Less than 5 years', value: 'low' },
-      { label: '5 - 10 years', value: 'medium' },
-      { label: 'More than 10 years', value: 'high' },
+      { label: '0', value: '0' },
+      { label: 'At least 1 year', value: '1_plus' },
+    ],
+  },
+
+  {
+    id: 'planning_move_ma',
+    text: 'Are you planning on moving to Massachusetts?',
+    category: 'General',
+    // Only ask if the user indicated 0 years living in MA.
+    conditions: [
+      {
+        questionId: 'residency_length',
+        values: ['0'],
+      },
+    ],
+    options: [
+      { label: 'Yes', value: 'yes' },
+      { label: 'No', value: 'no' },
     ],
   },
 
@@ -194,21 +189,52 @@ export const questions: Question[] = [
     category: 'Financial',
     conditions: [
       {
-        questionId: 'citizen_status',
-        values: ['yes'],
-      },
-      {
         questionId: 'ma_resident',
         values: ['yes'],
       },
       {
         questionId: 'student_status',
-        values: ['full_time', 'part_time', 'future'],
+        values: ['full_time', 'part_time'],
       },
     ],
     options: [
       { label: 'Yes', value: 'yes' },
       { label: 'No', value: 'no' },
+    ],
+  },
+
+  {
+    id: 'citizen_status',
+    text: 'Do you have lawful presence in the United States now or will you have lawful presence in the future?',
+    category: 'General',
+    // Show citizenship only after the user answers the FAFSA question.
+    conditions: [
+      {
+        questionId: 'fafsa_completed',
+        values: ['yes', 'no'],
+      },
+    ],
+    options: [
+      { label: 'Yes', value: 'yes' },
+      { label: 'No', value: 'no' },
+    ],
+  },
+
+  {
+    id: 'age',
+    text: 'Choose your age group?',
+    category: 'General',
+    // Show age only after the user answers the FAFSA question.
+    conditions: [
+      {
+        questionId: 'fafsa_completed',
+        values: ['yes', 'no'],
+      },
+    ],
+    options: [
+      { label: 'Under 18', value: 'low' },
+      { label: '18 to 64', value: 'medium' },
+      { label: 'Over 64', value: 'high' },
     ],
   },
 
@@ -219,7 +245,7 @@ export const questions: Question[] = [
   conditions: [
     {
         questionId: 'student_status',
-        values: ['full_time', 'part_time', 'future'],
+        values: ['full_time', 'part_time'],
       },
   ],
   options: [
@@ -243,13 +269,32 @@ export const questions: Question[] = [
     },
     {
       questionId: 'student_status',
-      values: ['full_time', 'part_time', 'future'],
+      values: ['full_time', 'part_time'],
     }
   ],
   options: [
     { label: 'Yes', value: 'yes' },
     { label: 'No', value: 'no' },
   ],
+  },
+
+  {
+    id: 'mbta_special_role',
+    text: 'If MBTA was selected, are you one of the following: blind, military, police, firefighter, or government official?',
+    category: 'General',
+    conditions: [
+      {
+        questionId: 'mbta-uni',
+        values: ['yes'],
+      },
+    ],
+    options: [
+      { label: 'Blind', value: 'blind' },
+      { label: 'Military', value: 'military' },
+      { label: 'Police', value: 'police' },
+      { label: 'Firefighter', value: 'firefighter' },
+      { label: 'Government official', value: 'govt_official' },
+    ],
   },
 
   {
@@ -267,7 +312,7 @@ export const questions: Question[] = [
       },
       {
         questionId: 'student_status',
-        values: ['full_time', 'part_time', 'future'],
+        values: ['full_time', 'part_time'],
       }
     ],
     options: [
@@ -298,7 +343,7 @@ export const questions: Question[] = [
     conditions: [
       {
         questionId: 'student_status',
-        values: ['full_time', 'part_time','future'],
+        values: ['full_time', 'part_time'],
       },
     ],
     options: [
@@ -336,7 +381,7 @@ export const questions: Question[] = [
     conditions: [
       {
         questionId: 'student_status',
-        values: ['full_time', 'part_time','future'],
+        values: ['full_time', 'part_time'],
       },
     ],
     options: [
@@ -376,6 +421,39 @@ export const questions: Question[] = [
  * Uses AND logic: all conditions must be satisfied.
  */
 export function shouldShowQuestion(question: Question, answers: Record<string, string>): boolean {
+  // Gate all additional screener questions behind enrollment status.
+  // Requirement: only show follow-up questions if the user selected half-time or full-time enrollment.
+  if (question.id !== 'student_status') {
+    const status = answers['student_status'];
+    const isEnrolledHalfOrFull = status === 'full_time' || status === 'part_time';
+    if (!isEnrolledHalfOrFull) return false;
+  }
+
+  // Screener is only for Massachusetts residents (current or future).
+  // If the user indicates "no" at the appropriate MA step, hide all remaining questions.
+  const maResident = answers['ma_resident'];
+  const residencyLength = answers['residency_length']; // '0' | '1_plus'
+  const planningMoveMA = answers['planning_move_ma']; // 'yes' | 'no'
+
+  // Question ids we allow to remain visible while MA eligibility is being determined.
+  // Keep this minimal so that when the user answers "No", the screener truly ends.
+  const maDecisionAllowlist = new Set([
+    'student_status',
+    'ma_resident',
+    'residency_length',
+    'planning_move_ma',
+  ]);
+
+  // If they are not (current/future) MA eligible, stop the flow.
+  if (maResident === 'no' && !maDecisionAllowlist.has(question.id)) {
+    return false;
+  }
+
+  // If they have 0 years living in MA, require an explicit "Yes" to proceed.
+  if (residencyLength === '0' && planningMoveMA !== 'yes' && !maDecisionAllowlist.has(question.id)) {
+    return false;
+  }
+
   if (!question.conditions || question.conditions.length === 0) {
     return true;
   }

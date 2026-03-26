@@ -38,10 +38,24 @@ const MOBILE_DETAILS_REVEAL = {
 };
 
 export default function ResultsPage() {
-  const { matchedBenefits } = useBenefits();
+  const { matchedBenefits, answers } = useBenefits();
   const hasMatches = matchedBenefits.length > 0;
   const isMobile = useIsMobile();
   const [mobileOpenDetails, setMobileOpenDetails] = useState<Record<string, boolean>>({});
+
+  const studentStatus = answers['student_status'];
+  const isStudentEligible =
+    studentStatus === 'full_time' || studentStatus === 'part_time';
+
+  const maResident = answers['ma_resident'];
+  const residencyLength = answers['residency_length']; // '0' | '1_plus'
+  const planningMoveMA = answers['planning_move_ma']; // 'yes' | 'no'
+  const isMAEligible =
+    maResident === 'yes' && (residencyLength !== '0' || planningMoveMA === 'yes');
+
+  const showStudentOnlyNote =
+    studentStatus !== undefined && !isStudentEligible;
+  const showMAOnlyNote = maResident === 'no' || (residencyLength === '0' && planningMoveMA === 'no');
 
   const heroEnterInitial = { opacity: 0, y: isMobile ? 12 : 20 };
 
@@ -101,6 +115,21 @@ export default function ResultsPage() {
                   Based on your answers, you may qualify for the following{' '}
                   {matchedBenefits.length} benefits.
                 </p>
+
+                {(showStudentOnlyNote || showMAOnlyNote) && (
+                  <div className="mt-3 space-y-1 text-sm text-gray-600 dark:text-slate-300">
+                    {showMAOnlyNote && (
+                      <p>
+                        Note: This screener only applies to current or future Massachusetts residents.
+                      </p>
+                    )}
+                    {showStudentOnlyNote && (
+                      <p>
+                        Note: This screener only applies to full-time or part-time students.
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {hasMatches && (
                   <motion.div
