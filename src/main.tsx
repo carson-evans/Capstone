@@ -4,6 +4,8 @@ import App from './app/App';
 import './styles/index.css';
 
 async function bootstrap() {
+  document.documentElement.lang = 'en';
+
   if (!import.meta.env.DEV) {
     try {
       const { initRum } = await import('./lib/rum');

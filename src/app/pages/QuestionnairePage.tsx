@@ -31,6 +31,8 @@ import {
   type Question,
 } from '../data/benefitsData';
 import { getMassachusettsSchoolOptions } from '../data/massachusettsSchools';
+import { SiteFooter } from "@/app/components/layout/SiteFooter";
+
 
 const MOBILE_PAGE_TRANSITION = {
   duration: 0.24,
@@ -50,10 +52,12 @@ export default function QuestionnairePage() {
   } = useBenefits();
 
   const measurementRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const questionHeadingRef = useRef<HTMLHeadingElement | null>(null);
 
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedOption, setSelectedOption] = useState('');
   const [contentHeight, setContentHeight] = useState<number | null>(null);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   const screeningQuestions = React.useMemo(() => {
     return getQuestionsForBenefitFilters(questions, screeningBenefitFilters);
@@ -243,6 +247,16 @@ export default function QuestionnairePage() {
     };
   }, [visibleQuestions, answers]);
 
+  useEffect(() => {
+    if (!currentQuestion) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      questionHeadingRef.current?.focus();
+    });
+  }, [currentQuestion?.id]);
+
   const handleNext = async () => {
     if (
       !currentQuestion ||
@@ -282,6 +296,7 @@ export default function QuestionnairePage() {
     const isLastVisibleStep =
       safeCurrentQuestionIndex >= nextVisibleQuestions.length - 1;
 
+    setSubmissionError(null);
     setAnswers(nextAnswers);
 
     if (isLastVisibleStep) {
@@ -290,7 +305,7 @@ export default function QuestionnairePage() {
         navigate('/results');
       } catch (error) {
         console.error('Eligibility evaluation error:', error);
-        alert(
+        setSubmissionError(
           error instanceof Error
             ? error.message
             : 'Something went wrong while checking eligibility.'
@@ -348,17 +363,31 @@ export default function QuestionnairePage() {
 
         return (
           <div className="space-y-3">
+            <label htmlFor="school-search" className="sr-only">
+              Search for your college or university
+            </label>
             <Input
+              id="school-search"
               type="text"
               value={selectedOption}
               onChange={(event) => setSelectedOption(event.target.value)}
               placeholder="Start typing your college or university"
               autoComplete="off"
+              aria-autocomplete="list"
+              aria-controls="school-search-results"
+              aria-expanded={filteredOptions.length > 0}
+              aria-describedby={currentValidationError ? 'school-search-error' : 'school-search-helper'}
+              aria-invalid={currentValidationError ? true : undefined}
               className="h-14 rounded-lg border-gray-200 bg-white px-4 text-base font-medium md:text-lg"
             />
 
             <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-              <div className="max-h-64 overflow-y-auto p-2">
+              <div
+                id="school-search-results"
+                role="listbox"
+                aria-label="Matching schools"
+                className="max-h-64 overflow-y-auto p-2"
+              >
                 {filteredOptions.length > 0 ? (
                   filteredOptions.map((option) => {
                     const isSelected = selectedSchool?.value === option.value;
@@ -367,6 +396,8 @@ export default function QuestionnairePage() {
                       <button
                         key={option.value}
                         type="button"
+                        role="option"
+                        aria-selected={isSelected}
                         onClick={() => setSelectedOption(option.label)}
                         className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors md:text-base ${
                           isSelected
@@ -386,7 +417,7 @@ export default function QuestionnairePage() {
               </div>
             </div>
 
-            <p className="text-sm text-slate-600 dark:text-slate-300">
+            <p id="school-search-helper" className="text-sm text-slate-600 dark:text-slate-300">
               {selectedSchool
                 ? `Selected: ${selectedSchool.label}`
                 : 'Type to search, then choose your school from the list.'}
@@ -399,7 +430,7 @@ export default function QuestionnairePage() {
             )}
 
             {currentValidationError && (
-              <p className="text-sm font-medium text-red-600 dark:text-red-400">
+              <p id="school-search-error" role="alert" className="text-sm font-medium text-red-600 dark:text-red-400">
                 {currentValidationError}
               </p>
             )}
@@ -417,7 +448,11 @@ export default function QuestionnairePage() {
 
       return (
         <Select value={selectedOption} onValueChange={setSelectedOption}>
-          <SelectTrigger className="h-14 rounded-lg border-gray-200 bg-white text-left text-base font-medium md:text-lg">
+          <SelectTrigger
+            aria-describedby={currentValidationError ? 'question-error' : currentQuestionHelperText ? 'question-helper' : undefined}
+            aria-invalid={currentValidationError ? true : undefined}
+            className="h-14 rounded-lg border-gray-200 bg-white text-left text-base font-medium md:text-lg"
+          >
             <SelectValue placeholder={question.placeholder ?? 'Select an option'} />
           </SelectTrigger>
           <SelectContent>
@@ -450,10 +485,12 @@ export default function QuestionnairePage() {
             value={selectedOption}
             onChange={(event) => setSelectedOption(event.target.value)}
             placeholder={question.placeholder ?? 'Enter a value'}
+            aria-describedby={currentValidationError ? 'question-error' : currentQuestionHelperText ? 'question-helper' : undefined}
+            aria-invalid={currentValidationError ? true : undefined}
             className="h-14 rounded-lg border-gray-200 bg-white px-4 text-base font-medium md:text-lg"
           />
           {currentValidationError && (
-            <p className="text-sm font-medium text-red-600 dark:text-red-400">
+            <p id="question-error" role="alert" className="text-sm font-medium text-red-600 dark:text-red-400">
               {currentValidationError}
             </p>
           )}
@@ -465,6 +502,8 @@ export default function QuestionnairePage() {
       <RadioGroup
         value={interactive ? selectedOption : undefined}
         onValueChange={interactive ? setSelectedOption : undefined}
+        aria-labelledby="current-question-heading"
+        aria-describedby={currentQuestionHelperText ? 'question-helper' : undefined}
         className="space-y-2.5 md:space-y-4"
       >
         {questionOptions.map((option) => {
@@ -511,12 +550,12 @@ export default function QuestionnairePage() {
         {currentQuestion.category}
       </span>
 
-      <h2 className="mb-4 max-w-2xl text-[1.66rem] font-bold leading-[1.08] md:mb-5 md:text-[2.15rem] md:leading-[1.08]">
+      <h2 id="current-question-heading" ref={questionHeadingRef} tabIndex={-1} className="mb-4 max-w-2xl text-[1.66rem] font-bold leading-[1.08] outline-none md:mb-5 md:text-[2.15rem] md:leading-[1.08]">
         <InlineTooltipText segments={currentQuestionTextSegments} />
       </h2>
 
       {currentQuestionHelperText && (
-        <p className="mb-7 max-w-2xl text-sm font-medium leading-relaxed text-slate-600 dark:text-slate-300 md:mb-8 md:text-base">
+        <p id="question-helper" className="mb-7 max-w-2xl text-sm font-medium leading-relaxed text-slate-600 dark:text-slate-300 md:mb-8 md:text-base">
           {currentQuestionHelperText}
         </p>
       )}
@@ -530,8 +569,13 @@ export default function QuestionnairePage() {
       <PageBackdrop />
       <Navbar />
 
-      <div className="container mx-auto max-w-3xl flex-1 px-5 py-4 sm:px-6 md:py-14">
+      <main id="main-content" tabIndex={-1} className="container mx-auto max-w-3xl flex-1 px-5 py-4 sm:px-6 md:py-14">
         <div className="mb-5 space-y-2 md:mb-10">
+          {submissionError && (
+            <p role="alert" className="text-sm font-medium text-red-600 dark:text-red-400">
+              {submissionError}
+            </p>
+          )}
           <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400 md:text-sm">
             <span>
               Step {currentStep + 1} of {visibleQuestions.length}
@@ -541,6 +585,7 @@ export default function QuestionnairePage() {
 
           <Progress
             value={progress}
+            aria-label="Questionnaire progress"
             className="h-2 bg-slate-200/90 shadow-inner dark:bg-slate-800/90 md:h-2.5"
           />
         </div>
@@ -585,7 +630,9 @@ export default function QuestionnairePage() {
             </Button>
           </div>
         </div>
-      </div>
+      </main>
+
+      <SiteFooter />
 
       <div
         aria-hidden="true"
