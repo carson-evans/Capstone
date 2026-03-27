@@ -1,26 +1,35 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useNavigate } from 'react-router';
-import { motion, AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, X } from 'lucide-react';
 
-import { Button } from '../components/ui/button';
-import { Progress } from '../components/ui/progress';
-import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
-import { Label } from '../components/ui/label';
-import { Input } from '../components/ui/input';
+import { Button } from '@/app/components/ui/button';
+import { Progress } from '@/app/components/ui/progress';
+import { RadioGroup, RadioGroupItem } from '@/app/components/ui/radio-group';
+import { Label } from '@/app/components/ui/label';
+import { Input } from '@/app/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../components/ui/select';
-import { Navbar } from '../components/layout/Navbar';
-import { PageBackdrop } from '../components/layout/PageBackdrop';
-import { InlineTooltipText } from '../components/ui/inline-tooltip-text';
-import { useIsMobile } from '../components/ui/use-mobile';
+} from '@/app/components/ui/select';
+import { Navbar } from '@/app/components/layout/Navbar';
+import { PageBackdrop } from '@/app/components/layout/PageBackdrop';
+import { InlineTooltipText } from '@/app/components/ui/inline-tooltip-text';
+import { useIsMobile } from '@/app/components/ui/use-mobile';
+import { SiteFooter } from '@/app/components/layout/SiteFooter';
 
-import { useBenefits } from '../context/BenefitsContext';
+import { useBenefits } from '@/app/context/BenefitsContext';
 import {
   getQuestionHelperText,
   getQuestionTextSegments,
@@ -29,10 +38,8 @@ import {
   pruneHiddenAnswers,
   questions,
   type Question,
-} from '../data/benefitsData';
-import { getMassachusettsSchoolOptions } from '../data/massachusettsSchools';
-import { SiteFooter } from "@/app/components/layout/SiteFooter";
-
+} from '@/app/data/benefitsData';
+import { getMassachusettsSchoolOptions } from '@/app/data/massachusettsSchools';
 
 const MOBILE_PAGE_TRANSITION = {
   duration: 0.24,
@@ -53,22 +60,29 @@ export default function QuestionnairePage() {
 
   const measurementRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const questionHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const schoolInputRef = useRef<HTMLInputElement | null>(null);
 
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedOption, setSelectedOption] = useState('');
   const [contentHeight, setContentHeight] = useState<number | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [schoolListOpen, setSchoolListOpen] = useState(false);
+  const [highlightedSchoolIndex, setHighlightedSchoolIndex] = useState(-1);
 
-  const screeningQuestions = React.useMemo(() => {
+  const schoolListboxId = useId();
+  const schoolInstructionsId = useId();
+  const schoolStatusId = useId();
+
+  const screeningQuestions = useMemo(() => {
     return getQuestionsForBenefitFilters(questions, screeningBenefitFilters);
   }, [screeningBenefitFilters]);
 
-  const getQuestionOptions = React.useCallback(
+  const getQuestionOptions = useCallback(
     (question: Question, questionAnswers: Record<string, string>) => {
       if (question.id === 'school_name') {
         const isFutureStudent =
-          questionAnswers['student_status'] === 'future_full_time' ||
-          questionAnswers['student_status'] === 'future_part_time';
+          questionAnswers.student_status === 'future_full_time' ||
+          questionAnswers.student_status === 'future_part_time';
 
         return getMassachusettsSchoolOptions(isFutureStudent);
       }
@@ -78,12 +92,8 @@ export default function QuestionnairePage() {
     []
   );
 
-  const findMatchingSelectOption = React.useCallback(
-    (
-      question: Question,
-      value: string,
-      questionAnswers: Record<string, string>
-    ) => {
+  const findMatchingSelectOption = useCallback(
+    (question: Question, value: string, questionAnswers: Record<string, string>) => {
       const normalizedValue = value.trim().toLowerCase();
 
       if (!normalizedValue || question.control !== 'select') {
@@ -101,13 +111,14 @@ export default function QuestionnairePage() {
     [getQuestionOptions]
   );
 
-  const getPrunedAnswers = React.useCallback(
+  const getPrunedAnswers = useCallback(
     (nextAnswers: Record<string, string>) => {
       let currentAnswers = pruneHiddenAnswers(screeningQuestions, nextAnswers);
       let didChange = true;
 
       while (didChange) {
         didChange = false;
+
         const nextVisibleQuestions = getVisibleQuestions(
           screeningQuestions,
           currentAnswers
@@ -115,10 +126,7 @@ export default function QuestionnairePage() {
 
         for (const question of nextVisibleQuestions) {
           const answer = currentAnswers[question.id];
-
-          if (!answer) {
-            continue;
-          }
+          if (!answer) continue;
 
           const questionOptions = getQuestionOptions(question, currentAnswers);
 
@@ -141,7 +149,7 @@ export default function QuestionnairePage() {
     [getQuestionOptions, screeningQuestions]
   );
 
-  const visibleQuestions = React.useMemo(() => {
+  const visibleQuestions = useMemo(() => {
     return getVisibleQuestions(screeningQuestions, answers);
   }, [answers, screeningQuestions]);
 
@@ -165,6 +173,13 @@ export default function QuestionnairePage() {
     ? getQuestionOptions(currentQuestion, answers)
     : [];
 
+  useEffect(() => {
+    if (currentQuestion?.id !== 'school_name') {
+      setSchoolListOpen(false);
+      setHighlightedSchoolIndex(-1);
+    }
+  }, [currentQuestion?.id]);
+
   const normalizedSelectedOption = selectedOption.trim();
 
   const currentValidationError =
@@ -172,40 +187,31 @@ export default function QuestionnairePage() {
       ? currentQuestion.validate
         ? currentQuestion.validate(normalizedSelectedOption, answers)
         : currentQuestion.control === 'select' &&
-          !findMatchingSelectOption(
-            currentQuestion,
-            normalizedSelectedOption,
-            answers
-          )
-        ? currentQuestion.id === 'school_name'
-          ? 'Select a school from the list.'
-          : 'Please select a valid option.'
-        : null
+            !findMatchingSelectOption(currentQuestion, normalizedSelectedOption, answers)
+          ? currentQuestion.id === 'school_name'
+            ? 'Select a school from the list.'
+            : 'Please select a valid option.'
+          : null
       : null;
 
   const isLastStep =
     visibleQuestions.length > 0 && currentStep === visibleQuestions.length - 1;
 
-
-
-    
-  const willSubmitCurrentStep = React.useMemo(() => {
+  const willSubmitCurrentStep = useMemo(() => {
     if (!currentQuestion || !normalizedSelectedOption || currentValidationError) {
       return isLastStep;
     }
+
     if (currentQuestion.id === 'citizen_status') {
       const restrictedBenefits = ['masshealth', 'snap', 'pell-grant'];
 
       const isOnlyRestricted =
         screeningBenefitFilters.length > 0 &&
-        screeningBenefitFilters.every((b) =>
-          restrictedBenefits.includes(b)
+        screeningBenefitFilters.every((benefitId) =>
+          restrictedBenefits.includes(benefitId)
         );
 
-      if (
-        normalizedSelectedOption === 'no' &&
-        isOnlyRestricted
-      ) {
+      if (normalizedSelectedOption === 'no' && isOnlyRestricted) {
         return true;
       }
     }
@@ -250,17 +256,13 @@ export default function QuestionnairePage() {
     screeningQuestions,
   ]);
 
-
-
   const progress =
     visibleQuestions.length > 0
       ? ((currentStep + 1) / visibleQuestions.length) * 100
       : 0;
 
   useEffect(() => {
-    if (!currentQuestion) {
-      return;
-    }
+    if (!currentQuestion) return;
 
     const nextSelectedOption = answers[currentQuestion.id] || '';
     const isValidSelectedOption =
@@ -286,7 +288,7 @@ export default function QuestionnairePage() {
     }
 
     setSelectedOption(nextSelectedOption);
-  }, [answers, currentQuestion, currentQuestionOptions, currentStep]);
+  }, [answers, currentQuestion, currentQuestionOptions]);
 
   useLayoutEffect(() => {
     let frameId = 0;
@@ -314,9 +316,7 @@ export default function QuestionnairePage() {
   }, [visibleQuestions, answers]);
 
   useEffect(() => {
-    if (!currentQuestion) {
-      return;
-    }
+    if (!currentQuestion) return;
 
     window.requestAnimationFrame(() => {
       questionHeadingRef.current?.focus();
@@ -364,39 +364,34 @@ export default function QuestionnairePage() {
 
     setSubmissionError(null);
     setAnswers(nextAnswers);
-    
-    if (currentQuestion.id === 'citizen_status') {
-      if (nextAnswers.citizen_status === 'no') {
-        const restrictedBenefits = ['masshealth', 'snap', 'pell-grant'];
 
-        const isOnlyRestricted =
-          screeningBenefitFilters.length > 0 &&
-          screeningBenefitFilters.every((b) =>
-            restrictedBenefits.includes(b)
+    if (
+      currentQuestion.id === 'citizen_status' &&
+      nextAnswers.citizen_status === 'no'
+    ) {
+      const restrictedBenefits = ['masshealth', 'snap', 'pell-grant'];
+
+      const isOnlyRestricted =
+        screeningBenefitFilters.length > 0 &&
+        screeningBenefitFilters.every((benefitId) =>
+          restrictedBenefits.includes(benefitId)
+        );
+
+      if (isOnlyRestricted) {
+        try {
+          await evaluateBenefits(nextAnswers);
+          navigate('/results');
+        } catch (error) {
+          console.error('Eligibility evaluation error:', error);
+          setSubmissionError(
+            error instanceof Error
+              ? error.message
+              : 'Something went wrong while checking eligibility.'
           );
-
-        if (isOnlyRestricted) {
-          try {
-            await evaluateBenefits(nextAnswers);
-            navigate('/results');
-          } catch (error) {
-            console.error('Eligibility evaluation error:', error);
-            setSubmissionError(
-              error instanceof Error
-                ? error.message
-                : 'Something went wrong while checking eligibility.'
-            );
-          }
-          return;
         }
+        return;
       }
     }
-
-
- 
-    
-
-
 
     if (isLastVisibleStep) {
       try {
@@ -429,31 +424,75 @@ export default function QuestionnairePage() {
     }
   };
 
-  const renderQuestionInput = (question: Question, interactive: boolean) => {
+  const renderMeasurementInput = (question: Question) => {
     const questionOptions = getQuestionOptions(question, answers);
+
+    if (question.control === 'select' && question.id === 'school_name') {
+      return (
+        <div className="space-y-3">
+          <div className="h-14 rounded-lg border border-gray-200 bg-white px-4" />
+          <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+            <div className="max-h-64 min-h-64 overflow-y-auto p-2 md:max-h-[22rem] md:min-h-[22rem]">
+              {questionOptions.slice(0, 6).map((option) => (
+                <div
+                  key={option.value}
+                  className="rounded-md px-3 py-2 text-left text-sm text-slate-700 md:text-base"
+                >
+                  {option.label}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (question.control === 'select') {
+      return (
+        <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-lg font-medium text-gray-500">
+          {question.placeholder ?? 'Select an option'}
+        </div>
+      );
+    }
+
+    if (question.control === 'number') {
+      return (
+        <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-lg font-medium text-gray-500">
+          {question.placeholder ?? 'Enter a value'}
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-2.5 md:space-y-4">
+        {questionOptions.map((option) => (
+          <div
+            key={option.value}
+            className="flex items-start space-x-3 rounded-lg border border-transparent px-3 py-2 md:p-4"
+          >
+            <div className="mt-1 h-4 w-4 rounded-full border border-slate-400" />
+            <div className="flex-1 text-[0.98rem] font-medium leading-relaxed md:text-lg">
+              {option.label}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderQuestionInput = (question: Question) => {
+    const helperId = `${question.id}-helper`;
+    const errorId = `${question.id}-error`;
+    const questionOptions = getQuestionOptions(question, answers);
+    const describedByIds = [
+      currentQuestionHelperText ? helperId : null,
+      currentValidationError ? errorId : null,
+    ]
+      .filter(Boolean)
+      .join(' ');
 
     if (question.control === 'select') {
       if (question.id === 'school_name') {
-        if (!interactive) {
-          return (
-            <div className="space-y-3">
-              <div className="h-14 rounded-lg border border-gray-200 bg-white px-4 text-base font-medium text-gray-500 md:text-lg" />
-              <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-                <div className="max-h-64 min-h-64 overflow-y-auto p-2 md:max-h-[22rem] md:min-h-[22rem]">
-                  {questionOptions.slice(0, 6).map((option) => (
-                    <div
-                      key={option.value}
-                      className="w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 md:text-base"
-                    >
-                      {option.label}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          );
-        }
-
         const searchTerm = selectedOption.trim().toLowerCase();
 
         const filteredOptions = searchTerm
@@ -467,65 +506,167 @@ export default function QuestionnairePage() {
           selectedOption,
           answers
         );
-        const hasExactSelectedSchool =
-          Boolean(selectedSchool) && selectedSchool.label.toLowerCase() === searchTerm;
-        const shouldShowSchoolResults = !hasExactSelectedSchool;
+        const activeOption =
+          highlightedSchoolIndex >= 0 && highlightedSchoolIndex < filteredOptions.length
+            ? filteredOptions[highlightedSchoolIndex]
+            : null;
+
+        const handleSchoolSelection = (label: string) => {
+          setSelectedOption(label);
+          setSchoolListOpen(false);
+          setHighlightedSchoolIndex(-1);
+        };
+
+        const handleSchoolKeyDown = (
+          event: React.KeyboardEvent<HTMLInputElement>
+        ) => {
+          if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            setSchoolListOpen(true);
+            setHighlightedSchoolIndex((current) => {
+              const nextIndex = current + 1;
+              return nextIndex >= filteredOptions.length ? 0 : nextIndex;
+            });
+            return;
+          }
+
+          if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            setSchoolListOpen(true);
+            setHighlightedSchoolIndex((current) => {
+              if (current <= 0) {
+                return Math.max(filteredOptions.length - 1, 0);
+              }
+              return current - 1;
+            });
+            return;
+          }
+
+          if (event.key === 'Enter' && activeOption) {
+            event.preventDefault();
+            handleSchoolSelection(activeOption.label);
+            return;
+          }
+
+          if (event.key === 'Escape') {
+            setSchoolListOpen(false);
+            setHighlightedSchoolIndex(-1);
+          }
+        };
+
+        const schoolDescribedBy = [
+          currentQuestionHelperText ? helperId : null,
+          currentValidationError ? errorId : null,
+          schoolInstructionsId,
+          schoolStatusId,
+        ]
+          .filter(Boolean)
+          .join(' ');
 
         return (
           <div className="space-y-3">
             <label htmlFor="school-search" className="sr-only">
               Search for your college or university
             </label>
+
+            <p id={schoolInstructionsId} className="sr-only">
+              Type to filter schools. Use the up and down arrow keys to review
+              results, Enter to select, and Escape to close the list.
+            </p>
+
             <div className="relative">
               <Input
+                ref={schoolInputRef}
                 id="school-search"
+                role="combobox"
                 type="text"
                 value={selectedOption}
-                onChange={(event) => setSelectedOption(event.target.value)}
+                onChange={(event) => {
+                  setSelectedOption(event.target.value);
+                  setSchoolListOpen(true);
+                  setHighlightedSchoolIndex(-1);
+                }}
+                onFocus={() => setSchoolListOpen(true)}
+                onBlur={() => {
+                  window.setTimeout(() => {
+                    setSchoolListOpen(false);
+                    setHighlightedSchoolIndex(-1);
+                  }, 100);
+                }}
+                onKeyDown={handleSchoolKeyDown}
                 placeholder="Start typing or scroll to select"
                 autoComplete="off"
                 aria-autocomplete="list"
-                aria-controls={shouldShowSchoolResults ? 'school-search-results' : undefined}
-                aria-expanded={shouldShowSchoolResults}
-                aria-describedby={currentValidationError ? 'school-search-error' : undefined}
-                aria-invalid={currentValidationError ? true : undefined}
+                aria-haspopup="listbox"
+                aria-controls={schoolListboxId}
+                aria-expanded={schoolListOpen ? 'true' : 'false'}
+                aria-activedescendant={
+                  activeOption ? `${question.id}-${activeOption.value}` : undefined
+                }
+                aria-describedby={schoolDescribedBy || undefined}
+                aria-invalid={currentValidationError ? 'true' : 'false'}
                 className="h-14 rounded-lg border-gray-200 bg-white px-4 pr-12 text-base font-medium md:text-lg"
               />
+
               {selectedOption.trim() && (
                 <button
                   type="button"
-                  onClick={() => setSelectedOption('')}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    setSelectedOption('');
+                    setSchoolListOpen(true);
+                    setHighlightedSchoolIndex(-1);
+                    schoolInputRef.current?.focus();
+                  }}
                   aria-label="Clear selected school"
                   className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-4 w-4" aria-hidden="true" />
                 </button>
               )}
             </div>
 
-            {shouldShowSchoolResults && (
+            <p
+              id={schoolStatusId}
+              role="status"
+              aria-live="polite"
+              className="text-sm text-slate-500 dark:text-slate-400"
+            >
+              {searchTerm
+                ? `${filteredOptions.length} school${filteredOptions.length === 1 ? '' : 's'} found.`
+                : `Showing ${filteredOptions.length} available schools.`}
+            </p>
+
+            {schoolListOpen && (
               <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
                 <div
-                  id="school-search-results"
+                  id={schoolListboxId}
                   role="listbox"
                   aria-label="Matching schools"
                   className="max-h-64 overflow-y-auto p-2 md:max-h-[22rem]"
                 >
                   {filteredOptions.length > 0 ? (
-                    filteredOptions.map((option) => {
+                    filteredOptions.map((option, index) => {
                       const isSelected = selectedSchool?.value === option.value;
+                      const isActive = index === highlightedSchoolIndex;
 
                       return (
                         <button
                           key={option.value}
+                          id={`${question.id}-${option.value}`}
                           type="button"
                           role="option"
-                          aria-selected={isSelected}
-                          onClick={() => setSelectedOption(option.label)}
+                          tabIndex={-1}
+                          aria-selected={isSelected ? 'true' : 'false'}
+                          onMouseDown={(event) => event.preventDefault()}
+                          onMouseEnter={() => setHighlightedSchoolIndex(index)}
+                          onClick={() => handleSchoolSelection(option.label)}
                           className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors md:text-base ${
                             isSelected
                               ? 'bg-[#1e3a5f] text-white'
-                              : 'text-slate-700 hover:bg-slate-100'
+                              : isActive
+                                ? 'bg-slate-100 text-slate-900'
+                                : 'text-slate-700 hover:bg-slate-100'
                           }`}
                         >
                           {option.label}
@@ -542,66 +683,71 @@ export default function QuestionnairePage() {
             )}
 
             {currentValidationError && (
-              <p id="school-search-error" role="alert" className="text-sm font-medium text-red-600 dark:text-red-400">
+              <p
+                id={errorId}
+                role="alert"
+                className="text-sm font-medium text-red-600 dark:text-red-400"
+              >
                 {currentValidationError}
               </p>
             )}
           </div>
         );
       }
-      if (!interactive) {
-        return (
-          <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-lg font-medium text-gray-500">
-            {question.placeholder ?? 'Select an option'}
-          </div>
-        );
-      }
 
       return (
-        <Select value={selectedOption} onValueChange={setSelectedOption}>
-          <SelectTrigger
-            aria-describedby={currentValidationError ? 'question-error' : currentQuestionHelperText ? 'question-helper' : undefined}
-            aria-invalid={currentValidationError ? true : undefined}
-            className="h-14 rounded-lg border-gray-200 bg-white text-left text-base font-medium md:text-lg"
-          >
-            <SelectValue placeholder={question.placeholder ?? 'Select an option'} />
-          </SelectTrigger>
-          <SelectContent>
-            {questionOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="space-y-3">
+          <Select value={selectedOption} onValueChange={setSelectedOption}>
+            <SelectTrigger
+              aria-describedby={describedByIds || undefined}
+              aria-invalid={currentValidationError ? 'true' : 'false'}
+              className="h-14 rounded-lg border-gray-200 bg-white text-left text-base font-medium md:text-lg"
+            >
+              <SelectValue placeholder={question.placeholder ?? 'Select an option'} />
+            </SelectTrigger>
+            <SelectContent>
+              {questionOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {currentValidationError && (
+            <p
+              id={errorId}
+              role="alert"
+              className="text-sm font-medium text-red-600 dark:text-red-400"
+            >
+              {currentValidationError}
+            </p>
+          )}
+        </div>
       );
     }
 
     if (question.control === 'number') {
-      if (!interactive) {
-        return (
-          <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-lg font-medium text-gray-500">
-            {question.placeholder ?? 'Enter a value'}
-          </div>
-        );
-      }
-
       return (
         <div className="space-y-3">
           <Input
             type="number"
-            min={9}
+            min={1}
             step={1}
             inputMode="numeric"
             value={selectedOption}
             onChange={(event) => setSelectedOption(event.target.value)}
             placeholder={question.placeholder ?? 'Enter a value'}
-            aria-describedby={currentValidationError ? 'question-error' : currentQuestionHelperText ? 'question-helper' : undefined}
-            aria-invalid={currentValidationError ? true : undefined}
+            aria-describedby={describedByIds || undefined}
+            aria-invalid={currentValidationError ? 'true' : 'false'}
             className="h-14 rounded-lg border-gray-200 bg-white px-4 text-base font-medium md:text-lg"
           />
           {currentValidationError && (
-            <p id="question-error" role="alert" className="text-sm font-medium text-red-600 dark:text-red-400">
+            <p
+              id={errorId}
+              role="alert"
+              className="text-sm font-medium text-red-600 dark:text-red-400"
+            >
               {currentValidationError}
             </p>
           )}
@@ -610,83 +756,91 @@ export default function QuestionnairePage() {
     }
 
     return (
-      <RadioGroup
-        value={interactive ? selectedOption : undefined}
-        onValueChange={interactive ? setSelectedOption : undefined}
-        aria-labelledby="current-question-heading"
-        aria-describedby={currentQuestionHelperText ? 'question-helper' : undefined}
-        className="space-y-2.5 md:space-y-4"
-      >
-        {questionOptions.map((option) => {
-          const optionId = `${question.id}-${option.value}`;
-          const optionClasses =
-            'flex cursor-pointer items-start space-x-3 rounded-lg border border-transparent px-3 py-2 transition-colors hover:border-gray-200 hover:bg-gray-50 dark:hover:border-slate-700 dark:hover:bg-slate-800/70 md:p-4';
+      <div className="space-y-3">
+        <RadioGroup
+          value={selectedOption}
+          onValueChange={setSelectedOption}
+          aria-labelledby="current-question-heading"
+          aria-describedby={describedByIds || undefined}
+          className="space-y-2.5 md:space-y-4"
+        >
+          {questionOptions.map((option) => {
+            const optionId = `${question.id}-${option.value}`;
 
-          return (
-            <motion.div
-              key={option.value}
-              whileHover={interactive && !isMobile ? { y: -2 } : undefined}
-              whileTap={interactive && isMobile ? { scale: 0.995 } : undefined}
-              transition={
-                interactive
-                  ? isMobile
+            return (
+              <motion.div
+                key={option.value}
+                whileHover={!isMobile ? { y: -2 } : undefined}
+                whileTap={isMobile ? { scale: 0.995 } : undefined}
+                transition={
+                  isMobile
                     ? { duration: 0.14, ease: 'easeOut' }
                     : { type: 'spring', stiffness: 420, damping: 28 }
-                  : undefined
-              }
-              className={optionClasses}
-              onClick={interactive ? () => setSelectedOption(option.value) : undefined}
-            >
-              <RadioGroupItem value={option.value} id={optionId} className="mt-1" />
-              <Label
-                htmlFor={optionId}
-                className="flex-1 cursor-pointer text-[0.98rem] font-medium leading-relaxed md:text-lg"
+                }
+                className="flex cursor-pointer items-start space-x-3 rounded-lg border border-transparent px-3 py-2 transition-colors hover:border-gray-200 hover:bg-gray-50 dark:hover:border-slate-700 dark:hover:bg-slate-800/70 md:p-4"
+                onClick={() => setSelectedOption(option.value)}
               >
-                {option.label}
-              </Label>
-            </motion.div>
-          );
-        })}
-      </RadioGroup>
+                <RadioGroupItem value={option.value} id={optionId} className="mt-1" />
+                <Label
+                  htmlFor={optionId}
+                  className="flex-1 cursor-pointer text-[0.98rem] font-medium leading-relaxed md:text-lg"
+                >
+                  {option.label}
+                </Label>
+              </motion.div>
+            );
+          })}
+        </RadioGroup>
+
+        {currentValidationError && (
+          <p
+            id={errorId}
+            role="alert"
+            className="text-sm font-medium text-red-600 dark:text-red-400"
+          >
+            {currentValidationError}
+          </p>
+        )}
+      </div>
     );
   };
 
   if (!currentQuestion) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-950">
+        <Navbar />
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="container mx-auto max-w-3xl px-6 py-12"
+        >
+          <p className="text-base text-slate-600 dark:text-slate-300">
+            Loading questionnaire…
+          </p>
+        </main>
+      </div>
+    );
   }
 
-  const questionContent = (
-    <>
-      <span className="mb-4 inline-block rounded bg-gray-100 px-2 py-1 text-xs font-bold uppercase tracking-wider text-gray-500 dark:bg-slate-800 dark:text-slate-300 md:mb-4 md:px-3 md:py-1.5 md:text-sm">
-        {currentQuestion.category}
-      </span>
-
-      <h2 id="current-question-heading" ref={questionHeadingRef} tabIndex={-1} className="mb-4 max-w-2xl text-[1.66rem] font-bold leading-[1.08] outline-none md:mb-5 md:text-[2.15rem] md:leading-[1.08]">
-        <InlineTooltipText segments={currentQuestionTextSegments} />
-      </h2>
-
-      {currentQuestionHelperText && (
-        <p id="question-helper" className="mb-7 max-w-2xl text-sm font-medium leading-relaxed text-slate-600 dark:text-slate-300 md:mb-8 md:text-base">
-          {currentQuestionHelperText}
-        </p>
-      )}
-
-      {renderQuestionInput(currentQuestion, true)}
-    </>
-  );
+  const helperId = `${currentQuestion.id}-helper`;
 
   return (
     <div className="relative isolate min-h-screen overflow-x-hidden bg-[#f8fafc] font-sans text-black dark:bg-slate-950 dark:text-slate-100">
       <PageBackdrop />
       <Navbar />
 
-      <main id="main-content" tabIndex={-1} className="container mx-auto max-w-3xl flex-1 px-5 py-4 sm:px-6 md:py-14">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="container mx-auto max-w-3xl flex-1 px-5 py-4 sm:px-6 md:py-14"
+      >
         <div className="mb-5 space-y-2 md:mb-10">
           {submissionError && (
             <p role="alert" className="text-sm font-medium text-red-600 dark:text-red-400">
               {submissionError}
             </p>
           )}
+
           <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400 md:text-sm">
             <span>
               Step {currentStep + 1} of {visibleQuestions.length}
@@ -702,44 +856,81 @@ export default function QuestionnairePage() {
         </div>
 
         <div className="flex flex-col overflow-hidden rounded-[1.75rem] border border-white/75 bg-white/82 px-4 py-4 shadow-[0_34px_80px_-52px_rgba(15,23,42,0.45)] backdrop-blur-none dark:border-white/10 dark:bg-slate-900/78 dark:shadow-[0_28px_80px_-40px_rgba(2,6,23,0.95)] md:min-h-0 md:p-12 md:backdrop-blur-sm">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={currentQuestion.id}
-              initial={isMobile ? { opacity: 0, x: 16 } : { opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={isMobile ? { opacity: 0, x: -16 } : { opacity: 0, x: -20 }}
-              transition={isMobile ? MOBILE_PAGE_TRANSITION : { duration: 0.3 }}
-              className="min-w-0 flex-1 transform-gpu will-change-transform"
-              style={contentHeight ? { minHeight: contentHeight } : undefined}
-            >
-              {questionContent}
-            </motion.div>
-          </AnimatePresence>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleNext();
+            }}
+            className="flex h-full flex-1 flex-col"
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={currentQuestion.id}
+                initial={isMobile ? { opacity: 0, x: 16 } : { opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={isMobile ? { opacity: 0, x: -16 } : { opacity: 0, x: -20 }}
+                transition={isMobile ? MOBILE_PAGE_TRANSITION : { duration: 0.3 }}
+                className="min-w-0 flex-1 transform-gpu will-change-transform"
+                style={contentHeight ? { minHeight: contentHeight } : undefined}
+              >
+                <span className="mb-4 inline-block rounded bg-gray-100 px-2 py-1 text-xs font-bold uppercase tracking-wider text-gray-500 dark:bg-slate-800 dark:text-slate-300 md:mb-4 md:px-3 md:py-1.5 md:text-sm">
+                  {currentQuestion.category}
+                </span>
 
-          <div className="mt-2 flex shrink-0 items-center justify-between border-t border-gray-100 pt-2.5 dark:border-white/10 md:mt-12 md:pt-8">
-            <Button
-              variant="ghost"
-              onClick={handleBack}
-              disabled={isEvaluating}
-              className="text-gray-500 hover:bg-gray-100 hover:text-black dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 md:text-base"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
-            </Button>
+                <h2
+                  id="current-question-heading"
+                  ref={questionHeadingRef}
+                  tabIndex={-1}
+                  className="mb-4 max-w-2xl text-[1.66rem] font-bold leading-[1.08] outline-none md:mb-5 md:text-[2.15rem] md:leading-[1.08]"
+                >
+                  <InlineTooltipText segments={currentQuestionTextSegments} />
+                </h2>
 
-            <Button
-              onClick={handleNext}
-              disabled={
-                !normalizedSelectedOption ||
-                Boolean(currentValidationError) ||
-                isEvaluating
-              }
-              className="rounded-md bg-[#1e3a5f] px-8 text-white transition-all hover:bg-[#f97316] dark:shadow-[0_18px_36px_-24px_rgba(15,23,42,0.95)] disabled:opacity-50 md:text-base"
-            >
-              {willSubmitCurrentStep ? (isEvaluating ? 'Checking...' : 'See Results') : 'Next'}
-              {!willSubmitCurrentStep && <ArrowRight className="ml-2 h-4 w-4" />}
-            </Button>
-          </div>
+                {currentQuestionHelperText && (
+                  <p
+                    id={helperId}
+                    className="mb-7 max-w-2xl text-sm font-medium leading-relaxed text-slate-600 dark:text-slate-300 md:mb-8 md:text-base"
+                  >
+                    {currentQuestionHelperText}
+                  </p>
+                )}
+
+                {renderQuestionInput(currentQuestion)}
+              </motion.div>
+            </AnimatePresence>
+
+            <div className="mt-2 flex shrink-0 items-center justify-between border-t border-gray-100 pt-2.5 dark:border-white/10 md:mt-12 md:pt-8">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleBack}
+                disabled={isEvaluating}
+                className="text-gray-500 hover:bg-gray-100 hover:text-black dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 md:text-base"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+                Back
+              </Button>
+
+              <Button
+                type="submit"
+                disabled={
+                  !normalizedSelectedOption ||
+                  Boolean(currentValidationError) ||
+                  isEvaluating
+                }
+                className="rounded-md bg-[#1e3a5f] px-8 text-white transition-all hover:bg-[#f97316] dark:shadow-[0_18px_36px_-24px_rgba(15,23,42,0.95)] disabled:opacity-50 md:text-base"
+              >
+                {willSubmitCurrentStep
+                  ? isEvaluating
+                    ? 'Checking...'
+                    : 'See Results'
+                  : 'Next'}
+                {!willSubmitCurrentStep && (
+                  <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                )}
+              </Button>
+            </div>
+          </form>
         </div>
       </main>
 
@@ -779,7 +970,7 @@ export default function QuestionnairePage() {
                     </p>
                   )}
 
-                  {renderQuestionInput(question, false)}
+                  {renderMeasurementInput(question)}
                 </div>
               </div>
             );

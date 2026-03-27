@@ -6,13 +6,11 @@ import './styles/index.css';
 async function bootstrap() {
   document.documentElement.lang = 'en';
 
-  if (!import.meta.env.DEV) {
-    try {
-      const { initRum } = await import('./lib/rum');
-      initRum();
-    } catch (error) {
-      console.warn('RUM init failed:', error);
-    }
+  try {
+    const { maybeInitRumFromStoredConsent } = await import('./lib/rum');
+    maybeInitRumFromStoredConsent();
+  } catch (error) {
+    console.warn('RUM init check failed:', error);
   }
 
   const rootElement = document.getElementById('root');

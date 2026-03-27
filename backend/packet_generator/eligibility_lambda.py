@@ -1,13 +1,18 @@
-import json
 import os
 
 import boto3
 from botocore.config import Config
 
 from commonmass_backend import (
+    build_response,
     detect_bucket_region,
     get_authoritative_matches,
+    get_http_method,
     load_catalog,
+    parse_json_payload,
+    sanitize_profile,
+    secret_is_valid,
+    validate_json_request,
 )
 
 RULES_BUCKET = os.environ.get("RULES_BUCKET", "")
@@ -16,107 +21,41 @@ BENEFITS_CATALOG_KEY = os.environ.get("BENEFITS_CATALOG_KEY", "benefits/catalog.
 REQUIRE_SHARED_SECRET = os.environ.get("REQUIRE_SHARED_SECRET", "false").lower() == "true"
 SHARED_SECRET_HEADER = os.environ.get("SHARED_SECRET_HEADER", "x-commonmass-secret")
 SHARED_SECRET_VALUE = os.environ.get("SHARED_SECRET_VALUE", "")
-
-
-def _get_header(event: dict, name: str) -> str | None:
-    headers = event.get("headers") or {}
-
-    for key, value in headers.items():
-        if str(key).lower() == name.lower():
-            return value
-
-    return None
-
-
-def _get_allowed_origin(event: dict) -> str | None:
-    request_origin = _get_header(event or {}, "Origin")
-
-    allowed_origins = {
-        "https://commonmass.org",
-        "https://www.commonmass.org",
-        "http://localhost:5173",
-    }
-
-    if request_origin in allowed_origins:
-        return request_origin
-
-    return None
-
-
-def _resp(
-    status_code: int,
-    body,
-    event: dict | None = None,
-    content_type: str = "application/json",
-):
-    if body is None:
-        body = ""
-
-    if not isinstance(body, str):
-        body = json.dumps(body)
-
-    headers = {
-        "Content-Type": content_type,
-        "Cache-Control": "no-store",
-    }
-
-    allowed_origin = _get_allowed_origin(event or {})
-    if allowed_origin:
-        headers["Access-Control-Allow-Origin"] = allowed_origin
-        headers["Vary"] = "Origin"
-        headers["Access-Control-Allow-Headers"] = f"Content-Type,Authorization,{SHARED_SECRET_HEADER}"
-        headers["Access-Control-Allow-Methods"] = "POST,OPTIONS"
-
-    return {
-        "statusCode": status_code,
-        "headers": headers,
-        "body": body,
-    }
-
-
-def _parse_payload(event) -> dict:
-    if not isinstance(event, dict):
-        return {}
-
-    if "body" in event and event["body"] is not None:
-        body = event["body"]
-
-        if isinstance(body, str) and body.strip():
-            try:
-                return json.loads(body)
-            except Exception:
-                return {}
-
-        if isinstance(body, dict):
-            return body
-
-    return event
-
-
-def _get_http_method(event: dict) -> str:
-    return (
-        event.get("httpMethod")
-        or event.get("requestContext", {}).get("http", {}).get("method")
-        or ""
-    ).upper()
+MAX_BODY_BYTES = int(os.environ.get("MAX_BODY_BYTES", "32768"))
 
 
 def lambda_handler(event, context):
-    method = _get_http_method(event or {})
+    method = get_http_method(event or {})
 
     if method == "OPTIONS":
-        return _resp(200, "", event=event, content_type="text/plain")
+        return build_response(200, "", event=event, content_type="text/plain; charset=utf-8")
+
+    if method != "POST":
+        return build_response(405, {"error": "Method not allowed"}, event=event)
+
+    content_error = validate_json_request(event or {})
+    if content_error:
+        return build_response(415, {"error": content_error}, event=event)
 
     if REQUIRE_SHARED_SECRET:
-        header_value = _get_header(event or {}, SHARED_SECRET_HEADER)
-        if not SHARED_SECRET_VALUE or header_value != SHARED_SECRET_VALUE:
-            return _resp(403, {"error": "Forbidden"}, event=event)
+        if not SHARED_SECRET_VALUE:
+            return build_response(500, {"error": "Server configuration error"}, event=event)
 
-    payload = _parse_payload(event)
+        if not secret_is_valid(event or {}, SHARED_SECRET_HEADER, SHARED_SECRET_VALUE):
+            return build_response(403, {"error": "Forbidden"}, event=event)
+
+    try:
+        payload = parse_json_payload(event, MAX_BODY_BYTES)
+    except ValueError as error:
+        message = str(error)
+        status_code = 413 if "too large" in message.lower() else 400
+        return build_response(status_code, {"error": message}, event=event)
+
     profile = payload.get("profile") or {}
-
     if not isinstance(profile, dict):
-        return _resp(400, {"error": "profile must be an object"}, event=event)
+        return build_response(400, {"error": "profile must be an object"}, event=event)
+
+    safe_profile = sanitize_profile(profile)
 
     region = detect_bucket_region(RULES_BUCKET)
     s3 = None
@@ -125,17 +64,27 @@ def lambda_handler(event, context):
         s3 = boto3.client(
             "s3",
             region_name=region,
-            config=Config(signature_version="s3v4", retries={"max_attempts": 2}),
+            config=Config(
+                signature_version="s3v4",
+                connect_timeout=5,
+                read_timeout=10,
+                retries={"max_attempts": 2},
+            ),
         )
 
     catalog = load_catalog(s3, RULES_BUCKET, BENEFITS_CATALOG_KEY)
-    matched_benefits = get_authoritative_matches(profile, catalog)
+    matched_benefits = get_authoritative_matches(safe_profile, catalog)
 
-    return _resp(
+    extra_headers = {}
+    if context and getattr(context, "aws_request_id", None):
+        extra_headers["X-Request-Id"] = context.aws_request_id
+
+    return build_response(
         200,
         {
             "matchedBenefits": matched_benefits,
             "matched_benefits": matched_benefits,
         },
         event=event,
+        extra_headers=extra_headers,
     )
