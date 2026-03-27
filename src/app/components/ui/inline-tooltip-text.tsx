@@ -7,7 +7,7 @@ import { ScrollArea } from './scroll-area';
 import { cn } from './utils';
 
 const TOOLTIP_TRIGGER_CLASS_NAME =
-  'inline cursor-help rounded-sm bg-transparent p-0 text-[#1e3a5f] underline decoration-[#1e3a5f] underline-offset-4 transition-colors hover:text-[#16304f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/25 [font:inherit] dark:text-sky-300 dark:decoration-sky-300 dark:hover:text-sky-100 dark:focus-visible:ring-sky-300/35';
+  'inline cursor-help rounded-sm bg-transparent p-0 text-left text-[#1e3a5f] underline decoration-[#1e3a5f] underline-offset-4 transition-colors hover:text-[#16304f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/25 [font:inherit] dark:text-sky-300 dark:decoration-sky-300 dark:hover:text-sky-100 dark:focus-visible:ring-sky-300/35';
 
 function TooltipBody({ tooltip }: { tooltip: InlineTooltipDefinition }) {
   const content = (
@@ -112,7 +112,7 @@ function InlineInfoTooltip({
       }}
     >
       <PopoverAnchor asChild>
-        <span className="inline whitespace-nowrap align-baseline">
+        <span className="inline align-baseline">
           <button
             type="button"
             className={cn(TOOLTIP_TRIGGER_CLASS_NAME, triggerClassName)}
@@ -132,8 +132,8 @@ function InlineInfoTooltip({
             }}
           >
             {text}
+            {trailingText}
           </button>
-          {trailingText ? <span>{trailingText}</span> : null}
         </span>
       </PopoverAnchor>
       <PopoverContent
