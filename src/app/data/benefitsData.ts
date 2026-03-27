@@ -393,23 +393,7 @@ export const questions: Question[] = [
     ],
     options: yesNoOptions,
   },
-  {
-    id: 'work_study',
-    text: 'Are you participating in Federal Work-Study?',
-    category: 'Financial',
-    benefitIds: ['snap'],
-    conditions: [
-      {
-        questionId: 'citizen_status',
-        values: ['yes'],
-      },
-      {
-        questionId: 'student_status',
-        values: studentOrFutureValues,
-      },
-    ],
-    options: yesNoOptions,
-  },
+  
   {
     id: 'household_sizes',
     text: 'What is your household size?',
