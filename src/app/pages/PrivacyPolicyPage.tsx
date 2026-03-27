@@ -41,19 +41,19 @@ export default function PrivacyPolicyPage() {
   return (
     <LegalPageShell
       title="Privacy Policy"
-      summary="CommonMASS is designed to help users screen for benefits and generate next-step guidance without selling personal information or exposing generated packets to the public."
+      summary="CommonMASS is designed to help users screen for benefits and generate next-step guidance while limiting unnecessary data collection and keeping generated packets private."
     >
       <PolicySection title="Privacy at a glance">
         <div className="grid gap-4 md:grid-cols-3">
           <PolicyCallout title="We do not sell your data">
-            CommonMASS does not sell, rent, trade, or license your questionnaire answers, packet contents,
-            or other personal information to advertisers, data brokers, or other third parties for their own
-            marketing use.
+            CommonMASS does not sell, rent, trade, or license questionnaire answers, packet contents,
+            or other personal information to advertisers, data brokers, or other third parties for their
+            own marketing use.
           </PolicyCallout>
 
           <PolicyCallout title="We use information only to run the service">
-            We use the information you provide to return benefit matches, generate checklist packets, support
-            downloads, monitor reliability, improve usability, and help keep the site secure.
+            We use the information you provide to return benefit matches, generate checklist packets,
+            support downloads, improve usability, and help keep the site secure and reliable.
           </PolicyCallout>
 
           <PolicyCallout title="Generated packets are not public">
@@ -66,18 +66,18 @@ export default function PrivacyPolicyPage() {
       <PolicySection title="What we collect">
         <div className="grid gap-4 md:grid-cols-2">
           <PolicyCallout title="Questionnaire answers">
-            When you use the screener, we may process the answers you enter, such as student status,
+            When you use the screener, CommonMASS processes the answers you enter, such as student status,
             residency status, school selection, household size, and related eligibility information.
           </PolicyCallout>
 
           <PolicyCallout title="Checklist and packet data">
-            If you generate a PDF packet, we may process the matched benefits, selected benefits, and
-            checklist content needed to create that packet.
+            If you generate a PDF packet, CommonMASS processes the matched benefits, selected benefits,
+            and checklist content needed to create that packet.
           </PolicyCallout>
 
           <PolicyCallout title="Technical and usage data">
-            We may collect limited technical data needed to operate, secure, debug, and monitor the site,
-            such as request data, performance data, and error information.
+            CommonMASS may process limited technical data needed to operate, secure, debug, and monitor
+            the site, such as request data, performance data, and error information.
           </PolicyCallout>
 
           <PolicyCallout title="Voluntary submissions">
@@ -89,26 +89,23 @@ export default function PrivacyPolicyPage() {
 
       <PolicySection title="How we use information">
         <p>
-          We use information to run the screener, return benefit matches, generate personalized checklists,
-          support packet downloads, monitor reliability, improve usability, and help keep the site secure.
+          CommonMASS uses information to run the screener, return benefit matches, generate personalized
+          checklists, support packet downloads, improve usability, and help keep the site secure.
         </p>
         <p>
-          We do not use your information for unrelated advertising. CommonMASS is intended to help users
-          understand possible benefit pathways and next steps, not to build marketing profiles.
+          CommonMASS does not use your information for unrelated advertising. The service is intended to
+          help users understand possible benefit pathways and next steps, not to build marketing profiles.
         </p>
       </PolicySection>
 
-      <PolicySection title="What we do not do with your information">
+      <PolicySection title="Optional performance monitoring">
         <p>
-          CommonMASS does <strong>not</strong> sell personal information.
+          CommonMASS can use privacy-conscious performance monitoring to understand reliability issues such
+          as application errors and degraded response times.
         </p>
         <p>
-          We do <strong>not</strong> rent, trade, or share questionnaire answers or packet contents with
-          third parties so they can advertise to you, market to you, or build their own commercial profiles
-          about you.
-        </p>
-        <p>
-          We do <strong>not</strong> make generated packets publicly available.
+          This monitoring stays off unless a user chooses to allow it. When enabled, CommonMASS uses the
+          resulting telemetry only for service operation, debugging, and security support.
         </p>
       </PolicySection>
 
@@ -118,20 +115,19 @@ export default function PrivacyPolicyPage() {
           application checklist content based on the information you entered.
         </p>
         <p>
-          Generated packet files are stored in private, non-public cloud storage. Access is provided through
-          a temporary protected download link that expires after about 5 minutes.
+          Generated packet files are stored in private, non-public cloud storage. Access is provided
+          through a temporary protected download link that expires after about 5 minutes.
         </p>
         <p>
-          Generated packet files may be retained for up to 7 days to support download access, troubleshooting,
-          and service operations, and are then automatically deleted. Users should still treat any downloaded
-          copy as sensitive because it may reflect personal screening answers.
+          Generated packet files may be retained for up to 7 days to support download access,
+          troubleshooting, and service operations, and are then automatically deleted.
         </p>
       </PolicySection>
 
       <PolicySection title="Cookies and similar technologies">
         <p>
-          CommonMASS may use cookies or similar technologies for site functionality, preferences, analytics,
-          performance monitoring, or security. More detail is available in our{' '}
+          CommonMASS uses limited browser storage for core functionality and preferences. Optional
+          performance monitoring remains off unless you choose to allow it. More detail is available in our{' '}
           <Link
             to="/cookies"
             className="font-medium text-[#1e3a5f] underline underline-offset-4 dark:text-sky-200"
@@ -144,53 +140,53 @@ export default function PrivacyPolicyPage() {
 
       <PolicySection title="How information may be shared">
         <p>
-          We may share information with infrastructure, hosting, storage, analytics, monitoring, and form
-          providers only to the extent needed to operate the site and its features.
+          CommonMASS may share information with infrastructure, hosting, storage, analytics, monitoring,
+          and form providers only to the extent needed to operate the site and its features.
         </p>
         <p>
-          These providers are not given permission to use your information for their own unrelated marketing
-          purposes through CommonMASS.
+          These providers are not given permission through CommonMASS to use your information for their
+          own unrelated marketing purposes.
         </p>
         <p>
-          We may also disclose information when required by law, to respond to legal process, or to protect
-          the rights, safety, and security of the service or its users.
+          CommonMASS may also disclose information when required by law, to respond to legal process, or
+          to protect the rights, safety, and security of the service or its users.
         </p>
       </PolicySection>
 
       <PolicySection title="Security">
         <p>
-          CommonMASS is designed with privacy and security in mind. We use reasonable administrative,
-          technical, and organizational safeguards intended to protect information against unauthorized access,
-          disclosure, misuse, or loss.
+          CommonMASS is designed with privacy and security in mind. It uses reasonable administrative,
+          technical, and organizational safeguards intended to protect information against unauthorized
+          access, disclosure, misuse, or loss.
         </p>
         <p>
           Examples may include private storage for generated packets, temporary protected download links,
-          logging and monitoring for security and reliability, and limiting access to service components that
-          need the data to operate.
+          request validation, restrictive browser security settings, logging and monitoring for security and
+          reliability, and limiting access to service components that need the data to operate.
         </p>
         <p>
-          No internet service can promise absolute security, but CommonMASS is designed to avoid unnecessary
-          exposure of the information you provide.
+          No internet service can promise absolute security, but CommonMASS is designed to avoid
+          unnecessary exposure of the information you provide.
         </p>
       </PolicySection>
 
       <PolicySection title="Retention">
         <p>
-          We keep information only for as long as it is reasonably needed to operate the service, support
-          packet generation, maintain security, troubleshoot issues, and meet legal or operational
+          CommonMASS keeps information only for as long as it is reasonably needed to operate the service,
+          support packet generation, maintain security, troubleshoot issues, and meet legal or operational
           requirements.
         </p>
         <p>
-          Generated packet files may be retained for up to 7 days and then automatically deleted. Technical
-          logs, monitoring data, and related operational records may be retained for a different period when
-          needed for security, reliability, fraud prevention, auditing, or legal compliance.
+          Generated packet files may be retained for up to 7 days and then automatically deleted.
+          Technical logs, monitoring data, and related operational records may be retained for a different
+          period when needed for security, reliability, fraud prevention, auditing, or legal compliance.
         </p>
       </PolicySection>
 
       <PolicySection title="Your choices">
         <p>
-          You can choose not to submit screener information, not to generate a packet, and not to use any
-          external feedback form. You can also manage cookies through your browser settings.
+          You can choose not to submit screener information, not to generate a packet, not to use any
+          external feedback form, and not to allow optional monitoring.
         </p>
       </PolicySection>
 

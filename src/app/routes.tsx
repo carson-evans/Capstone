@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { createBrowserRouter, Outlet, useLocation } from 'react-router';
+import { Link, createBrowserRouter, Outlet, useLocation } from 'react-router';
 
 import LandingPage from './pages/LandingPage';
 import QuestionnairePage from './pages/QuestionnairePage';
@@ -9,6 +9,7 @@ import FAQPage from './pages/FAQPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsPage from './pages/TermsPage';
 import CookiePolicyPage from './pages/CookiePolicyPage';
+import AccessibilityStatementPage from './pages/AccessibilityStatementPage';
 import { BenefitsProvider } from './context/BenefitsContext';
 
 const SITE_URL = 'https://commonmass.org';
@@ -76,6 +77,13 @@ const SEO_BY_PATH: Record<string, SeoConfig> = {
     description:
       'Read the CommonMASS Cookie Policy to understand how cookies and similar technologies may be used on the site.',
     canonicalPath: '/cookies',
+    robots: 'index, follow',
+  },
+  '/accessibility': {
+    title: 'Accessibility Statement | CommonMASS',
+    description:
+      'Read the CommonMASS Accessibility Statement, including accessibility goals, current support, known limitations, and how to report an issue.',
+    canonicalPath: '/accessibility',
     robots: 'index, follow',
   },
 };
@@ -158,9 +166,24 @@ function RootLayout() {
 
 function NotFound() {
   return (
-    <div className="min-h-screen bg-white p-20 text-center text-black dark:bg-slate-950 dark:text-slate-100">
-      404 Not Found
-    </div>
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="flex min-h-screen items-center justify-center bg-white px-6 py-20 text-black dark:bg-slate-950 dark:text-slate-100"
+    >
+      <div className="max-w-xl text-center">
+        <h1 className="text-4xl font-bold tracking-tight md:text-5xl">Page not found</h1>
+        <p className="mt-4 text-base leading-relaxed text-slate-600 dark:text-slate-300">
+          The page you were trying to reach does not exist or may have moved.
+        </p>
+        <Link
+          to="/"
+          className="mt-8 inline-flex min-h-11 items-center justify-center rounded-full bg-[#1e3a5f] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#16304f] dark:bg-sky-200 dark:text-slate-950 dark:hover:bg-sky-100"
+        >
+          Return home
+        </Link>
+      </div>
+    </main>
   );
 }
 
@@ -200,6 +223,10 @@ export const router = createBrowserRouter([
       {
         path: 'cookies',
         Component: CookiePolicyPage,
+      },
+      {
+        path: 'accessibility',
+        Component: AccessibilityStatementPage,
       },
       {
         path: '*',
