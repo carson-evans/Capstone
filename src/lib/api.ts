@@ -244,10 +244,14 @@ export async function generatePacketRequest(
     parsedPayload.location
   );
 
+  const normalizedUrl = rawUrl ? normalizeDownloadUrl(rawUrl) : undefined;
+
   return {
-    url: rawUrl ? normalizeDownloadUrl(rawUrl) : undefined,
-    pdfBase64: firstString(parsedPayload.pdf_base64, parsedPayload.pdfBase64),
-    filename: firstString(parsedPayload.filename),
+    url: normalizedUrl,
+    pdfBase64: normalizedUrl
+      ? undefined
+      : firstString(parsedPayload.pdf_base64, parsedPayload.pdfBase64),
+    filename: firstString(parsedPayload.filename) ?? 'CommonMASS-Packet.pdf',
     runId: firstString(parsedPayload.run_id, parsedPayload.runId),
   };
 }

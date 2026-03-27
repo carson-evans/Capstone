@@ -32,7 +32,7 @@ PACKETS_BUCKET = os.environ.get("PACKETS_BUCKET", "")
 PACKETS_PREFIX = os.environ.get("PACKETS_PREFIX", "packets/")
 URL_EXPIRES_SECONDS = int(os.environ.get("URL_EXPIRES_SECONDS", "300"))
 PACKETS_KMS_KEY_ID = os.environ.get("PACKETS_KMS_KEY_ID", "").strip()
-PDF_CONTENT_DISPOSITION = os.environ.get("PDF_CONTENT_DISPOSITION", "attachment").strip().lower()
+PDF_CONTENT_DISPOSITION = os.environ.get("PDF_CONTENT_DISPOSITION", "inline").strip().lower()
 MAX_BODY_BYTES = int(os.environ.get("MAX_BODY_BYTES", "65536"))
 
 RULES_BUCKET = os.environ.get("RULES_BUCKET", "")
@@ -612,11 +612,12 @@ def lambda_handler(event, context):
             200,
             {
                 "run_id": run_id,
+                "runId": run_id,
                 "expires_in": URL_EXPIRES_SECONDS,
                 "bucket_region_used": region,
                 "matched_benefits": matches,
-                "filename": "CommonMASS-Packet.pdf",
                 "packet_data": packet_data,
+                "filename": "CommonMASS-Packet.pdf",
                 "pdf_base64": base64.b64encode(pdf_bytes).decode("ascii"),
             },
             event=event,
@@ -646,44 +647,48 @@ def lambda_handler(event, context):
         s3.put_object(**put_object_kwargs)
     except ClientError:
         return build_response(
-            200,
-            {
-                "run_id": run_id,
-                "expires_in": URL_EXPIRES_SECONDS,
-                "bucket_region_used": region,
-                "matched_benefits": matches,
-                "filename": "CommonMASS-Packet.pdf",
-                "packet_data": packet_data,
-                "pdf_base64": base64.b64encode(pdf_bytes).decode("ascii"),
-            },
+            500,
+            {"error": "Failed to store generated packet in S3."},
             event=event,
             extra_headers=extra_headers,
         )
 
-    disposition = "attachment"
+    disposition = "inline"
     if PDF_CONTENT_DISPOSITION in {"attachment", "inline"}:
         disposition = PDF_CONTENT_DISPOSITION
 
-    presigned_url = s3.generate_presigned_url(
-        "get_object",
-        Params={
-            "Bucket": PACKETS_BUCKET,
-            "Key": key,
-            "ResponseContentType": "application/pdf",
-            "ResponseContentDisposition": f'{disposition}; filename="CommonMASS-Packet.pdf"',
-        },
-        ExpiresIn=URL_EXPIRES_SECONDS,
-    )
+    try:
+        presigned_url = s3.generate_presigned_url(
+            "get_object",
+            Params={
+                "Bucket": PACKETS_BUCKET,
+                "Key": key,
+                "ResponseContentType": "application/pdf",
+                "ResponseContentDisposition": f'{disposition}; filename="CommonMASS-Packet.pdf"',
+            },
+            ExpiresIn=URL_EXPIRES_SECONDS,
+        )
+    except ClientError:
+        return build_response(
+            500,
+            {"error": "Failed to generate packet download URL."},
+            event=event,
+            extra_headers=extra_headers,
+        )
 
     return build_response(
         200,
         {
             "run_id": run_id,
+            "runId": run_id,
             "expires_in": URL_EXPIRES_SECONDS,
             "bucket_region_used": region,
             "matched_benefits": matches,
             "packet_data": packet_data,
+            "filename": "CommonMASS-Packet.pdf",
             "download_url": presigned_url,
+            "url": presigned_url,
+            "presigned_url": presigned_url,
         },
         event=event,
         extra_headers=extra_headers,
