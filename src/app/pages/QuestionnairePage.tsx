@@ -186,9 +186,28 @@ export default function QuestionnairePage() {
   const isLastStep =
     visibleQuestions.length > 0 && currentStep === visibleQuestions.length - 1;
 
+
+
+    
   const willSubmitCurrentStep = React.useMemo(() => {
     if (!currentQuestion || !normalizedSelectedOption || currentValidationError) {
       return isLastStep;
+    }
+    if (currentQuestion.id === 'citizen_status') {
+      const restrictedBenefits = ['masshealth', 'snap', 'pell-grant'];
+
+      const isOnlyRestricted =
+        screeningBenefitFilters.length > 0 &&
+        screeningBenefitFilters.every((b) =>
+          restrictedBenefits.includes(b)
+        );
+
+      if (
+        normalizedSelectedOption === 'no' &&
+        isOnlyRestricted
+      ) {
+        return true;
+      }
     }
 
     const normalizedAnswerValue =
@@ -227,8 +246,11 @@ export default function QuestionnairePage() {
     getPrunedAnswers,
     isLastStep,
     normalizedSelectedOption,
+    screeningBenefitFilters,
     screeningQuestions,
   ]);
+
+
 
   const progress =
     visibleQuestions.length > 0
@@ -342,6 +364,39 @@ export default function QuestionnairePage() {
 
     setSubmissionError(null);
     setAnswers(nextAnswers);
+    
+    if (currentQuestion.id === 'citizen_status') {
+      if (nextAnswers.citizen_status === 'no') {
+        const restrictedBenefits = ['masshealth', 'snap', 'pell-grant'];
+
+        const isOnlyRestricted =
+          screeningBenefitFilters.length > 0 &&
+          screeningBenefitFilters.every((b) =>
+            restrictedBenefits.includes(b)
+          );
+
+        if (isOnlyRestricted) {
+          try {
+            await evaluateBenefits(nextAnswers);
+            navigate('/results');
+          } catch (error) {
+            console.error('Eligibility evaluation error:', error);
+            setSubmissionError(
+              error instanceof Error
+                ? error.message
+                : 'Something went wrong while checking eligibility.'
+            );
+          }
+          return;
+        }
+      }
+    }
+
+
+ 
+    
+
+
 
     if (isLastVisibleStep) {
       try {
