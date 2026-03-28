@@ -14,18 +14,29 @@ function isGroup(item: string | TooltipItemGroup): item is TooltipItemGroup {
 
 function ExpandableGroup({ group }: { group: TooltipItemGroup }) {
   const [expanded, setExpanded] = useState(false);
+
+  const sublistId = `tooltip-group-${group.groupLabel
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")}`;
+
   return (
     <li className="list-disc">
       <button
         type="button"
+        aria-expanded={expanded}
+        aria-controls={sublistId}
         onClick={() => setExpanded((v) => !v)}
         className="flex items-center gap-1 text-left text-[#1e3a5f] underline decoration-[#1e3a5f] underline-offset-2 hover:text-[#16304f] dark:text-sky-300 dark:decoration-sky-300 dark:hover:text-sky-100"
       >
         {group.groupLabel}
-        <span className="text-xs">{expanded ? '▲' : '▼'}</span>
+        <span className="text-xs" aria-hidden="true">
+          {expanded ? "▴" : "▾"}
+        </span>
       </button>
+
       {expanded && (
-        <ul className="mt-1 space-y-1 pl-4">
+        <ul id={sublistId} className="mt-1 space-y-1 pl-4">
           {group.subItems.map((sub) => (
             <li key={sub} className="list-[circle]">
               {sub}
