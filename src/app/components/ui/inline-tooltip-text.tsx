@@ -1,13 +1,41 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import type { InlineTextSegment, InlineTooltipDefinition } from '../../data/questionRichText';
+import type { InlineTextSegment, InlineTooltipDefinition, TooltipItemGroup } from '../../data/questionRichText';
 import { Popover, PopoverAnchor, PopoverContent } from './popover';
-import { ScrollArea } from './scroll-area';
 import { cn } from './utils';
 
 const TOOLTIP_TRIGGER_CLASS_NAME =
   'inline cursor-help rounded-sm bg-transparent p-0 text-[#1e3a5f] underline decoration-[#1e3a5f] underline-offset-4 transition-colors hover:text-[#16304f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/25 [font:inherit] dark:text-sky-300 dark:decoration-sky-300 dark:hover:text-sky-100 dark:focus-visible:ring-sky-300/35';
+
+function isGroup(item: string | TooltipItemGroup): item is TooltipItemGroup {
+  return typeof item === 'object' && 'groupLabel' in item;
+}
+
+function ExpandableGroup({ group }: { group: TooltipItemGroup }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <li className="list-disc">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex items-center gap-1 text-left text-[#1e3a5f] underline decoration-[#1e3a5f] underline-offset-2 hover:text-[#16304f] dark:text-sky-300 dark:decoration-sky-300 dark:hover:text-sky-100"
+      >
+        {group.groupLabel}
+        <span className="text-xs">{expanded ? '▲' : '▼'}</span>
+      </button>
+      {expanded && (
+        <ul className="mt-1 space-y-1 pl-4">
+          {group.subItems.map((sub) => (
+            <li key={sub} className="list-[circle]">
+              {sub}
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
 
 function TooltipBody({ tooltip }: { tooltip: InlineTooltipDefinition }) {
   const content = (
@@ -24,11 +52,15 @@ function TooltipBody({ tooltip }: { tooltip: InlineTooltipDefinition }) {
 
       {tooltip.items?.length ? (
         <ul className="space-y-1.5 pl-4 text-sm leading-relaxed text-slate-700 dark:text-slate-200">
-          {tooltip.items.map((item) => (
-            <li key={item} className="list-disc">
-              {item}
-            </li>
-          ))}
+          {tooltip.items.map((item, index) =>
+            isGroup(item) ? (
+              <ExpandableGroup key={item.groupLabel} group={item} />
+            ) : (
+              <li key={`${item}-${index}`} className="list-disc">
+                {item}
+              </li>
+            )
+          )}
         </ul>
       ) : null}
 
@@ -43,9 +75,9 @@ function TooltipBody({ tooltip }: { tooltip: InlineTooltipDefinition }) {
   }
 
   return (
-    <ScrollArea className={cn('max-h-72 pr-3', tooltip.maxHeightClassName)}>
+    <div className={cn('max-h-[min(18rem,calc(100dvh-9rem))] overflow-y-auto pr-3', tooltip.maxHeightClassName)}>
       {content}
-    </ScrollArea>
+    </div>
   );
 }
 
@@ -139,8 +171,9 @@ function InlineInfoTooltip({
       <PopoverContent
         sideOffset={10}
         align="start"
+        collisionPadding={16}
         className={cn(
-          'w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-0 shadow-[0_18px_40px_-18px_rgba(15,23,42,0.45)] dark:border-sky-200/30 dark:bg-[#1e3a5f] sm:w-96',
+          'w-80 max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] overflow-hidden rounded-xl border border-slate-200 bg-white p-0 shadow-[0_18px_40px_-18px_rgba(15,23,42,0.45)] dark:border-sky-200/30 dark:bg-[#1e3a5f] sm:w-96',
           tooltip.widthClassName,
         )}
         onMouseEnter={openTooltip}

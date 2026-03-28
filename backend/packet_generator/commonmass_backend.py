@@ -17,6 +17,8 @@ DHE_TUITION_EQUITY_FORM_URL = (
     "https://www.mass.edu/tuitionequity/documents/2025-09-10%20Tuition%20Equity%20Form%20and%20Affidavit_Fillable.pdf"
 )
 DHE_AFFIDAVIT_ACTION_STATUS = "Action Needed, Complete DHE Affidavit"
+NO_ACTION_ALREADY_COMPLETED_STATUS = "No Action Needed - Already Completed"
+NOT_ENROLLED_NEXT_ACADEMIC_YEAR_VALUE = "not_enrolled_next_year"
 COMPLETE_DHE_AFFIDAVIT_CHECKLIST_ITEM = "Complete the DHE Tuition Equity Form and Affidavit"
 PROVIDE_DHE_AFFIDAVIT_CHECKLIST_ITEM = "Provide the completed DHE Tuition Equity Form and Affidavit"
 
@@ -421,15 +423,30 @@ def is_state_aid_application_completed(profile: dict) -> bool:
     return profile.get("fafsa_completed") == "yes"
 
 
+def is_not_enrolling_next_academic_year(profile: dict, route: str) -> bool:
+    if route == "masfa":
+        return profile.get("masfa_completed") == NOT_ENROLLED_NEXT_ACADEMIC_YEAR_VALUE
+
+    return profile.get("fafsa_completed") == NOT_ENROLLED_NEXT_ACADEMIC_YEAR_VALUE
+
+
 def get_state_aid_action(profile: dict) -> dict:
     if uses_masfa_route(profile):
+        if is_not_enrolling_next_academic_year(profile, "masfa"):
+            return {
+                "applicationType": "masfa",
+                "applicationCompleted": False,
+                "officialUrl": MASFA_START_URL,
+                "officialButtonLabel": "View Official Site",
+            }
+
         if profile.get("masfa_completed") == "yes":
             return {
                 "applicationType": "masfa",
                 "applicationCompleted": True,
                 "officialUrl": MASFA_STATUS_URL,
                 "officialButtonLabel": "Check MASFA Status",
-                "actionStatus": "No Action Needed, Already Completed MASFA Application",
+                "actionStatus": NO_ACTION_ALREADY_COMPLETED_STATUS,
             }
 
         return {
@@ -440,13 +457,21 @@ def get_state_aid_action(profile: dict) -> dict:
             "actionStatus": "Action Needed, Please Complete MASFA",
         }
 
+    if is_not_enrolling_next_academic_year(profile, "fafsa"):
+        return {
+            "applicationType": "fafsa",
+            "applicationCompleted": False,
+            "officialUrl": FAFSA_URL,
+            "officialButtonLabel": "View Official Site",
+        }
+
     if profile.get("fafsa_completed") == "yes":
         return {
             "applicationType": "fafsa",
             "applicationCompleted": True,
             "officialUrl": FAFSA_STATUS_URL,
             "officialButtonLabel": "Check FAFSA Status",
-            "actionStatus": "No action needed (already applied to FAFSA)",
+            "actionStatus": NO_ACTION_ALREADY_COMPLETED_STATUS,
         }
 
     return {
@@ -459,13 +484,21 @@ def get_state_aid_action(profile: dict) -> dict:
 
 
 def get_pell_action(profile: dict) -> dict:
+    if is_not_enrolling_next_academic_year(profile, "fafsa"):
+        return {
+            "applicationType": "fafsa",
+            "applicationCompleted": False,
+            "officialUrl": FAFSA_URL,
+            "officialButtonLabel": "View Official Site",
+        }
+
     if profile.get("fafsa_completed") == "yes":
         return {
             "applicationType": "fafsa",
             "applicationCompleted": True,
             "officialUrl": FAFSA_STATUS_URL,
             "officialButtonLabel": "Check FAFSA Status",
-            "actionStatus": "No action needed (already applied to FAFSA)",
+            "actionStatus": NO_ACTION_ALREADY_COMPLETED_STATUS,
         }
 
     return {
@@ -491,12 +524,19 @@ def get_dhe_affidavit_checklist_item(profile: dict) -> str | None:
 
 
 def build_massgrant_action_statuses(profile: dict) -> list[str]:
+    route = "masfa" if uses_masfa_route(profile) else "fafsa"
+    if is_not_enrolling_next_academic_year(profile, route):
+        return []
+
     statuses: list[str] = []
 
     if needs_dhe_affidavit(profile):
         statuses.append(DHE_AFFIDAVIT_ACTION_STATUS)
 
-    statuses.append(get_state_aid_action(profile)["actionStatus"])
+    state_aid_action_status = get_state_aid_action(profile).get("actionStatus")
+    if state_aid_action_status:
+        statuses.append(state_aid_action_status)
+
     return statuses
 
 
@@ -549,7 +589,7 @@ def match_benefits(profile: dict) -> list[dict]:
             {
                 "id": "pell-grant",
                 **pell_action,
-                "actionStatuses": [pell_action["actionStatus"]],
+                "actionStatuses": [pell_action["actionStatus"]] if pell_action.get("actionStatus") else [],
             }
         )
 

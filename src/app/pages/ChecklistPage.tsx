@@ -69,6 +69,17 @@ export default function ChecklistPage() {
     return richTextSegments ? <InlineTooltipText segments={richTextSegments} /> : item;
   };
 
+  const getOfficialButtonLabel = (benefitId: string, fallbackLabel?: string) => {
+    if (
+      answers['fafsa_completed'] === 'not_enrolled_next_year' &&
+      (benefitId === 'pell-grant' || benefitId === 'massgrant' || benefitId === 'massgrant-plus')
+    ) {
+      return 'View Official Site';
+    }
+
+    return fallbackLabel ?? 'Visit Official Site';
+  };
+
   const handleDownload = async () => {
     if (checklistBenefits.length === 0) {
       return;
@@ -102,6 +113,7 @@ export default function ChecklistPage() {
         profile: answers,
         selectedBenefits: checklistBenefits.map((benefit) => benefit.id),
         checklistProgress,
+        matchedBenefits: []
       });
 
       if (packetResult.url) {
@@ -278,7 +290,7 @@ export default function ChecklistPage() {
                     >
                       <a href={benefit.officialUrl} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                        {benefit.officialButtonLabel ?? 'Visit Official Site'}
+                        {getOfficialButtonLabel(benefit.id, benefit.officialButtonLabel)}
                       </a>
                     </Button>
                   </div>

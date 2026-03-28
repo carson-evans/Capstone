@@ -72,10 +72,12 @@ PROFILE_VALUE_LABELS = {
     "fafsa_completed": {
         "yes": "Yes",
         "no": "No",
+        "not_enrolled_next_year": "Not enrolling next academic year",
     },
     "masfa_completed": {
         "yes": "Yes",
         "no": "No",
+        "not_enrolled_next_year": "Not enrolling next academic year",
     },
     "masfa_high_school_completer": {
         "yes": "Yes",
@@ -111,6 +113,43 @@ PROFILE_VALUE_LABELS = {
         "no": "No",
     },
 }
+
+NOT_ENROLLED_NEXT_YEAR_VALUE = "not_enrolled_next_year"
+
+
+def _strip_state_aid_statuses_for_not_enrolling(profile: dict, matches: list[dict]) -> list[dict]:
+    if not isinstance(profile, dict):
+        return matches
+
+    is_not_enrolling = (
+        profile.get("fafsa_completed") == NOT_ENROLLED_NEXT_YEAR_VALUE
+        or profile.get("masfa_completed") == NOT_ENROLLED_NEXT_YEAR_VALUE
+    )
+
+    if not is_not_enrolling:
+        return matches
+
+    target_ids = {"pell-grant", "massgrant", "massgrant-plus"}
+    sanitized_matches: list[dict] = []
+
+    for match in matches:
+        if not isinstance(match, dict):
+            sanitized_matches.append(match)
+            continue
+
+        if match.get("id") in target_ids:
+            sanitized_matches.append(
+                {
+                    **match,
+                    "actionStatuses": [],
+                    "actionStatus": None,
+                }
+            )
+            continue
+
+        sanitized_matches.append(match)
+
+    return sanitized_matches
 
 
 def _resolve_logo_path() -> Path | None:
@@ -631,6 +670,8 @@ def lambda_handler(event, context):
         catalog=catalog,
         selected_benefit_ids=selected,
     )
+
+    matches = _strip_state_aid_statuses_for_not_enrolling(profile, matches)
 
     normalized_progress = _normalize_checklist_progress(checklist_progress, matches)
 

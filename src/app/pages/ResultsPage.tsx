@@ -65,7 +65,7 @@ function getSingleBenefitPhrase(benefitId: string, fallbackTitle: string | null)
 }
 
 export default function ResultsPage() {
-  const { matchedBenefits, screeningBenefitFilters } = useBenefits();
+  const { matchedBenefits, screeningBenefitFilters, answers } = useBenefits();
   const hasMatches = matchedBenefits.length > 0;
   const singleScreenedBenefitId = screeningBenefitFilters.length === 1 ? screeningBenefitFilters[0] : null;
   const singleScreenedBenefitTitle =
@@ -84,6 +84,34 @@ export default function ResultsPage() {
       : "Based on your answers, we couldn't find any specific benefits matching your profile at this time.";
   const isMobile = useIsMobile();
   const [mobileOpenDetails, setMobileOpenDetails] = useState<Record<string, boolean>>({});
+
+  const isNotEnrollingNextAcademicYear =
+    answers['fafsa_completed'] === 'not_enrolled_next_year' ||
+    answers['masfa_completed'] === 'not_enrolled_next_year';
+
+  const getOfficialButtonLabel = (benefitId: string, fallbackLabel?: string) => {
+    if (
+      answers['fafsa_completed'] === 'not_enrolled_next_year' &&
+      (benefitId === 'pell-grant' || benefitId === 'massgrant' || benefitId === 'massgrant-plus')
+    ) {
+      return 'View Official Site';
+    }
+
+    return fallbackLabel ?? 'Visit Official Site';
+  };
+
+  const getVisibleStatuses = (benefitId: string, benefit: { actionStatuses?: string[]; actionStatus?: string }) => {
+    const statuses = benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
+
+    if (
+      isNotEnrollingNextAcademicYear &&
+      (benefitId === 'pell-grant' || benefitId === 'massgrant' || benefitId === 'massgrant-plus')
+    ) {
+      return [];
+    }
+
+    return statuses;
+  };
 
   const heroEnterInitial = { opacity: 0, y: isMobile ? 12 : 20 };
 
@@ -183,7 +211,7 @@ export default function ResultsPage() {
           isMobile ? (
             <section aria-labelledby="results-heading" className="space-y-6">
               {matchedBenefits.map((benefit) => {
-                const statuses = benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
+                const statuses = getVisibleStatuses(benefit.id, benefit);
                 const isDetailsOpen = Boolean(mobileOpenDetails[benefit.id]);
 
                 const actionButton = (
@@ -195,7 +223,7 @@ export default function ResultsPage() {
                   >
                     <a href={benefit.officialUrl} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                      {benefit.officialButtonLabel ?? 'Visit Official Site'}
+                      {getOfficialButtonLabel(benefit.id, benefit.officialButtonLabel)}
                     </a>
                   </Button>
                 );
@@ -290,7 +318,7 @@ export default function ResultsPage() {
             <section aria-labelledby="results-heading">
               <Accordion type="multiple" className="space-y-6">
                 {matchedBenefits.map((benefit, index) => {
-                  const statuses = benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
+                  const statuses = getVisibleStatuses(benefit.id, benefit);
 
                   const actionButton = (
                     <Button
@@ -301,7 +329,7 @@ export default function ResultsPage() {
                     >
                       <a href={benefit.officialUrl} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                        {benefit.officialButtonLabel ?? 'Visit Official Site'}
+                        {getOfficialButtonLabel(benefit.id, benefit.officialButtonLabel)}
                       </a>
                     </Button>
                   );

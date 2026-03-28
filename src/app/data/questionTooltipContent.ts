@@ -61,6 +61,130 @@ export const selectiveServiceTooltip: InlineTooltipDefinition = {
     'If this requirement does not apply to you, Massachusetts says the other MASFA documentation options may still be relevant instead.',
 };
 
+export const taxDocumentsTooltip: InlineTooltipDefinition = {
+  title: 'Tax Documents Needed for FAFSA / Pell Grant',
+  items: [
+    'Form 1040 (Federal Tax Return)',
+    {
+      groupLabel: 'Schedules (if applicable)',
+      subItems: [
+        'Schedule 1 (if applicable)',
+        'Schedule 2 (if applicable)',
+        'Schedule 3 (if applicable)',
+      ],
+    },
+    'W-2 forms from all employers',
+    {
+      groupLabel: '1099 forms (if applicable)',
+      subItems: [
+        '1099-NEC (if applicable)',
+        '1099-INT (if applicable)',
+        '1099-DIV (if applicable)',
+        '1099-G (if applicable)',
+        '1099-R (if applicable)',
+      ],
+    },
+    'Records of untaxed income (child support received, workers\u2019 comp, disability, veterans benefits, housing/food allowances)',
+    'Bank account balances',
+    'Investment account balances',
+  ],
+  scrollable: true,
+  widthClassName: 'w-[26rem] max-w-[calc(100vw-2rem)]',
+  maxHeightClassName: 'max-h-[13rem]',
+};
+
+export const massHealthDocumentsTooltip: InlineTooltipDefinition = {
+  title: 'Documents Needed for MassHealth',
+  items: [
+    'Proof of identity (e.g. driver\u2019s license, passport, or state ID)',
+    'Recent pay stubs (if currently employed)',
+    'Rental income documentation (if applicable)',
+    'Life insurance cash value statements (if applicable)',
+    {
+      groupLabel: 'Property & vehicle documents (if applicable)',
+      subItems: [
+        'Vehicle registration and loan balance (if applicable)',
+        'Property tax bill or mortgage statement (if applicable)',
+      ],
+    },
+    {
+      groupLabel: 'Health & insurance cards (if applicable)',
+      subItems: [
+        'Medicare card (if applicable)',
+        'Other health insurance cards (if applicable)',
+      ],
+    },
+    {
+      groupLabel: 'Special circumstances (if applicable)',
+      subItems: [
+        'Disability documentation (if applicable)',
+        'Pregnancy verification (if applicable)',
+        'Proof of incarceration status (if applicable)',
+      ],
+    },
+  ],
+  scrollable: true,
+  widthClassName: 'w-[26rem] max-w-[calc(100vw-2rem)]',
+  maxHeightClassName: 'max-h-[13rem]',
+};
+
+export const massHealthResidencyTooltip: InlineTooltipDefinition = {
+  title: 'MassHealth Residency Documents',
+  items: [
+    'Proof of Massachusetts residency (MA ID or driver\'s license, utility bill, lease agreement, or mail with your MA address)',
+  ],
+};
+
+export const massHealthIncomeDocumentationTooltip: InlineTooltipDefinition = {
+  title: 'MassHealth Income Documentation',
+  items: [
+    'Recent pay stubs (if employed, usually from the last 30 days)',
+    'Proof of self-employment income (if applicable, profit/loss statement or recent business invoices)',
+    'Unemployment benefit statements (if applicable)',
+    'Pension or retirement income statements (if applicable, SSA-1099 or pension benefit letter)',
+    'Rental income documentation (if applicable, rent ledger or bank deposit records)',
+  ],
+  scrollable: true,
+  widthClassName: 'w-[26rem] max-w-[calc(100vw-2rem)]',
+  maxHeightClassName: 'max-h-[13rem]',
+};
+
+export const massHealthIdentityCitizenshipTooltip: InlineTooltipDefinition = {
+  title: 'Identity and Citizenship Documents',
+  items: [
+    'Proof of identity (passport, school photo ID, or another government-issued photo ID)',
+    'Proof of citizenship or immigration status (U.S. birth certificate, U.S. passport, permanent resident card, or immigration document)',
+    'Social Security Number (if you have one; card, official letter, or a form that shows your SSN)',
+  ],
+};
+
+export const massHealthApplicationStepTooltip: InlineTooltipDefinition = {
+  title: 'Apply Through MAhealthconnector.org',
+  paragraphs: [
+    'Complete the application through Massachusetts Health Connector and upload requested documents during the online process.',
+  ],
+  note: 'Have your documents ready before you start so you can finish in one session.',
+};
+
+export const massHealthPlanSelectionTooltip: InlineTooltipDefinition = {
+  title: 'Documents Commonly Needed Before Plan Finalization',
+  items: [
+    'Bank account statements (most recent monthly statement)',
+    'Investment account statements (brokerage or retirement account statements)',
+    'Life insurance cash value statements (if applicable)',
+    'Vehicle registration and loan balance (if applicable, registration and current payoff statement)',
+    'Property tax bill or mortgage statement (if applicable)',
+    'Medicare card (if applicable)',
+    'Other health insurance cards (if applicable)',
+    'Disability documentation (if applicable)',
+    'Pregnancy verification (if applicable)',
+    'Proof of incarceration status (if applicable)',
+  ],
+  scrollable: true,
+  widthClassName: 'w-[26rem] max-w-[calc(100vw-2rem)]',
+  maxHeightClassName: 'max-h-[13rem]',
+};
+
 export const dheAffidavitTooltip: InlineTooltipDefinition = {
   title: 'DHE Tuition Equity Form and Affidavit',
   paragraphs: [

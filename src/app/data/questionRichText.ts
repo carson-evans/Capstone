@@ -1,7 +1,14 @@
+export type TooltipItemGroup = {
+  groupLabel: string;
+  subItems: string[];
+};
+
+export type TooltipItem = string | TooltipItemGroup;
+
 export type InlineTooltipDefinition = {
   title?: string;
   paragraphs?: string[];
-  items?: string[];
+  items?: TooltipItem[];
   note?: string;
   scrollable?: boolean;
   widthClassName?: string;

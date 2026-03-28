@@ -7,12 +7,36 @@ import React, {
   type ReactNode,
 } from 'react';
 
-import type { Benefit } from '../data/benefitsData';
+import {
+  benefits as localBenefitCatalog,
+  isPositiveActionStatus,
+  type Benefit,
+} from '../data/benefitsData';
 import {
   evaluateEligibilityRequest,
   type AnswerMap,
   type ChecklistProgressMap,
 } from '@/lib/api';
+
+const localBenefitCatalogById = new Map(
+  localBenefitCatalog.map((benefit) => [benefit.id, benefit])
+);
+
+function withLocalChecklist(matches: Benefit[]): Benefit[] {
+  return matches.map((match) => {
+    const localDefinition = localBenefitCatalogById.get(match.id);
+
+    if (!localDefinition) {
+      return match;
+    }
+
+    return {
+      ...localDefinition,
+      ...match,
+      checklist: localDefinition.checklist,
+    };
+  });
+}
 
 interface BenefitsContextType {
   answers: AnswerMap;
@@ -52,9 +76,18 @@ function buildChecklistProgress(
   previousProgress: ChecklistProgressMap
 ): ChecklistProgressMap {
   return matches.reduce<ChecklistProgressMap>((accumulator, benefit) => {
-    accumulator[benefit.id] = benefit.checklist.map(
-      (_, index) => previousProgress[benefit.id]?.[index] ?? false
+    const statuses = benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
+    const isAlreadyCompleted = statuses.some(
+      (status) => isPositiveActionStatus(status) && status.toLowerCase().includes('already completed')
     );
+
+    accumulator[benefit.id] = benefit.checklist.map((_, index) => {
+      if (isAlreadyCompleted) {
+        return true;
+      }
+
+      return previousProgress[benefit.id]?.[index] ?? false;
+    });
 
     return accumulator;
   }, {});
@@ -78,9 +111,14 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
   const [evaluationError, setEvaluationError] = useState<string | null>(null);
   const [checklistProgress, setChecklistProgress] = useState<ChecklistProgressMap>({});
 
+  const normalizedMatchedBenefits = useMemo(
+    () => withLocalChecklist(serverMatchedBenefits),
+    [serverMatchedBenefits]
+  );
+
   const matchedBenefits = useMemo(
-    () => applyScreeningBenefitFilters(serverMatchedBenefits, screeningBenefitFilters),
-    [serverMatchedBenefits, screeningBenefitFilters]
+    () => applyScreeningBenefitFilters(normalizedMatchedBenefits, screeningBenefitFilters),
+    [normalizedMatchedBenefits, screeningBenefitFilters]
   );
 
   useEffect(() => {
@@ -111,7 +149,8 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
     setEvaluationError(null);
 
     try {
-      const nextMatches = await evaluateEligibilityRequest(profile);
+      const apiMatches = await evaluateEligibilityRequest(profile);
+      const nextMatches = withLocalChecklist(apiMatches);
       const filteredMatches = applyScreeningBenefitFilters(
         nextMatches,
         screeningBenefitFilters
