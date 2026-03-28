@@ -33,7 +33,7 @@ function withLocalChecklist(matches: Benefit[]): Benefit[] {
     return {
       ...localDefinition,
       ...match,
-      checklist: localDefinition.checklist,
+      checklist: match.checklist ?? localDefinition.checklist,
     };
   });
 }
