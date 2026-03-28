@@ -1,5 +1,9 @@
+import base64
+import binascii
+import hmac
 import json
 import os
+from typing import Any
 
 import boto3
 from botocore.config import Config
@@ -21,6 +25,119 @@ NO_ACTION_ALREADY_COMPLETED_STATUS = "No Action Needed - Already Completed"
 NOT_ENROLLED_NEXT_ACADEMIC_YEAR_VALUE = "not_enrolled_next_year"
 COMPLETE_DHE_AFFIDAVIT_CHECKLIST_ITEM = "Complete the DHE Tuition Equity Form and Affidavit"
 PROVIDE_DHE_AFFIDAVIT_CHECKLIST_ITEM = "Provide the completed DHE Tuition Equity Form and Affidavit"
+
+MAX_PROFILE_VALUE_LENGTH = 160
+MAX_SCHOOL_NAME_LENGTH = 120
+MAX_SELECTED_BENEFITS = 20
+DEFAULT_ALLOWED_ORIGINS = "https://commonmass.org,https://www.commonmass.org"
+
+PROFILE_LABELS = {
+    "student_status": "Student status",
+    "citizen_status": "Citizen / eligible non-citizen",
+    "residency_length": "Massachusetts residency status",
+    "fafsa_completed": "FAFSA completed",
+    "masfa_completed": "MASFA completed",
+    "masfa_high_school_completer": "Massachusetts high school completer status",
+    "masfa_documentation_ready": "Has MASFA document option",
+    "dhe_affidavit_completed": "DHE Tuition Equity Form and Affidavit completed",
+    "prior_bachelors_degree": "Already has bachelor's degree",
+    "massgrant_plus_income_band": "MASSGrant Plus family income",
+    "work_study": "Federal work-study",
+    "household_sizes": "Household size",
+    "household_size_exact": "Exact household size",
+    "masshealth_income_under_limit": "Below MassHealth yearly threshold",
+    "snap_income_under_limit": "Below SNAP monthly threshold",
+    "school_name": "College or university",
+}
+
+PROFILE_VALUE_LABELS = {
+    "student_status": {
+        "full_time": "Yes, full-time",
+        "part_time": "Yes, part-time",
+        "future_full_time": "Will enroll full-time within the next year",
+        "future_part_time": "Will enroll part-time within the next year",
+        "no": "No",
+    },
+    "citizen_status": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "residency_length": {
+        "not_ma_resident": "Not a Massachusetts resident",
+        "under_12_months": "Less than 12 months",
+        "one_to_five_years": "12 months or more",
+        "over_five_years": "12 months or more",
+    },
+    "fafsa_completed": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "masfa_completed": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "masfa_high_school_completer": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "masfa_documentation_ready": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "dhe_affidavit_completed": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "prior_bachelors_degree": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "massgrant_plus_income_band": {
+        "under_85k": "Less than $85,000 per year before taxes",
+        "85k_to_100k": "$85,000 to $100,000 per year before taxes",
+        "over_100k": "More than $100,000 per year before taxes",
+    },
+    "work_study": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "masshealth_income_under_limit": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "snap_income_under_limit": {
+        "yes": "Yes",
+        "no": "No",
+    },
+}
+
+ALLOWED_PROFILE_VALUES = {
+    "student_status": {
+        "full_time",
+        "part_time",
+        "future_full_time",
+        "future_part_time",
+        "no",
+    },
+    "citizen_status": {"yes", "no"},
+    "residency_length": {
+        "not_ma_resident",
+        "under_12_months",
+        "one_to_five_years",
+        "over_five_years",
+    },
+    "fafsa_completed": {"yes", "no"},
+    "masfa_completed": {"yes", "no"},
+    "masfa_high_school_completer": {"yes", "no"},
+    "masfa_documentation_ready": {"yes", "no"},
+    "dhe_affidavit_completed": {"yes", "no"},
+    "prior_bachelors_degree": {"yes", "no"},
+    "massgrant_plus_income_band": {"under_85k", "85k_to_100k", "over_100k"},
+    "work_study": {"yes", "no"},
+    "household_sizes": {"1", "2", "3", "4", "5", "6", "7", "8", "9_plus"},
+    "masshealth_income_under_limit": {"yes", "no"},
+    "snap_income_under_limit": {"yes", "no"},
+}
 
 SNAP_THRESHOLDS = {
     1: 2608,
@@ -214,6 +331,148 @@ FALLBACK_CATALOG = {
     },
 }
 
+ALLOWED_PROFILE_KEYS = set(PROFILE_LABELS.keys())
+KNOWN_BENEFIT_IDS = set(FALLBACK_CATALOG.keys())
+
+
+def get_header(event: dict, name: str) -> str | None:
+    headers = event.get("headers") or {}
+    for key, value in headers.items():
+        if str(key).lower() == name.lower():
+            return str(value)
+    return None
+
+
+def allowed_origins() -> set[str]:
+    raw = os.environ.get("ALLOWED_ORIGINS", DEFAULT_ALLOWED_ORIGINS)
+    return {value.strip() for value in raw.split(",") if value.strip()}
+
+
+def get_allowed_origin(event: dict) -> str | None:
+    request_origin = get_header(event or {}, "Origin")
+    if request_origin and request_origin in allowed_origins():
+        return request_origin
+    return None
+
+
+def _request_is_https(event: dict | None) -> bool:
+    event = event or {}
+    forwarded_proto = get_header(event, "X-Forwarded-Proto") or get_header(event, "CloudFront-Forwarded-Proto")
+    if forwarded_proto:
+        return forwarded_proto.lower() == "https"
+    return True
+
+
+def build_response(
+    status_code: int,
+    body: Any,
+    event: dict | None = None,
+    content_type: str = "application/json; charset=utf-8",
+    extra_headers: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    if body is None:
+        body = ""
+    if not isinstance(body, str):
+        body = json.dumps(body, separators=(",", ":"), ensure_ascii=False)
+
+    headers = {
+        "Content-Type": content_type,
+        "Cache-Control": "no-store",
+        "Pragma": "no-cache",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "X-Permitted-Cross-Domain-Policies": "none",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=(), usb=(), payment=()",
+        "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+    }
+
+    if _request_is_https(event):
+        headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
+    allowed_origin = get_allowed_origin(event or {})
+    if allowed_origin:
+        headers["Access-Control-Allow-Origin"] = allowed_origin
+        headers["Vary"] = "Origin"
+        headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization,X-Requested-With,x-commonmass-secret"
+        headers["Access-Control-Allow-Methods"] = "POST,OPTIONS"
+        headers["Access-Control-Max-Age"] = "600"
+
+    if extra_headers:
+        headers.update(extra_headers)
+
+    return {
+        "statusCode": status_code,
+        "headers": headers,
+        "body": body,
+    }
+
+
+def get_http_method(event: dict) -> str:
+    return (
+        event.get("httpMethod")
+        or event.get("requestContext", {}).get("http", {}).get("method")
+        or ""
+    ).upper()
+
+
+def validate_json_request(event: dict) -> str | None:
+    content_type = (get_header(event or {}, "Content-Type") or "").lower()
+    if content_type and "application/json" not in content_type:
+        return "Content-Type must be application/json."
+    return None
+
+
+def parse_json_payload(event: Any, max_body_bytes: int) -> dict[str, Any]:
+    if not isinstance(event, dict):
+        return {}
+
+    if "body" not in event or event["body"] is None:
+        return event
+
+    body = event["body"]
+    if isinstance(body, dict):
+        return body
+
+    if not isinstance(body, str):
+        raise ValueError("Request body must be valid JSON.")
+
+    try:
+        if event.get("isBase64Encoded"):
+            raw_bytes = base64.b64decode(body, validate=True)
+        else:
+            raw_bytes = body.encode("utf-8")
+    except (binascii.Error, UnicodeEncodeError, ValueError) as exc:
+        raise ValueError("Request body must be valid JSON.") from exc
+
+    if len(raw_bytes) > max_body_bytes:
+        raise ValueError("Request body is too large.")
+
+    try:
+        decoded_body = raw_bytes.decode("utf-8").strip()
+    except UnicodeDecodeError as exc:
+        raise ValueError("Request body must be UTF-8 encoded JSON.") from exc
+
+    if not decoded_body:
+        return {}
+
+    try:
+        parsed = json.loads(decoded_body)
+    except json.JSONDecodeError as exc:
+        raise ValueError("Request body must be valid JSON.") from exc
+
+    if not isinstance(parsed, dict):
+        raise ValueError("Request body must be a JSON object.")
+
+    return parsed
+
+
+def secret_is_valid(event: dict, header_name: str, expected_secret: str) -> bool:
+    provided = get_header(event or {}, header_name)
+    if not expected_secret or provided is None:
+        return False
+    return hmac.compare_digest(provided, expected_secret)
+
 
 def detect_bucket_region(bucket: str) -> str:
     if not bucket:
@@ -227,30 +486,83 @@ def detect_bucket_region(bucket: str) -> str:
         return os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
 
 
-def normalize_school_name(value) -> str:
+def normalize_school_name(value: Any) -> str:
     if value is None:
         return ""
-
     trimmed = str(value).strip()
     if not trimmed:
         return ""
-
     return SCHOOL_ALIASES.get(trimmed, trimmed)
 
 
-def is_massgrant_plus_eligible_school(value) -> bool:
-    school_name = normalize_school_name(value)
-    return bool(school_name) and school_name in MASSGRANT_PLUS_ELIGIBLE_SCHOOLS
+def sanitize_profile(profile: dict[str, Any]) -> dict[str, str]:
+    if not isinstance(profile, dict):
+        return {}
+
+    sanitized: dict[str, str] = {}
+
+    for key, raw_value in profile.items():
+        if key not in ALLOWED_PROFILE_KEYS or raw_value is None:
+            continue
+
+        value = str(raw_value).strip()
+        if not value:
+            continue
+
+        if key == "school_name":
+            cleaned_school = normalize_school_name(value)[:MAX_SCHOOL_NAME_LENGTH]
+            if cleaned_school:
+                sanitized[key] = cleaned_school
+            continue
+
+        if key == "household_size_exact":
+            if value.isdigit():
+                numeric = int(value)
+                if 1 <= numeric <= 99:
+                    sanitized[key] = str(numeric)
+            continue
+
+        allowed_values = ALLOWED_PROFILE_VALUES.get(key)
+        if allowed_values is None:
+            sanitized[key] = value[:MAX_PROFILE_VALUE_LENGTH]
+            continue
+
+        if value in allowed_values:
+            sanitized[key] = value
+
+    return sanitized
 
 
-def is_mbta_eligible_school(value) -> bool:
-    school_name = normalize_school_name(value)
-    return bool(school_name) and school_name in MBTA_ELIGIBLE_SCHOOLS
+def sanitize_selected_benefits(selected: Any, catalog: dict[str, Any] | None = None) -> list[str]:
+    if not isinstance(selected, list):
+        return []
+
+    known_ids = set(catalog.keys()) if isinstance(catalog, dict) and catalog else set(KNOWN_BENEFIT_IDS)
+    sanitized: list[str] = []
+
+    for raw_value in selected:
+        if not isinstance(raw_value, str):
+            continue
+
+        value = raw_value.strip()
+        if value and value in known_ids and value not in sanitized:
+            sanitized.append(value)
+
+        if len(sanitized) >= MAX_SELECTED_BENEFITS:
+            break
+
+    return sanitized
+
+
+def friendly_profile_value(key: str, value: Any) -> str:
+    if value is None:
+        return ""
+    mapping = PROFILE_VALUE_LABELS.get(key, {})
+    return mapping.get(value, str(value))
 
 
 def get_exact_household_size(profile: dict) -> int | None:
     raw_household_size = profile.get("household_sizes")
-
     if not raw_household_size:
         return None
 
@@ -272,7 +584,6 @@ def get_exact_household_size(profile: dict) -> int | None:
 
 def get_income_threshold(program: str, profile: dict) -> int | None:
     household_size = get_exact_household_size(profile)
-
     if not household_size:
         return None
 
@@ -352,13 +663,10 @@ def is_massgrant_plus_enrollment_eligible(profile: dict) -> bool:
 
     if not income_band or income_band == "over_100k":
         return False
-
     if income_band == "85k_to_100k":
         return enrollment_status == "full_time"
-
     if enrollment_status == "full_time":
         return True
-
     return enrollment_status == "part_time"
 
 
@@ -378,13 +686,10 @@ def uses_masfa_route(profile: dict) -> bool:
 
 def has_masfa_document_path(profile: dict) -> bool:
     documentation_ready = profile.get("masfa_documentation_ready")
-
     if documentation_ready == "yes":
         return True
-
     if documentation_ready == "no":
         return profile.get("dhe_affidavit_completed") in ("yes", "no")
-
     return False
 
 
@@ -400,7 +705,6 @@ def qualifies_under_tuition_equity(profile: dict) -> bool:
 def has_state_aid_path(profile: dict) -> bool:
     if profile.get("citizen_status") == "yes":
         return True
-
     return qualifies_under_tuition_equity(profile)
 
 
@@ -419,7 +723,6 @@ def get_state_aid_application_type(profile: dict) -> str:
 def is_state_aid_application_completed(profile: dict) -> bool:
     if uses_masfa_route(profile):
         return profile.get("masfa_completed") == "yes"
-
     return profile.get("fafsa_completed") == "yes"
 
 
@@ -448,7 +751,6 @@ def get_state_aid_action(profile: dict) -> dict:
                 "officialButtonLabel": "Check MASFA Status",
                 "actionStatus": NO_ACTION_ALREADY_COMPLETED_STATUS,
             }
-
         return {
             "applicationType": "masfa",
             "applicationCompleted": False,
@@ -513,13 +815,10 @@ def get_pell_action(profile: dict) -> dict:
 def get_dhe_affidavit_checklist_item(profile: dict) -> str | None:
     if not qualifies_under_tuition_equity(profile):
         return None
-
     if profile.get("masfa_documentation_ready") != "no":
         return None
-
     if profile.get("dhe_affidavit_completed") == "yes":
         return PROVIDE_DHE_AFFIDAVIT_CHECKLIST_ITEM
-
     return COMPLETE_DHE_AFFIDAVIT_CHECKLIST_ITEM
 
 
@@ -529,7 +828,6 @@ def build_massgrant_action_statuses(profile: dict) -> list[str]:
         return []
 
     statuses: list[str] = []
-
     if needs_dhe_affidavit(profile):
         statuses.append(DHE_AFFIDAVIT_ACTION_STATUS)
 
@@ -547,11 +845,9 @@ def build_massgrant_checklist(profile: dict) -> list[str]:
         "Enroll in a Massachusetts college",
         "Maintain satisfactory academic progress",
     ]
-
     dhe_item = get_dhe_affidavit_checklist_item(profile)
     if dhe_item:
         checklist.append(dhe_item)
-
     checklist.append("Check award notification from your school")
     return checklist
 
@@ -563,11 +859,9 @@ def build_massgrant_plus_checklist(profile: dict) -> list[str]:
         "Attend a participating MASSGrant Plus school",
         "Not already hold a bachelor's degree",
     ]
-
     dhe_item = get_dhe_affidavit_checklist_item(profile)
     if dhe_item:
         checklist.append(dhe_item)
-
     checklist.append("Review eligibility with your financial aid office")
     return checklist
 
@@ -577,6 +871,16 @@ def is_snap_income_eligible(profile: dict) -> bool:
         profile.get("masshealth_income_under_limit") == "yes"
         or profile.get("snap_income_under_limit") == "yes"
     )
+
+
+def is_massgrant_plus_eligible_school(value: Any) -> bool:
+    school_name = normalize_school_name(value)
+    return bool(school_name) and school_name in MASSGRANT_PLUS_ELIGIBLE_SCHOOLS
+
+
+def is_mbta_eligible_school(value: Any) -> bool:
+    school_name = normalize_school_name(value)
+    return bool(school_name) and school_name in MBTA_ELIGIBLE_SCHOOLS
 
 
 def match_benefits(profile: dict) -> list[dict]:
@@ -633,36 +937,20 @@ def match_benefits(profile: dict) -> list[dict]:
         and a.get("citizen_status") == "yes"
         and (a.get("work_study") == "yes" or is_snap_income_eligible(a))
     ):
-        matches.append(
-            {
-                "id": "snap",
-                "actionStatuses": [],
-            }
-        )
+        matches.append({"id": "snap", "actionStatuses": []})
 
     if (
         is_massachusetts_resident(a)
         and a.get("citizen_status") == "yes"
         and a.get("masshealth_income_under_limit") == "yes"
     ):
-        matches.append(
-            {
-                "id": "masshealth",
-                "actionStatuses": [],
-            }
-        )
+        matches.append({"id": "masshealth", "actionStatuses": []})
 
     if is_student_or_future(a) and is_mbta_eligible_school(a.get("school_name")):
-        matches.append(
-            {
-                "id": "mbta-pass",
-                "actionStatuses": [],
-            }
-        )
+        matches.append({"id": "mbta-pass", "actionStatuses": []})
 
     seen = set()
     unique_matches = []
-
     for match in matches:
         if match["id"] in seen:
             continue
@@ -672,7 +960,7 @@ def match_benefits(profile: dict) -> list[dict]:
     return unique_matches
 
 
-def _normalize_catalog(data) -> dict:
+def _normalize_catalog(data: Any) -> dict[str, dict]:
     if not data:
         return {}
 
@@ -683,37 +971,34 @@ def _normalize_catalog(data) -> dict:
         normalized = {}
         for key, value in data.items():
             if isinstance(value, dict):
-                benefit_id = value.get("id") or key
-                normalized[str(benefit_id)] = {
-                    **value,
-                    "id": benefit_id,
-                }
+                benefit_id = str(value.get("id") or key).strip()
+                if benefit_id:
+                    normalized[benefit_id] = {**value, "id": benefit_id}
         return normalized
 
     if isinstance(data, list):
         normalized = {}
         for item in data:
-            if isinstance(item, dict) and item.get("id"):
-                normalized[str(item["id"])] = item
+            if isinstance(item, dict):
+                benefit_id = str(item.get("id") or "").strip()
+                if benefit_id:
+                    normalized[benefit_id] = {**item, "id": benefit_id}
         return normalized
 
     return {}
 
 
-def _merge_catalogs(base: dict, override: dict) -> dict:
+def _merge_catalogs(base: dict[str, dict], override: dict[str, dict]) -> dict[str, dict]:
     merged = dict(base)
     for benefit_id, item in override.items():
         if benefit_id in merged:
-            merged[benefit_id] = {
-                **merged[benefit_id],
-                **item,
-            }
+            merged[benefit_id] = {**merged[benefit_id], **item}
         else:
             merged[benefit_id] = item
     return merged
 
 
-def load_catalog(s3, bucket: str, key: str) -> dict:
+def load_catalog(s3: Any, bucket: str, key: str) -> dict[str, dict]:
     final_catalog = dict(FALLBACK_CATALOG)
 
     if not bucket or s3 is None:
@@ -723,11 +1008,9 @@ def load_catalog(s3, bucket: str, key: str) -> dict:
         obj = s3.get_object(Bucket=bucket, Key=key)
         raw = obj["Body"].read().decode("utf-8")
         parsed = json.loads(raw)
-
         normalized = _normalize_catalog(parsed)
         if normalized:
             return _merge_catalogs(final_catalog, normalized)
-
         return final_catalog
     except Exception:
         return final_catalog
@@ -736,7 +1019,6 @@ def load_catalog(s3, bucket: str, key: str) -> dict:
 def merge_match_with_catalog(match: dict, catalog: dict) -> dict:
     benefit_id = str(match.get("id") or "").strip()
     catalog_item = catalog.get(benefit_id, {}) if benefit_id else {}
-
     if not isinstance(catalog_item, dict):
         catalog_item = {}
 
@@ -761,7 +1043,7 @@ def merge_match_with_catalog(match: dict, catalog: dict) -> dict:
     return merged
 
 
-def normalize_requested_matches(raw_matches, catalog: dict) -> list[dict]:
+def normalize_requested_matches(raw_matches: Any, catalog: dict) -> list[dict]:
     normalized = []
     seen = set()
 

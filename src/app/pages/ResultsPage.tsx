@@ -1,35 +1,35 @@
-﻿import { useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { ChevronDown, ExternalLink, CheckSquare } from 'lucide-react';
 
-import { Button } from '../components/ui/button';
+import { Button } from '@/app/components/ui/button';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '../components/ui/accordion';
+} from '@/app/components/ui/accordion';
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
   CardDescription,
-} from '../components/ui/card';
-import { Navbar } from '../components/layout/Navbar';
-import { PageBackdrop } from '../components/layout/PageBackdrop';
-import { renderLinkedText } from '../components/ui/render-linked-text';
-import { InlineTooltipText } from '../components/ui/inline-tooltip-text';
-import { useBenefits } from '../context/BenefitsContext';
+} from '@/app/components/ui/card';
+import { Navbar } from '@/app/components/layout/Navbar';
+import { PageBackdrop } from '@/app/components/layout/PageBackdrop';
+import { SiteFooter } from '@/app/components/layout/SiteFooter';
+import { renderLinkedText } from '@/app/components/ui/render-linked-text';
+import { InlineTooltipText } from '@/app/components/ui/inline-tooltip-text';
+import { useBenefits } from '@/app/context/BenefitsContext';
 import {
   DHE_AFFIDAVIT_ACTION_STATUS,
   benefits,
   getBenefitRichTextSegments,
   isPositiveActionStatus,
-} from '../data/benefitsData';
-import { useIsMobile } from '../components/ui/use-mobile';
-import { SiteFooter } from '../components/layout/SiteFooter';
+} from '@/app/data/benefitsData';
+import { useIsMobile } from '@/app/components/ui/use-mobile';
 
 const MOBILE_ROUTE_TRANSITION = {
   duration: 0.2,
@@ -45,7 +45,10 @@ const FEEDBACK_SURVEY_URL = 'https://forms.gle/x6J4fDrvWmUz6vFu9';
 const DHE_AFFIDAVIT_FORM_URL =
   'https://www.mass.edu/tuitionequity/documents/2025-09-10%20Tuition%20Equity%20Form%20and%20Affidavit_Fillable.pdf';
 
-function getSingleBenefitPhrase(benefitId: string, fallbackTitle: string | null): string | null {
+function getSingleBenefitPhrase(
+  benefitId: string,
+  fallbackTitle: string | null
+): string | null {
   switch (benefitId) {
     case 'mbta-pass':
       return 'the MBTA Student Pass';
@@ -65,53 +68,35 @@ function getSingleBenefitPhrase(benefitId: string, fallbackTitle: string | null)
 }
 
 export default function ResultsPage() {
-  const { matchedBenefits, screeningBenefitFilters, answers } = useBenefits();
+  const { matchedBenefits, screeningBenefitFilters } = useBenefits();
+  const isMobile = useIsMobile();
+  const [mobileOpenDetails, setMobileOpenDetails] = useState<Record<string, boolean>>(
+    {}
+  );
+
   const hasMatches = matchedBenefits.length > 0;
-  const singleScreenedBenefitId = screeningBenefitFilters.length === 1 ? screeningBenefitFilters[0] : null;
-  const singleScreenedBenefitTitle =
-    singleScreenedBenefitId
-      ? benefits.find((benefit) => benefit.id === singleScreenedBenefitId)?.title ?? null
-      : null;
+  const singleScreenedBenefitId =
+    screeningBenefitFilters.length === 1 ? screeningBenefitFilters[0] : null;
+  const singleScreenedBenefitTitle = singleScreenedBenefitId
+    ? benefits.find((benefit) => benefit.id === singleScreenedBenefitId)?.title ?? null
+    : null;
   const singleScreenedBenefitPhrase = singleScreenedBenefitId
     ? getSingleBenefitPhrase(singleScreenedBenefitId, singleScreenedBenefitTitle)
     : null;
-  const heroDescription = singleScreenedBenefitPhrase
-    ? hasMatches
-      ? `Based on your answers, you may qualify for ${singleScreenedBenefitPhrase}.`
-      : `Based on your answers, we couldn't find a current match for ${singleScreenedBenefitPhrase}.`
-    : hasMatches
-      ? `Based on your answers, you may qualify for the following ${matchedBenefits.length} benefit${matchedBenefits.length === 1 ? '' : 's'}.`
-      : "Based on your answers, we couldn't find any specific benefits matching your profile at this time.";
-  const isMobile = useIsMobile();
-  const [mobileOpenDetails, setMobileOpenDetails] = useState<Record<string, boolean>>({});
 
-  const isNotEnrollingNextAcademicYear =
-    answers['fafsa_completed'] === 'not_enrolled_next_year' ||
-    answers['masfa_completed'] === 'not_enrolled_next_year';
-
-  const getOfficialButtonLabel = (benefitId: string, fallbackLabel?: string) => {
-    if (
-      answers['fafsa_completed'] === 'not_enrolled_next_year' &&
-      (benefitId === 'pell-grant' || benefitId === 'massgrant' || benefitId === 'massgrant-plus')
-    ) {
-      return 'View Official Site';
+  const heroDescription = useMemo(() => {
+    if (singleScreenedBenefitPhrase) {
+      return hasMatches
+        ? `Based on your answers, you may qualify for ${singleScreenedBenefitPhrase}.`
+        : `Based on your answers, we could not find a current match for ${singleScreenedBenefitPhrase}.`;
     }
 
-    return fallbackLabel ?? 'Visit Official Site';
-  };
-
-  const getVisibleStatuses = (benefitId: string, benefit: { actionStatuses?: string[]; actionStatus?: string }) => {
-    const statuses = benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
-
-    if (
-      isNotEnrollingNextAcademicYear &&
-      (benefitId === 'pell-grant' || benefitId === 'massgrant' || benefitId === 'massgrant-plus')
-    ) {
-      return [];
-    }
-
-    return statuses;
-  };
+    return hasMatches
+      ? `Based on your answers, you may qualify for ${matchedBenefits.length} benefit${
+          matchedBenefits.length === 1 ? '' : 's'
+        }.`
+      : 'Based on your answers, we could not find any specific benefits matching your profile at this time.';
+  }, [hasMatches, matchedBenefits.length, singleScreenedBenefitPhrase]);
 
   const heroEnterInitial = { opacity: 0, y: isMobile ? 12 : 20 };
 
@@ -136,15 +121,16 @@ export default function ResultsPage() {
     if (status === DHE_AFFIDAVIT_ACTION_STATUS) {
       return (
         <>
-          <span>Action Needed, Complete the </span>
+          <span>Action needed: complete the </span>
           <a
             href={DHE_AFFIDAVIT_FORM_URL}
             target="_blank"
             rel="noopener noreferrer"
+            aria-label="Open the DHE Affidavit form in a new tab"
             className="inline-flex items-center gap-1 font-semibold underline underline-offset-2 hover:opacity-80"
           >
             <span>DHE Affidavit</span>
-            <ExternalLink className="h-3 w-3" />
+            <ExternalLink className="h-3 w-3" aria-hidden="true" />
           </a>
         </>
       );
@@ -153,6 +139,38 @@ export default function ResultsPage() {
     const richTextSegments = getBenefitRichTextSegments(status);
     return richTextSegments ? <InlineTooltipText segments={richTextSegments} /> : status;
   };
+
+  const renderOfficialLinkButton = (benefitTitle: string, href: string, label?: string) => (
+    <Button
+      asChild
+      variant="outline"
+      size="sm"
+      className="group w-full whitespace-nowrap border-[#355b8a] bg-white text-[#355b8a] shadow-sm transition-all duration-300 hover:border-[#f97316] hover:bg-[#f97316] hover:text-white hover:shadow-[0_12px_28px_-18px_rgba(249,115,22,0.4)] sm:w-auto sm:shrink-0 dark:border-sky-200 dark:bg-transparent dark:text-sky-200 dark:hover:border-[#f97316] dark:hover:bg-[#f97316] dark:hover:text-white dark:hover:shadow-[0_0_24px_rgba(249,115,22,0.28)]"
+    >
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`${label ?? 'Visit official site'} for ${benefitTitle} (opens in a new tab)`}
+      >
+        <ExternalLink
+          className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+          aria-hidden="true"
+        />
+        {label ?? 'Visit Official Site'}
+      </a>
+    </Button>
+  );
+
+  const renderDetailsContent = (details: string) => (
+    <div className="space-y-3 text-sm leading-relaxed text-gray-700 dark:text-slate-200">
+      {renderLinkedText(details, {
+        paragraphClassName: 'text-sm leading-relaxed text-gray-700 dark:text-slate-200',
+        linkClassName:
+          'font-medium text-[#1e3a5f] underline underline-offset-4 hover:text-[#16304f] dark:text-sky-200 dark:hover:text-orange-200',
+      })}
+    </div>
+  );
 
   return (
     <div className="relative isolate min-h-screen overflow-x-hidden bg-[#f8fafc] font-sans text-black dark:bg-slate-950 dark:text-slate-100">
@@ -167,16 +185,12 @@ export default function ResultsPage() {
             transition={heroEnterTransition()}
             className="relative"
           >
-            <div
-              className="relative overflow-hidden rounded-t-[2rem] border-x border-t border-white/70 bg-white/72 p-8 pb-20 shadow-[0_34px_80px_-60px_rgba(15,23,42,0.42)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/58 md:p-10 md:pb-24"
-              style={{
-                WebkitMaskImage:
-                  'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)',
-                maskImage: 'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)',
-              }}
-            >
+            <div className="relative overflow-hidden rounded-t-[2rem] border-x border-t border-white/70 bg-white/72 p-8 pb-20 shadow-[0_34px_80px_-60px_rgba(15,23,42,0.42)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/58 md:p-10 md:pb-24">
               <div className="relative z-10">
-                <h1 id="results-heading" className="mb-4 text-[2.6rem] font-bold tracking-tight md:text-[2.85rem]">
+                <h1
+                  id="results-heading"
+                  className="mb-4 text-[2.6rem] font-bold tracking-tight md:text-[2.85rem]"
+                >
                   Your Results
                 </h1>
 
@@ -196,7 +210,10 @@ export default function ResultsPage() {
                         size="lg"
                         className="group cursor-pointer rounded-full bg-[#f97316] px-8 py-6 text-lg text-white shadow-[0_4px_14px_0_rgba(249,115,22,0.3)] transition-all duration-200 hover:-translate-y-1 hover:scale-[1.02] hover:bg-[#ea580c] hover:shadow-[0_20px_25px_-5px_rgba(249,115,22,0.4)] dark:shadow-[0_10px_28px_-14px_rgba(251,146,60,0.56)] dark:hover:shadow-[0_20px_40px_-16px_rgba(251,146,60,0.76)]"
                       >
-                        <CheckSquare className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
+                        <CheckSquare
+                          className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:scale-110"
+                          aria-hidden="true"
+                        />
                         Get Personalized Checklist
                       </Button>
                     </Link>
@@ -211,38 +228,16 @@ export default function ResultsPage() {
           isMobile ? (
             <section aria-labelledby="results-heading" className="space-y-6">
               {matchedBenefits.map((benefit) => {
-                const statuses = getVisibleStatuses(benefit.id, benefit);
+                const statuses =
+                  benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
                 const isDetailsOpen = Boolean(mobileOpenDetails[benefit.id]);
-
-                const actionButton = (
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className="group w-full whitespace-nowrap border-[#355b8a] bg-white text-[#355b8a] shadow-sm transition-all duration-300 hover:border-[#f97316] hover:bg-[#f97316] hover:text-white hover:shadow-[0_12px_28px_-18px_rgba(249,115,22,0.4)] sm:w-auto sm:shrink-0 dark:border-sky-200 dark:bg-transparent dark:text-sky-200 dark:hover:border-[#f97316] dark:hover:bg-[#f97316] dark:hover:text-white dark:hover:shadow-[0_0_24px_rgba(249,115,22,0.28)]"
-                  >
-                    <a href={benefit.officialUrl} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                      {getOfficialButtonLabel(benefit.id, benefit.officialButtonLabel)}
-                    </a>
-                  </Button>
-                );
-
-                const detailsContent = (
-                  <div className="space-y-3 text-sm leading-relaxed text-gray-700 dark:text-slate-200">
-                    {renderLinkedText(benefit.details, {
-                      paragraphClassName:
-                        'text-sm text-gray-700 leading-relaxed dark:text-slate-200',
-                      linkClassName:
-                        'font-medium text-[#1e3a5f] underline underline-offset-4 hover:text-[#16304f] dark:text-sky-200 dark:hover:text-orange-200',
-                    })}
-                  </div>
-                );
+                const titleId = `${benefit.id}-title`;
+                const regionId = `${benefit.id}-details`;
 
                 return (
                   <div
                     key={benefit.id}
-                    className="rounded-[1.5rem] border border-white/75 bg-white/86 shadow-[0_24px_52px_-24px_rgba(15,23,42,0.24)] backdrop-blur-none dark:border-white/10 dark:bg-slate-900/80 dark:shadow-[0_24px_52px_-24px_rgba(2,6,23,0.78)]"
+                    className="rounded-[1.5rem] border border-white/75 bg-white/86 shadow-[0_24px_52px_-24px_rgba(15,23,42,0.24)] dark:border-white/10 dark:bg-slate-900/80 dark:shadow-[0_24px_52px_-24px_rgba(2,6,23,0.78)]"
                   >
                     <div className="px-5 pt-5">
                       <div className="flex flex-col gap-3">
@@ -251,7 +246,9 @@ export default function ResultsPage() {
                             {benefit.category}
                           </span>
 
-                          <h2 className="text-xl font-bold">{benefit.title}</h2>
+                          <h2 id={titleId} className="text-xl font-bold">
+                            {benefit.title}
+                          </h2>
 
                           {statuses.length > 0 && (
                             <div className="mt-2 flex flex-col items-start gap-2">
@@ -271,7 +268,11 @@ export default function ResultsPage() {
                           )}
                         </div>
 
-                        {actionButton}
+                        {renderOfficialLinkButton(
+                          benefit.title,
+                          benefit.officialUrl,
+                          benefit.officialButtonLabel
+                        )}
                       </div>
                     </div>
 
@@ -283,8 +284,8 @@ export default function ResultsPage() {
 
                     <button
                       type="button"
-                      aria-expanded={isDetailsOpen}
-                      aria-controls={`${benefit.id}-details`}
+                      aria-expanded={isDetailsOpen ? 'true' : 'false'}
+                      aria-controls={regionId}
                       onClick={() => toggleMobileDetails(benefit.id)}
                       className="flex w-full items-start justify-between gap-4 border-t border-gray-100 px-5 py-3.5 text-left text-sm font-semibold text-[#355b8a] transition-colors dark:border-white/10 dark:text-sky-200"
                     >
@@ -293,21 +294,21 @@ export default function ResultsPage() {
                         className={`h-4 w-4 shrink-0 text-[#355b8a] transition-transform duration-200 dark:text-sky-200 ${
                           isDetailsOpen ? 'rotate-180' : ''
                         }`}
+                        aria-hidden="true"
                       />
                     </button>
 
                     {isDetailsOpen && (
                       <motion.div
+                        id={regionId}
                         initial={{ opacity: 0, y: -6 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={MOBILE_DETAILS_REVEAL}
-                        id={`${benefit.id}-details`}
                         role="region"
-                        aria-label={`${benefit.title} details`}
+                        aria-labelledby={titleId}
                         className="px-5 pb-5 pt-1"
-                        style={{ contain: 'paint' }}
                       >
-                        {detailsContent}
+                        {renderDetailsContent(benefit.details)}
                       </motion.div>
                     )}
                   </div>
@@ -318,32 +319,8 @@ export default function ResultsPage() {
             <section aria-labelledby="results-heading">
               <Accordion type="multiple" className="space-y-6">
                 {matchedBenefits.map((benefit, index) => {
-                  const statuses = getVisibleStatuses(benefit.id, benefit);
-
-                  const actionButton = (
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="sm"
-                      className="group w-full whitespace-nowrap border-[#355b8a] bg-white text-[#355b8a] shadow-sm transition-all duration-300 hover:border-[#f97316] hover:bg-[#f97316] hover:text-white hover:shadow-[0_12px_28px_-18px_rgba(249,115,22,0.4)] sm:w-auto sm:shrink-0 dark:border-sky-200 dark:bg-transparent dark:text-sky-200 dark:hover:border-[#f97316] dark:hover:bg-[#f97316] dark:hover:text-white dark:hover:shadow-[0_0_24px_rgba(249,115,22,0.28)]"
-                    >
-                      <a href={benefit.officialUrl} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                        {getOfficialButtonLabel(benefit.id, benefit.officialButtonLabel)}
-                      </a>
-                    </Button>
-                  );
-
-                  const detailsContent = (
-                    <div className="space-y-3 text-sm leading-relaxed text-gray-700 dark:text-slate-200">
-                      {renderLinkedText(benefit.details, {
-                        paragraphClassName:
-                          'text-sm text-gray-700 leading-relaxed dark:text-slate-200',
-                        linkClassName:
-                          'font-medium text-[#1e3a5f] underline underline-offset-4 hover:text-[#16304f] dark:text-sky-200 dark:hover:text-orange-200',
-                      })}
-                    </div>
-                  );
+                  const statuses =
+                    benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
 
                   return (
                     <motion.div
@@ -383,7 +360,11 @@ export default function ResultsPage() {
                                 )}
                               </div>
 
-                              {actionButton}
+                              {renderOfficialLinkButton(
+                                benefit.title,
+                                benefit.officialUrl,
+                                benefit.officialButtonLabel
+                              )}
                             </div>
                           </CardHeader>
 
@@ -398,7 +379,7 @@ export default function ResultsPage() {
                               <span>More Details</span>
                             </AccordionTrigger>
                             <AccordionContent className="border-t border-gray-100 px-5 py-4 dark:border-white/10 sm:px-6 sm:py-5">
-                              {detailsContent}
+                              {renderDetailsContent(benefit.details)}
                             </AccordionContent>
                           </div>
                         </Card>
@@ -412,12 +393,10 @@ export default function ResultsPage() {
         ) : (
           <div className="rounded-[1.75rem] border border-dashed border-gray-300 bg-white/72 py-20 text-center shadow-[0_24px_60px_-42px_rgba(15,23,42,0.28)] backdrop-blur-none dark:border-slate-700 dark:bg-slate-900/70 md:backdrop-blur-sm">
             <p className="mb-4 text-gray-500 dark:text-slate-400">
-              We couldn&apos;t find any specific benefits matching your profile at this time.
+              We could not find any specific benefits matching your profile at this time.
             </p>
             <Button asChild variant="outline">
-              <Link to="/">
-                Start Over
-              </Link>
+              <Link to="/">Start Over</Link>
             </Button>
           </div>
         )}
@@ -433,8 +412,16 @@ export default function ResultsPage() {
             variant="outline"
             className="group border-[#355b8a] bg-white/92 px-6 py-5 text-[#1e3a5f] shadow-sm transition-all duration-300 hover:border-[#f97316] hover:bg-[#f97316] hover:text-white hover:shadow-[0_14px_32px_-20px_rgba(249,115,22,0.44)] dark:border-sky-200/55 dark:bg-slate-900/82 dark:text-sky-100 dark:hover:border-[#f97316] dark:hover:bg-[#f97316] dark:hover:text-white"
           >
-            <a href={FEEDBACK_SURVEY_URL} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+            <a
+              href={FEEDBACK_SURVEY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Open the CommonMASS feedback survey in a new tab"
+            >
+              <ExternalLink
+                className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                aria-hidden="true"
+              />
               Take Our Feedback Survey
             </a>
           </Button>

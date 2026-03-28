@@ -1,3 +1,4 @@
+// tsconfig.json
 {
   "compilerOptions": {
     "target": "ES2020",
@@ -6,20 +7,18 @@
     "allowJs": false,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "jsx": "react-jsx",
-    "strict": false,
-    "noEmit": true,
+    "allowJs": false,
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "types": ["vite/client"],
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
     },
-    "forceConsistentCasingInFileNames": true
+    "types": ["vite/client"]
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src"]
 }

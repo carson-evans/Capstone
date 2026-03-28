@@ -2,166 +2,170 @@
   type MouseEvent as ReactMouseEvent,
   type TouchEvent as ReactTouchEvent,
   useEffect,
+  useId,
   useRef,
   useState,
-} from "react";
-import { Link } from "react-router";
+} from 'react';
+import { Link } from 'react-router';
 import {
   motion,
   useMotionValue,
   useReducedMotion,
   useSpring,
   useTransform,
-} from "framer-motion";
+} from 'framer-motion';
 import {
   ArrowRight,
   Banknote,
   Bus,
   CheckSquare,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   HeartPulse,
   ListChecks,
-  PiggyBank,
   Pause,
+  PiggyBank,
   Play,
   Plus,
   Utensils,
-} from "lucide-react";
-import bostonDayImage from "@/assets/Images/Boston Day.jpg";
-import bostonSkylineEveningImage from "@/assets/Images/Boston Skyline Evening.jpg";
-import bostonSkylineNightImage from "@/assets/Images/Boston Skyline Night.jpg";
-import bostonSkylineImage from "@/assets/Images/Boston Skyline.jpg";
-import studentsImage from "@/assets/Images/Students.jpg";
-import studentsTwoImage from "@/assets/Images/Students2.jpg";
-import studentsThreeImage from "@/assets/Images/Students3.jpg";
-import { Navbar } from "@/app/components/layout/Navbar";
-import { Button } from "@/app/components/ui/button";
-import { useIsMobile } from "@/app/components/ui/use-mobile";
-import type { Benefit } from "@/app/data/benefitsData";
-import { useBenefits } from "@/app/context/BenefitsContext";
-import { useTheme } from "@/app/context/ThemeContext";
-import { SiteFooter } from "@/app/components/layout/SiteFooter";
+} from 'lucide-react';
+
+import bostonDayImage from '@/assets/Images/Boston Day.jpg';
+import bostonSkylineEveningImage from '@/assets/Images/Boston Skyline Evening.jpg';
+import bostonSkylineNightImage from '@/assets/Images/Boston Skyline Night.jpg';
+import bostonSkylineImage from '@/assets/Images/Boston Skyline.jpg';
+import studentsImage from '@/assets/Images/Students.jpg';
+import studentsThreeImage from '@/assets/Images/Students3.jpg';
+import studentsTwoImage from '@/assets/Images/Students2.jpg';
+import { Navbar } from '@/app/components/layout/Navbar';
+import { SiteFooter } from '@/app/components/layout/SiteFooter';
+import { Button } from '@/app/components/ui/button';
+import { useBenefits } from '@/app/context/BenefitsContext';
+import type { Benefit } from '@/app/data/benefitsData';
+import { useTheme } from '@/app/context/ThemeContext';
+import { useIsMobile } from '@/app/components/ui/use-mobile';
 
 const HERO_SLIDES = [
   {
     src: studentsImage,
-    alt: "Students working together at a computer.",
-    eyebrow: "Guided Screening",
+    alt: 'Students working together at a computer.',
+    eyebrow: 'Guided Screening',
     caption:
-      "Answer a short set of questions and surface the benefits that fit your situation.",
-    objectPosition: "center 42%",
+      'Answer a short set of questions and surface the benefits that fit your situation.',
+    objectPosition: 'center 42%',
   },
   {
     src: studentsTwoImage,
-    alt: "College students talking around a table with laptops.",
-    eyebrow: "Clear Next Steps",
+    alt: 'College students talking around a table with laptops.',
+    eyebrow: 'Clear Next Steps',
     caption:
-      "Turn confusing programs into a shortlist you can actually act on.",
-    objectPosition: "center 38%",
+      'Turn confusing programs into a shortlist you can actually act on.',
+    objectPosition: 'center 38%',
   },
   {
     src: studentsThreeImage,
-    alt: "Students studying together outdoors.",
-    eyebrow: "Built For Students",
+    alt: 'Students studying together outdoors.',
+    eyebrow: 'Built For Students',
     caption:
-      "Compare help like Pell, SNAP, MassHealth, and transit discounts in one place.",
-    objectPosition: "center 35%",
+      'Compare help like Pell, SNAP, MassHealth, and transit discounts in one place.',
+    objectPosition: 'center 35%',
   },
 ] as const;
 
 type BenefitSpotlight = (typeof BENEFIT_SPOTLIGHTS)[number];
 
 type HeroBenefitFilterOption = {
-  id: Benefit["id"] | "all";
+  id: Benefit['id'] | 'all';
   label: string;
 };
 
 const HERO_BENEFIT_FILTERS: HeroBenefitFilterOption[] = [
-  { id: "all", label: "All" },
-  { id: "pell-grant", label: "Pell Grant" },
-  { id: "massgrant", label: "MASSGrant" },
-  { id: "massgrant-plus", label: "MASSGrant Plus" },
-  { id: "snap", label: "SNAP" },
-  { id: "masshealth", label: "MassHealth" },
-  { id: "mbta-pass", label: "MBTA Student Pass" },
+  { id: 'all', label: 'All' },
+  { id: 'pell-grant', label: 'Pell Grant' },
+  { id: 'massgrant', label: 'MASSGrant' },
+  { id: 'massgrant-plus', label: 'MASSGrant Plus' },
+  { id: 'snap', label: 'SNAP' },
+  { id: 'masshealth', label: 'MassHealth' },
+  { id: 'mbta-pass', label: 'MBTA Student Pass' },
 ];
 
 const INDIVIDUAL_HERO_BENEFIT_FILTER_IDS = HERO_BENEFIT_FILTERS.flatMap(
-  (filterOption) => (filterOption.id === "all" ? [] : [filterOption.id]),
+  (filterOption) => (filterOption.id === 'all' ? [] : [filterOption.id])
 );
 
 const BENEFIT_SPOTLIGHTS = [
   {
-    title: "Pell Grant",
-    faqFilterId: "pell-grant",
+    title: 'Pell Grant',
+    faqFilterId: 'pell-grant',
     description:
-      "Federal Pell Grants may help eligible undergraduate students pay for tuition, fees, books, and other school costs.",
+      'Federal Pell Grants may help eligible undergraduate students pay for tuition, fees, books, and other school costs.',
     icon: PiggyBank,
     cardClassName:
-      "border-[#d9f99d] bg-[linear-gradient(145deg,rgba(254,252,232,0.98),rgba(255,255,255,0.98)_48%,rgba(236,252,203,0.88))] shadow-[0_18px_44px_-34px_rgba(101,163,13,0.26)] dark:border-lime-300/18 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(15,23,42,0.98)_54%,rgba(101,163,13,0.2))]",
+      'border-[#d9f99d] bg-[linear-gradient(145deg,rgba(254,252,232,0.98),rgba(255,255,255,0.98)_48%,rgba(236,252,203,0.88))] shadow-[0_18px_44px_-34px_rgba(101,163,13,0.26)] dark:border-lime-300/18 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(15,23,42,0.98)_54%,rgba(101,163,13,0.2))]',
     iconClassName:
-      "bg-[#4d7c0f] text-white dark:bg-lime-300 dark:text-slate-950",
-    accentClassName: "from-[#a3e635]/42 via-[#d9f99d]/20 to-transparent",
+      'bg-[#4d7c0f] text-white dark:bg-lime-300 dark:text-slate-950',
+    accentClassName: 'from-[#a3e635]/42 via-[#d9f99d]/20 to-transparent',
   },
   {
-    title: "MASSGrant",
-    faqFilterId: "massgrant-family",
+    title: 'MASSGrant',
+    faqFilterId: 'massgrant-family',
     description:
-      "MASSGrant is a Massachusetts state financial aid program that may help students at eligible colleges cover education expenses.",
+      'MASSGrant is a Massachusetts state financial aid program that may help students at eligible colleges cover education expenses.',
     icon: Banknote,
     cardClassName:
-      "border-[#fed7aa] bg-[linear-gradient(145deg,rgba(255,247,237,0.98),rgba(255,255,255,0.98)_50%,rgba(255,237,213,0.86))] shadow-[0_18px_44px_-34px_rgba(249,115,22,0.3)] dark:border-orange-300/18 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(15,23,42,0.98)_54%,rgba(194,65,12,0.22))]",
+      'border-[#fed7aa] bg-[linear-gradient(145deg,rgba(255,247,237,0.98),rgba(255,255,255,0.98)_50%,rgba(255,237,213,0.86))] shadow-[0_18px_44px_-34px_rgba(249,115,22,0.3)] dark:border-orange-300/18 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(15,23,42,0.98)_54%,rgba(194,65,12,0.22))]',
     iconClassName:
-      "bg-[#f97316] text-white dark:bg-orange-300 dark:text-slate-950",
-    accentClassName: "from-[#fb923c]/52 via-[#fdba74]/18 to-transparent",
+      'bg-[#f97316] text-white dark:bg-orange-300 dark:text-slate-950',
+    accentClassName: 'from-[#fb923c]/52 via-[#fdba74]/18 to-transparent',
   },
   {
-    title: "MASSGrant Plus",
-    faqFilterId: "massgrant-family",
+    title: 'MASSGrant Plus',
+    faqFilterId: 'massgrant-family',
     description:
-      "MASSGrant Plus may provide additional state financial aid support for eligible Massachusetts students, depending on school type and enrollment.",
+      'MASSGrant Plus may provide additional state financial aid support for eligible Massachusetts students, depending on school type and enrollment.',
     icon: Plus,
     cardClassName:
-      "border-[#c7d2fe] bg-[linear-gradient(145deg,rgba(238,242,255,0.98),rgba(255,255,255,0.98)_52%,rgba(224,231,255,0.86))] shadow-[0_18px_44px_-34px_rgba(79,70,229,0.28)] dark:border-indigo-300/18 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(15,23,42,0.98)_54%,rgba(67,56,202,0.24))]",
+      'border-[#c7d2fe] bg-[linear-gradient(145deg,rgba(238,242,255,0.98),rgba(255,255,255,0.98)_52%,rgba(224,231,255,0.86))] shadow-[0_18px_44px_-34px_rgba(79,70,229,0.28)] dark:border-indigo-300/18 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(15,23,42,0.98)_54%,rgba(67,56,202,0.24))]',
     iconClassName:
-      "bg-[#4f46e5] text-white dark:bg-indigo-300 dark:text-slate-950",
-    accentClassName: "from-[#818cf8]/52 via-[#a5b4fc]/20 to-transparent",
+      'bg-[#4f46e5] text-white dark:bg-indigo-300 dark:text-slate-950',
+    accentClassName: 'from-[#818cf8]/52 via-[#a5b4fc]/20 to-transparent',
   },
   {
-    title: "MBTA Student Pass",
-    faqFilterId: "mbta-pass",
+    title: 'MBTA Student Pass',
+    faqFilterId: 'mbta-pass',
     description:
-      "MBTA student discount programs may help some students lower transportation costs for commuting to class, work, and campus activities.",
+      'MBTA student discount programs may help some students lower transportation costs for commuting to class, work, and campus activities.',
     icon: Bus,
     cardClassName:
-      "border-[#bfdbfe] bg-[linear-gradient(145deg,rgba(239,246,255,0.98),rgba(255,255,255,0.98)_52%,rgba(219,234,254,0.84))] shadow-[0_18px_44px_-34px_rgba(37,99,235,0.28)] dark:border-sky-300/18 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(15,23,42,0.98)_54%,rgba(14,116,144,0.22))]",
+      'border-[#bfdbfe] bg-[linear-gradient(145deg,rgba(239,246,255,0.98),rgba(255,255,255,0.98)_52%,rgba(219,234,254,0.84))] shadow-[0_18px_44px_-34px_rgba(37,99,235,0.28)] dark:border-sky-300/18 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(15,23,42,0.98)_54%,rgba(14,116,144,0.22))]',
     iconClassName:
-      "bg-[#2563eb] text-white dark:bg-sky-300 dark:text-slate-950",
-    accentClassName: "from-[#60a5fa]/50 via-[#93c5fd]/20 to-transparent",
+      'bg-[#2563eb] text-white dark:bg-sky-300 dark:text-slate-950',
+    accentClassName: 'from-[#60a5fa]/50 via-[#93c5fd]/20 to-transparent',
   },
   {
-    title: "SNAP",
-    faqFilterId: "snap",
+    title: 'SNAP',
+    faqFilterId: 'snap',
     description:
-      "SNAP may help qualifying households and some students buy groceries and reduce food insecurity during the school year.",
+      'SNAP may help qualifying households and some students buy groceries and reduce food insecurity during the school year.',
     icon: Utensils,
     cardClassName:
-      "border-[#86efac] bg-[linear-gradient(145deg,rgba(220,252,231,0.98),rgba(240,253,244,0.98)_48%,rgba(187,247,208,0.92))] shadow-[0_18px_44px_-34px_rgba(21,128,61,0.34)] dark:border-emerald-300/22 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(15,23,42,0.98)_52%,rgba(6,95,70,0.3))]",
+      'border-[#86efac] bg-[linear-gradient(145deg,rgba(220,252,231,0.98),rgba(240,253,244,0.98)_48%,rgba(187,247,208,0.92))] shadow-[0_18px_44px_-34px_rgba(21,128,61,0.34)] dark:border-emerald-300/22 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(15,23,42,0.98)_52%,rgba(6,95,70,0.3))]',
     iconClassName:
-      "bg-[#166534] text-white dark:bg-emerald-300 dark:text-slate-950",
-    accentClassName: "from-[#22c55e]/50 via-[#4ade80]/24 to-transparent",
+      'bg-[#166534] text-white dark:bg-emerald-300 dark:text-slate-950',
+    accentClassName: 'from-[#22c55e]/50 via-[#4ade80]/24 to-transparent',
   },
   {
-    title: "MassHealth",
-    faqFilterId: "masshealth",
+    title: 'MassHealth',
+    faqFilterId: 'masshealth',
     description:
-      "MassHealth may help eligible Massachusetts residents access health coverage for doctor visits, prescriptions, and other care.",
+      'MassHealth may help eligible Massachusetts residents access health coverage for doctor visits, prescriptions, and other care.',
     icon: HeartPulse,
     cardClassName:
-      "border-[#fecdd3] bg-[linear-gradient(145deg,rgba(255,241,242,0.98),rgba(255,255,255,0.98)_52%,rgba(254,226,226,0.9))] shadow-[0_18px_44px_-34px_rgba(225,29,72,0.28)] dark:border-rose-300/20 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(15,23,42,0.98)_54%,rgba(190,24,93,0.22))]",
+      'border-[#fecdd3] bg-[linear-gradient(145deg,rgba(255,241,242,0.98),rgba(255,255,255,0.98)_52%,rgba(254,226,226,0.9))] shadow-[0_18px_44px_-34px_rgba(225,29,72,0.28)] dark:border-rose-300/20 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(15,23,42,0.98)_54%,rgba(190,24,93,0.22))]',
     iconClassName:
-      "bg-[#dc2626] text-white dark:bg-rose-300 dark:text-slate-950",
-    accentClassName: "from-[#fb7185]/48 via-[#fda4af]/22 to-transparent",
+      'bg-[#dc2626] text-white dark:bg-rose-300 dark:text-slate-950',
+    accentClassName: 'from-[#fb7185]/48 via-[#fda4af]/22 to-transparent',
   },
 ] as const;
 
@@ -170,19 +174,23 @@ export default function LandingPage() {
   const { screeningBenefitFilters, setScreeningBenefitFilters } = useBenefits();
   const shouldReduceMotion = useReducedMotion();
   const isMobile = useIsMobile();
+
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [isHeroAutoplayEnabled, setIsHeroAutoplayEnabled] = useState(true);
-  const [hoveredSideCard, setHoveredSideCard] = useState<
-    "left" | "right" | null
-  >(null);
-  const [promotedSideCard, setPromotedSideCard] = useState<
-    "left" | "right" | null
-  >(null);
+  const [hoveredSideCard, setHoveredSideCard] = useState<'left' | 'right' | null>(null);
+  const [promotedSideCard, setPromotedSideCard] = useState<'left' | 'right' | null>(null);
+
   const sideCardLayerTimeoutRef = useRef<number | null>(null);
   const touchStartXRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
+
+  const heroCarouselRegionId = useId();
+  const heroCarouselStatusId = useId();
+  const heroCarouselInstructionsId = useId();
+
   const hoverX = useMotionValue(0);
   const hoverY = useMotionValue(0);
+
   const smoothHoverX = useSpring(hoverX, {
     stiffness: 180,
     damping: 24,
@@ -193,26 +201,17 @@ export default function LandingPage() {
     damping: 24,
     mass: 0.45,
   });
+
   const leftCardX = useTransform(smoothHoverX, [-0.55, 0.55], [-18, 10]);
   const leftCardY = useTransform(smoothHoverY, [-0.55, 0.55], [-12, 12]);
   const leftCardRotate = useTransform(smoothHoverX, [-0.55, 0.55], [-2.4, 1.6]);
-  const leftCardScale = useTransform(
-    smoothHoverX,
-    [-0.55, 0.55],
-    [1.045, 1.015],
-  );
+  const leftCardScale = useTransform(smoothHoverX, [-0.55, 0.55], [1.045, 1.015]);
+
   const rightCardX = useTransform(smoothHoverX, [-0.55, 0.55], [-6, 22]);
   const rightCardY = useTransform(smoothHoverY, [-0.55, 0.55], [10, -12]);
-  const rightCardRotate = useTransform(
-    smoothHoverX,
-    [-0.55, 0.55],
-    [-1.2, 2.6],
-  );
-  const rightCardScale = useTransform(
-    smoothHoverX,
-    [-0.55, 0.55],
-    [1.01, 1.06],
-  );
+  const rightCardRotate = useTransform(smoothHoverX, [-0.55, 0.55], [-1.2, 2.6]);
+  const rightCardScale = useTransform(smoothHoverX, [-0.55, 0.55], [1.01, 1.06]);
+
   const imageX = useTransform(smoothHoverX, [-0.55, 0.55], [-10, 10]);
   const imageY = useTransform(smoothHoverY, [-0.55, 0.55], [-8, 8]);
 
@@ -243,18 +242,25 @@ export default function LandingPage() {
   }, []);
 
   const activeSlide = HERO_SLIDES[activeSlideIndex];
+
   const leftBackdropImage =
-    theme === "dark" ? bostonSkylineEveningImage : bostonDayImage;
+    theme === 'dark' ? bostonSkylineEveningImage : bostonDayImage;
   const rightBackdropImage =
-    theme === "dark" ? bostonSkylineNightImage : bostonSkylineImage;
+    theme === 'dark' ? bostonSkylineNightImage : bostonSkylineImage;
+
   const leftBackdropAlt =
-    theme === "dark"
-      ? "Boston skyline in the evening."
-      : "Boston skyline during the day.";
+    theme === 'dark'
+      ? 'Boston skyline in the evening.'
+      : 'Boston skyline during the day.';
   const rightBackdropAlt =
-    theme === "dark"
-      ? "Boston skyline at night."
-      : "Boston skyline in daylight.";
+    theme === 'dark'
+      ? 'Boston skyline at night.'
+      : 'Boston skyline in daylight.';
+
+  const carouselAnnouncement = `Showing slide ${activeSlideIndex + 1} of ${
+    HERO_SLIDES.length
+  }: ${activeSlide.eyebrow}.`;
+
   const getLandingRevealProps = (delay = 0, amount = 0.22, distance = 24) =>
     shouldReduceMotion
       ? { initial: false as const }
@@ -271,8 +277,8 @@ export default function LandingPage() {
 
   const getTightMobileRevealProps = (
     delay = 0,
-    margin = "0px 0px 18% 0px",
-    distance = 22,
+    margin = '0px 0px 18% 0px',
+    distance = 22
   ) =>
     shouldReduceMotion
       ? { initial: false as const }
@@ -289,10 +295,8 @@ export default function LandingPage() {
 
   const isAllBenefitFilterSelected = screeningBenefitFilters.length === 0;
 
-  const handleBenefitFilterToggle = (
-    filterId: HeroBenefitFilterOption["id"],
-  ) => {
-    if (filterId === "all") {
+  const handleBenefitFilterToggle = (filterId: HeroBenefitFilterOption['id']) => {
+    if (filterId === 'all') {
       setScreeningBenefitFilters([]);
       return;
     }
@@ -305,19 +309,19 @@ export default function LandingPage() {
     const hasEveryIndividualFilterSelected =
       uniqueNextFilters.length === INDIVIDUAL_HERO_BENEFIT_FILTER_IDS.length &&
       INDIVIDUAL_HERO_BENEFIT_FILTER_IDS.every((benefitId) =>
-        uniqueNextFilters.includes(benefitId),
+        uniqueNextFilters.includes(benefitId)
       );
 
     setScreeningBenefitFilters(
-      hasEveryIndividualFilterSelected ? [] : uniqueNextFilters,
+      hasEveryIndividualFilterSelected ? [] : uniqueNextFilters
     );
   };
 
   const getBenefitFilterChipClassName = (isActive: boolean) =>
-    `touch-manipulation transform-gpu whitespace-nowrap rounded-full border px-2.5 py-1.5 text-[0.72rem] font-semibold backdrop-blur transition-[transform,background-color,border-color,box-shadow,color] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f8fafc] sm:px-4 sm:py-2 sm:text-sm sm:duration-250 dark:focus-visible:ring-sky-200/40 dark:focus-visible:ring-offset-slate-950 ${
+    `min-h-10 touch-manipulation transform-gpu whitespace-nowrap rounded-full border px-2.5 py-1.5 text-[0.72rem] font-semibold backdrop-blur transition-[transform,background-color,border-color,box-shadow,color] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f8fafc] sm:px-4 sm:py-2 sm:text-sm sm:duration-250 dark:focus-visible:ring-sky-200/40 dark:focus-visible:ring-offset-slate-950 ${
       isActive
-        ? "border-[#1e3a5f] bg-[#1e3a5f] text-white shadow-[0_20px_38px_-18px_rgba(30,58,95,0.56)] hover:-translate-y-0.5 hover:scale-[1.04] hover:bg-[#16304f] hover:shadow-[0_26px_46px_-18px_rgba(30,58,95,0.62)] dark:border-sky-200 dark:bg-sky-200 dark:text-slate-950 dark:shadow-[0_22px_42px_-20px_rgba(125,211,252,0.62)] dark:hover:bg-sky-100 dark:hover:shadow-[0_28px_50px_-20px_rgba(125,211,252,0.72)]"
-        : "border-[#1e3a5f]/20 bg-white/92 text-[#1e3a5f] shadow-[0_16px_34px_-22px_rgba(30,58,95,0.38)] ring-1 ring-[#1e3a5f]/6 hover:-translate-y-0.5 hover:scale-[1.035] hover:border-[#1e3a5f]/38 hover:bg-white hover:shadow-[0_24px_44px_-22px_rgba(30,58,95,0.46)] hover:ring-[#1e3a5f]/12 dark:border-sky-200/42 dark:bg-slate-900/84 dark:text-sky-100 dark:shadow-[0_22px_44px_-24px_rgba(2,6,23,0.98),0_0_0_1px_rgba(125,211,252,0.2)] dark:ring-1 dark:ring-sky-200/10 dark:hover:border-sky-200/70 dark:hover:bg-slate-900 dark:hover:shadow-[0_28px_54px_-24px_rgba(2,6,23,1),0_0_0_1px_rgba(125,211,252,0.32)] dark:hover:ring-sky-200/22"
+        ? 'border-[#1e3a5f] bg-[#1e3a5f] text-white shadow-[0_20px_38px_-18px_rgba(30,58,95,0.56)] hover:-translate-y-0.5 hover:scale-[1.04] hover:bg-[#16304f] hover:shadow-[0_26px_46px_-18px_rgba(30,58,95,0.62)] dark:border-sky-200 dark:bg-sky-200 dark:text-slate-950 dark:shadow-[0_22px_42px_-20px_rgba(125,211,252,0.62)] dark:hover:bg-sky-100 dark:hover:shadow-[0_28px_50px_-20px_rgba(125,211,252,0.72)]'
+        : 'border-[#1e3a5f]/20 bg-white/92 text-[#1e3a5f] shadow-[0_16px_34px_-22px_rgba(30,58,95,0.38)] ring-1 ring-[#1e3a5f]/6 hover:-translate-y-0.5 hover:scale-[1.035] hover:border-[#1e3a5f]/38 hover:bg-white hover:shadow-[0_24px_44px_-22px_rgba(30,58,95,0.46)] hover:ring-[#1e3a5f]/12 dark:border-sky-200/42 dark:bg-slate-900/84 dark:text-sky-100 dark:shadow-[0_22px_44px_-24px_rgba(2,6,23,0.98),0_0_0_1px_rgba(125,211,252,0.2)] dark:ring-1 dark:ring-sky-200/10 dark:hover:border-sky-200/70 dark:hover:bg-slate-900 dark:hover:shadow-[0_28px_54px_-24px_rgba(2,6,23,1),0_0_0_1px_rgba(125,211,252,0.32)] dark:hover:ring-sky-200/22'
     }`;
 
   const renderBenefitCard = (benefit: BenefitSpotlight) => {
@@ -335,14 +339,14 @@ export default function LandingPage() {
         <div
           className={`relative flex h-12 w-12 items-center justify-center rounded-2xl shadow-[0_18px_36px_-22px_rgba(15,23,42,0.65)] transition-transform duration-300 group-hover:scale-110 ${benefit.iconClassName}`}
         >
-          <Icon className="h-6 w-6" />
+          <Icon className="h-6 w-6" aria-hidden="true" />
         </div>
 
         <h3 className="relative mt-5 text-2xl font-bold text-[#1e3a5f] dark:text-slate-100">
           {benefit.title}
         </h3>
 
-        <p className="relative mt-3 leading-relaxed text-gray-600 dark:text-slate-300">
+        <p className="relative mt-3 leading-relaxed text-gray-700 dark:text-slate-300">
           {benefit.description}
         </p>
 
@@ -377,21 +381,18 @@ export default function LandingPage() {
   };
 
   const showNextSlide = () => {
-    setActiveSlideIndex(
-      (currentIndex) => (currentIndex + 1) % HERO_SLIDES.length,
-    );
+    setActiveSlideIndex((currentIndex) => (currentIndex + 1) % HERO_SLIDES.length);
   };
 
   const showPreviousSlide = () => {
     setActiveSlideIndex(
-      (currentIndex) =>
-        (currentIndex - 1 + HERO_SLIDES.length) % HERO_SLIDES.length,
+      (currentIndex) => (currentIndex - 1 + HERO_SLIDES.length) % HERO_SLIDES.length
     );
   };
 
   const queueSideCardLayerChange = (
-    nextSide: "left" | "right" | null,
-    delayMs: number,
+    nextSide: 'left' | 'right' | null,
+    delayMs: number
   ) => {
     if (sideCardLayerTimeoutRef.current !== null) {
       window.clearTimeout(sideCardLayerTimeoutRef.current);
@@ -403,7 +404,7 @@ export default function LandingPage() {
     }, delayMs);
   };
 
-  const handleSideCardEnter = (side: "left" | "right") => {
+  const handleSideCardEnter = (side: 'left' | 'right') => {
     if (shouldReduceMotion) {
       setHoveredSideCard(side);
       setPromotedSideCard(side);
@@ -456,6 +457,7 @@ export default function LandingPage() {
 
     showPreviousSlide();
   };
+
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#f8fafc] font-sans text-black dark:bg-slate-950 dark:text-slate-100">
       <Navbar />
@@ -468,19 +470,15 @@ export default function LandingPage() {
           <motion.div
             aria-hidden="true"
             className="pointer-events-none absolute left-[2%] top-20 hidden h-56 w-56 rounded-full bg-[#dbeafe] blur-3xl lg:block dark:bg-sky-400/18"
-            animate={
-              shouldReduceMotion ? undefined : { x: [0, 14, 0], y: [0, -10, 0] }
-            }
-            transition={{ duration: 26, ease: "easeInOut", repeat: Infinity }}
+            animate={shouldReduceMotion ? undefined : { x: [0, 14, 0], y: [0, -10, 0] }}
+            transition={{ duration: 26, ease: 'easeInOut', repeat: Infinity }}
           />
 
           <motion.div
             aria-hidden="true"
             className="pointer-events-none absolute right-[4%] top-12 hidden h-64 w-64 rounded-full bg-[#fed7aa] blur-3xl lg:block dark:bg-orange-300/12"
-            animate={
-              shouldReduceMotion ? undefined : { x: [0, -12, 0], y: [0, 10, 0] }
-            }
-            transition={{ duration: 28, ease: "easeInOut", repeat: Infinity }}
+            animate={shouldReduceMotion ? undefined : { x: [0, -12, 0], y: [0, 10, 0] }}
+            transition={{ duration: 28, ease: 'easeInOut', repeat: Infinity }}
           />
 
           <div className="relative mx-auto max-w-7xl px-6">
@@ -495,11 +493,14 @@ export default function LandingPage() {
                   Massachusetts Benefits Screener, for Students
                 </div>
 
-                <h1 id="landing-hero-heading" className="max-w-4xl text-[2.7rem] font-bold leading-[0.97] tracking-tight text-[#1e3a5f] dark:text-slate-100 sm:text-4xl md:text-6xl md:leading-[0.95] lg:text-[5.15rem]">
-                  Discover{" "}
+                <h1
+                  id="landing-hero-heading"
+                  className="max-w-4xl text-[2.7rem] font-bold leading-[0.97] tracking-tight text-[#1e3a5f] dark:text-slate-100 sm:text-4xl md:text-6xl md:leading-[0.95] lg:text-[5.15rem]"
+                >
+                  Discover{' '}
                   <span className="bg-gradient-to-r from-[#1e3a5f] to-[#f97316] bg-clip-text text-transparent dark:from-sky-200 dark:to-orange-300">
                     Benefits
-                  </span>{" "}
+                  </span>{' '}
                   You May Qualify For
                 </h1>
 
@@ -507,11 +508,10 @@ export default function LandingPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.55, delay: 0.1 }}
-                  className="mx-auto mt-4 max-w-3xl text-[0.95rem] leading-relaxed text-gray-600 dark:text-slate-300 sm:mt-5 sm:text-lg md:text-2xl lg:mx-0"
+                  className="mx-auto mt-4 max-w-3xl text-[0.95rem] leading-relaxed text-gray-700 dark:text-slate-300 sm:mt-5 sm:text-lg md:text-2xl lg:mx-0"
                 >
-                  A simple, secure way to check your eligibility for student
-                  aid, food assistance, MBTA discounts and more. Get matched in
-                  minutes.
+                  A simple, secure way to check your eligibility for student aid,
+                  food assistance, MBTA discounts and more. Get matched in minutes.
                 </motion.p>
 
                 <motion.div
@@ -523,10 +523,13 @@ export default function LandingPage() {
                   <Link to="/screener">
                     <Button
                       size="lg"
-                      className="group cursor-pointer rounded-full bg-[#f97316] px-9 py-5.5 text-[1.12rem] text-white shadow-[0_10px_26px_-10px_rgba(249,115,22,0.52)] transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:bg-[#ea580c] hover:shadow-[0_24px_36px_-12px_rgba(249,115,22,0.58)] sm:px-10 sm:py-7 sm:text-xl dark:shadow-[0_14px_34px_-14px_rgba(251,146,60,0.6)] dark:hover:shadow-[0_24px_40px_-16px_rgba(251,146,60,0.76)] md:px-12 md:py-8 md:text-[1.35rem]"
+                      className="group min-h-12 cursor-pointer rounded-full bg-[#f97316] px-9 py-5.5 text-[1.12rem] text-white shadow-[0_10px_26px_-10px_rgba(249,115,22,0.52)] transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:bg-[#ea580c] hover:shadow-[0_24px_36px_-12px_rgba(249,115,22,0.58)] sm:px-10 sm:py-7 sm:text-xl dark:shadow-[0_14px_34px_-14px_rgba(251,146,60,0.6)] dark:hover:shadow-[0_24px_40px_-16px_rgba(251,146,60,0.76)] md:px-12 md:py-8 md:text-[1.35rem]"
                     >
                       Start Screening
-                      <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1.5" />
+                      <ArrowRight
+                        className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1.5"
+                        aria-hidden="true"
+                      />
                     </Button>
                   </Link>
                 </motion.div>
@@ -534,14 +537,28 @@ export default function LandingPage() {
 
               <div
                 aria-labelledby="landing-hero-heading"
+                aria-describedby={`${heroCarouselInstructionsId} ${heroCarouselStatusId}`}
                 aria-roledescription="carousel"
                 className="order-3 relative mx-auto w-full max-w-[34rem] sm:max-w-[58rem] lg:col-start-2 lg:row-span-2 lg:max-w-[58rem]"
                 onMouseMove={handleHeroVisualMove}
                 onMouseLeave={resetHeroVisualHover}
                 onTouchStart={handleHeroTouchStart}
                 onTouchEnd={handleHeroTouchEnd}
-                style={{ touchAction: "pan-y pinch-zoom" }}
+                style={{ touchAction: 'pan-y pinch-zoom' }}
               >
+                <p id={heroCarouselInstructionsId} className="sr-only">
+                  This is a rotating hero carousel. Use the previous and next slide
+                  buttons, slide indicators, or swipe on touch devices.
+                </p>
+                <p
+                  id={heroCarouselStatusId}
+                  className="sr-only"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  {carouselAnnouncement}
+                </p>
+
                 <motion.div
                   className="absolute -left-2 top-10 hidden w-72 transform-gpu overflow-hidden rounded-[2rem] border border-white/85 bg-white/92 p-2.5 shadow-[0_30px_80px_-40px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-slate-900/84 dark:shadow-[0_34px_96px_-44px_rgba(2,6,23,0.92)] md:block lg:-left-24"
                   style={{
@@ -549,9 +566,9 @@ export default function LandingPage() {
                     y: shouldReduceMotion ? 0 : leftCardY,
                     rotate: shouldReduceMotion ? 0 : leftCardRotate,
                     scale: shouldReduceMotion ? 1 : leftCardScale,
-                    zIndex: promotedSideCard === "left" ? 30 : 0,
+                    zIndex: promotedSideCard === 'left' ? 30 : 0,
                   }}
-                  onHoverStart={() => handleSideCardEnter("left")}
+                  onHoverStart={() => handleSideCardEnter('left')}
                   onHoverEnd={handleSideCardLeave}
                   whileHover={
                     shouldReduceMotion
@@ -560,11 +577,11 @@ export default function LandingPage() {
                           x: -18,
                           y: -4,
                           scale: 1.1,
-                          boxShadow: "0 42px 110px -42px rgba(15,23,42,0.58)",
+                          boxShadow: '0 42px 110px -42px rgba(15,23,42,0.58)',
                         }
                   }
                   transition={{
-                    type: "spring",
+                    type: 'spring',
                     stiffness: 200,
                     damping: 24,
                     mass: 0.78,
@@ -585,9 +602,9 @@ export default function LandingPage() {
                     y: shouldReduceMotion ? 0 : rightCardY,
                     rotate: shouldReduceMotion ? 0 : rightCardRotate,
                     scale: shouldReduceMotion ? 1 : rightCardScale,
-                    zIndex: promotedSideCard === "right" ? 30 : 0,
+                    zIndex: promotedSideCard === 'right' ? 30 : 0,
                   }}
-                  onHoverStart={() => handleSideCardEnter("right")}
+                  onHoverStart={() => handleSideCardEnter('right')}
                   onHoverEnd={handleSideCardLeave}
                   whileHover={
                     shouldReduceMotion
@@ -596,11 +613,11 @@ export default function LandingPage() {
                           x: 18,
                           y: 4,
                           scale: 1.1,
-                          boxShadow: "0 42px 110px -42px rgba(15,23,42,0.58)",
+                          boxShadow: '0 42px 110px -42px rgba(15,23,42,0.58)',
                         }
                   }
                   transition={{
-                    type: "spring",
+                    type: 'spring',
                     stiffness: 200,
                     damping: 24,
                     mass: 0.78,
@@ -619,34 +636,37 @@ export default function LandingPage() {
                   animate={
                     shouldReduceMotion
                       ? { x: 0 }
-                      : hoveredSideCard === "left"
-                        ? { x: 12 }
-                        : hoveredSideCard === "right"
-                          ? { x: -12 }
-                          : { x: 0 }
+                      : hoveredSideCard === 'left'
+                      ? { x: 12 }
+                      : hoveredSideCard === 'right'
+                      ? { x: -12 }
+                      : { x: 0 }
                   }
                   transition={{
-                    type: "spring",
+                    type: 'spring',
                     stiffness: 180,
                     damping: 24,
                     mass: 0.8,
                   }}
                 >
-                  <div className="relative aspect-[16/11] overflow-hidden rounded-[1.45rem] bg-slate-200 dark:bg-slate-800 sm:aspect-[16/10] md:rounded-[1.85rem]">
+                  <div
+                    id={heroCarouselRegionId}
+                    className="relative aspect-[16/11] overflow-hidden rounded-[1.45rem] bg-slate-200 dark:bg-slate-800 sm:aspect-[16/10] md:rounded-[1.85rem]"
+                  >
                     {HERO_SLIDES.map((slide, index) => {
                       const isActive = activeSlideIndex === index;
 
                       return (
                         <motion.div
                           key={slide.alt}
-                          className={`absolute inset-0 ${isActive ? "z-10" : "z-0"}`}
+                          className={`absolute inset-0 ${isActive ? 'z-10' : 'z-0'}`}
                           initial={false}
                           animate={{ opacity: isActive ? 1 : 0 }}
                           transition={{
                             duration: shouldReduceMotion ? 0.2 : 0.45,
                             ease: [0.22, 1, 0.36, 1],
                           }}
-                          style={{ pointerEvents: isActive ? "auto" : "none" }}
+                          style={{ pointerEvents: isActive ? 'auto' : 'none' }}
                           aria-hidden={!isActive}
                         >
                           <motion.div
@@ -675,7 +695,7 @@ export default function LandingPage() {
                                   ? { duration: 0 }
                                   : {
                                       duration: 13.5,
-                                      ease: "easeInOut",
+                                      ease: 'easeInOut',
                                       repeat: Infinity,
                                     }
                               }
@@ -687,6 +707,28 @@ export default function LandingPage() {
                         </motion.div>
                       );
                     })}
+
+                    <div className="absolute inset-y-0 left-0 z-20 flex items-center pl-2 sm:pl-3">
+                      <button
+                        type="button"
+                        onClick={showPreviousSlide}
+                        aria-label="Show previous slide"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur transition hover:bg-black/45 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30"
+                      >
+                        <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                      </button>
+                    </div>
+
+                    <div className="absolute inset-y-0 right-0 z-20 flex items-center pr-2 sm:pr-3">
+                      <button
+                        type="button"
+                        onClick={showNextSlide}
+                        aria-label="Show next slide"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur transition hover:bg-black/45 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30"
+                      >
+                        <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                      </button>
+                    </div>
 
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-2.5 sm:p-5 md:p-6">
                       <div className="grid max-w-[12.5rem] grid-cols-1 gap-2.5 rounded-[0.95rem] border border-white/10 bg-[#08131f]/72 p-2.5 text-left text-white shadow-[0_18px_50px_-32px_rgba(8,19,31,0.92)] sm:max-w-none sm:min-h-[7.5rem] sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:gap-4 sm:rounded-[1.35rem] sm:p-4">
@@ -716,38 +758,45 @@ export default function LandingPage() {
                             key={slide.alt}
                             type="button"
                             aria-label={`Show slide ${index + 1}: ${slide.eyebrow}`}
-                            aria-current={isActive ? "true" : undefined}
+                            aria-current={isActive ? 'true' : undefined}
                             aria-pressed={isActive}
+                            aria-controls={heroCarouselRegionId}
                             onClick={() => setActiveSlideIndex(index)}
-                            className={`h-2.5 rounded-full transition-all ${
-                              isActive
-                                ? "w-8 bg-[#1e3a5f] dark:bg-sky-200"
-                                : "w-2.5 bg-gray-300 hover:bg-gray-400 dark:bg-slate-700 dark:hover:bg-slate-500"
-                            }`}
-                          />
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1e3a5f]/25 dark:focus-visible:ring-sky-200/30"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className={`block rounded-full transition-all ${
+                                isActive
+                                  ? 'h-2.5 w-8 bg-[#1e3a5f] dark:bg-sky-200'
+                                  : 'h-2.5 w-2.5 bg-gray-300 dark:bg-slate-700'
+                              }`}
+                            />
+                          </button>
                         );
                       })}
 
                       <button
                         type="button"
                         onClick={() => setIsHeroAutoplayEnabled((current) => !current)}
-                        aria-label={isHeroAutoplayEnabled ? "Pause slideshow" : "Play slideshow"}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 bg-white text-[#1e3a5f] transition-colors hover:border-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/35 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-950 dark:text-sky-100 dark:hover:border-sky-200 dark:hover:bg-slate-900"
+                        aria-label={isHeroAutoplayEnabled ? 'Pause slideshow' : 'Play slideshow'}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white text-[#1e3a5f] transition-colors hover:border-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1e3a5f]/35 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-950 dark:text-sky-100 dark:hover:border-sky-200 dark:hover:bg-slate-900"
                       >
                         {isHeroAutoplayEnabled ? (
-                          <Pause className="h-3.5 w-3.5" />
+                          <Pause className="h-4 w-4" aria-hidden="true" />
                         ) : (
-                          <Play className="h-3.5 w-3.5" />
+                          <Play className="h-4 w-4" aria-hidden="true" />
                         )}
                       </button>
                     </div>
 
-                    <p className="text-sm font-medium text-gray-500 dark:text-slate-400">
+                    <p className="text-sm font-medium text-gray-600 dark:text-slate-400">
                       Massachusetts students, clearer paths to benefits
                     </p>
                   </div>
                 </motion.div>
               </div>
+
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -758,10 +807,14 @@ export default function LandingPage() {
                   Screen For
                 </p>
 
-                <div className="flex flex-wrap justify-center gap-1 sm:gap-2 lg:justify-start" role="group" aria-label="Filter the benefit screener by program">
+                <div
+                  className="flex flex-wrap justify-center gap-1 sm:gap-2 lg:justify-start"
+                  role="group"
+                  aria-label="Filter the benefit screener by program"
+                >
                   {HERO_BENEFIT_FILTERS.map((filterOption) => {
                     const isActive =
-                      filterOption.id === "all"
+                      filterOption.id === 'all'
                         ? isAllBenefitFilterSelected
                         : screeningBenefitFilters.includes(filterOption.id);
 
@@ -770,9 +823,7 @@ export default function LandingPage() {
                         key={filterOption.id}
                         type="button"
                         aria-pressed={isActive}
-                        onClick={() =>
-                          handleBenefitFilterToggle(filterOption.id)
-                        }
+                        onClick={() => handleBenefitFilterToggle(filterOption.id)}
                         className={getBenefitFilterChipClassName(isActive)}
                       >
                         {filterOption.label}
@@ -790,36 +841,35 @@ export default function LandingPage() {
             <div className="grid gap-10 text-center md:grid-cols-3 md:gap-12 lg:gap-14">
               <motion.div
                 {...(isMobile
-                  ? getTightMobileRevealProps(0.01, "0px 0px 10% 0px", 20)
+                  ? getTightMobileRevealProps(0.01, '0px 0px 10% 0px', 20)
                   : getLandingRevealProps(0.02, 0.26, 24))}
               >
                 <div className="group flex cursor-default flex-col items-center space-y-5 rounded-2xl p-8 transition-all hover:bg-white hover:shadow-2xl hover:shadow-gray-200/50 dark:hover:bg-slate-900 dark:hover:shadow-[0_24px_60px_-28px_rgba(2,6,23,0.9)] md:p-10 md:hover:-translate-y-2">
                   <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-[#1e3a5f] transition-transform group-hover:scale-110 md:h-20 md:w-20">
-                    <FileText className="h-8 w-8 text-white md:h-9 md:w-9" />
+                    <FileText className="h-8 w-8 text-white md:h-9 md:w-9" aria-hidden="true" />
                   </div>
-                  <h3 className="text-xl font-bold text-[#1e3a5f] dark:text-slate-100 md:text-2xl">
+                  <h2 className="text-xl font-bold text-[#1e3a5f] dark:text-slate-100 md:text-2xl">
                     Answer Questions
-                  </h3>
-                  <p className="max-w-sm text-gray-600 dark:text-slate-300 md:text-lg">
-                    Complete a brief questionnaire about your student status and
-                    needs.
+                  </h2>
+                  <p className="max-w-sm text-gray-700 dark:text-slate-300 md:text-lg">
+                    Complete a brief questionnaire about your student status and needs.
                   </p>
                 </div>
               </motion.div>
 
               <motion.div
                 {...(isMobile
-                  ? getTightMobileRevealProps(0.04, "0px 0px 10% 0px", 20)
+                  ? getTightMobileRevealProps(0.04, '0px 0px 10% 0px', 20)
                   : getLandingRevealProps(0.08, 0.26, 24))}
               >
                 <div className="group flex cursor-default flex-col items-center space-y-5 rounded-2xl p-8 transition-all hover:bg-white hover:shadow-2xl hover:shadow-gray-200/50 dark:hover:bg-slate-900 dark:hover:shadow-[0_24px_60px_-28px_rgba(2,6,23,0.9)] md:p-10 md:hover:-translate-y-2">
                   <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-[#f97316] transition-transform group-hover:scale-110 md:h-20 md:w-20">
-                    <ListChecks className="h-8 w-8 text-white md:h-9 md:w-9" />
+                    <ListChecks className="h-8 w-8 text-white md:h-9 md:w-9" aria-hidden="true" />
                   </div>
-                  <h3 className="text-xl font-bold text-[#1e3a5f] dark:text-slate-100 md:text-2xl">
+                  <h2 className="text-xl font-bold text-[#1e3a5f] dark:text-slate-100 md:text-2xl">
                     See Matches
-                  </h3>
-                  <p className="max-w-sm text-gray-600 dark:text-slate-300 md:text-lg">
+                  </h2>
+                  <p className="max-w-sm text-gray-700 dark:text-slate-300 md:text-lg">
                     Instantly view benefits programs you may be eligible for.
                   </p>
                 </div>
@@ -827,45 +877,63 @@ export default function LandingPage() {
 
               <motion.div
                 {...(isMobile
-                  ? getTightMobileRevealProps(0.07, "0px 0px 10% 0px", 20)
+                  ? getTightMobileRevealProps(0.07, '0px 0px 10% 0px', 20)
                   : getLandingRevealProps(0.14, 0.26, 24))}
               >
                 <div className="group flex cursor-default flex-col items-center space-y-5 rounded-2xl p-8 transition-all hover:bg-white hover:shadow-2xl hover:shadow-gray-200/50 dark:hover:bg-slate-900 dark:hover:shadow-[0_24px_60px_-28px_rgba(2,6,23,0.9)] md:p-10 md:hover:-translate-y-2">
                   <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-[#1e3a5f] transition-transform group-hover:scale-110 md:h-20 md:w-20">
-                    <CheckSquare className="h-8 w-8 text-white md:h-9 md:w-9" />
+                    <CheckSquare className="h-8 w-8 text-white md:h-9 md:w-9" aria-hidden="true" />
                   </div>
-                  <h3 className="text-xl font-bold text-[#1e3a5f] dark:text-slate-100 md:text-2xl">
+                  <h2 className="text-xl font-bold text-[#1e3a5f] dark:text-slate-100 md:text-2xl">
                     Get Checklist
-                  </h3>
-                  <p className="max-w-sm text-gray-600 dark:text-slate-300 md:text-lg">
+                  </h2>
+                  <p className="max-w-sm text-gray-700 dark:text-slate-300 md:text-lg">
                     Download a personalized checklist to help you apply.
                   </p>
                 </div>
               </motion.div>
             </div>
+
             <motion.div
               {...getLandingRevealProps(0.18, 0.22, 18)}
               className="mx-auto mt-8 max-w-5xl md:mt-10"
             >
               <div className="flex flex-col gap-4 rounded-2xl border border-[#1e3a5f]/10 bg-white/82 px-5 py-4 shadow-[0_20px_48px_-36px_rgba(15,23,42,0.2)] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-6 dark:border-sky-200/12 dark:bg-slate-900/78 dark:shadow-[0_24px_60px_-40px_rgba(2,6,23,0.92)]">
-                <p className="max-w-3xl text-sm leading-relaxed text-gray-600 dark:text-slate-300 sm:text-[0.95rem]">
+                <p className="max-w-3xl text-sm leading-relaxed text-gray-700 dark:text-slate-300 sm:text-[0.95rem]">
                   <span className="font-semibold text-[#1e3a5f] dark:text-slate-100">
                     We respect your privacy.
-                  </span>{" "}
+                  </span>{' '}
                   We only collect what the screener and checklist need to work.
                 </p>
 
-                <Link
-                  to="/privacy"
-                  className="group inline-flex items-center gap-2 self-start text-sm font-semibold text-[#1e3a5f] underline-offset-4 transition-colors hover:text-[#16304f] hover:underline dark:text-sky-200 dark:hover:text-sky-100"
-                >
-                  Learn more
-                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-                </Link>
+                <div className="flex flex-wrap gap-4">
+                  <Link
+                    to="/privacy"
+                    className="group inline-flex items-center gap-2 self-start text-sm font-semibold text-[#1e3a5f] underline-offset-4 transition-colors hover:text-[#16304f] hover:underline dark:text-sky-200 dark:hover:text-sky-100"
+                  >
+                    Learn more
+                    <ArrowRight
+                      className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
+                      aria-hidden="true"
+                    />
+                  </Link>
+
+                  <Link
+                    to="/accessibility"
+                    className="group inline-flex items-center gap-2 self-start text-sm font-semibold text-[#1e3a5f] underline-offset-4 transition-colors hover:text-[#16304f] hover:underline dark:text-sky-200 dark:hover:text-sky-100"
+                  >
+                    Accessibility statement
+                    <ArrowRight
+                      className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
+                      aria-hidden="true"
+                    />
+                  </Link>
+                </div>
               </div>
             </motion.div>
           </div>
         </section>
+
         <section
           aria-labelledby="benefits-heading"
           className="relative overflow-hidden border-t border-gray-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_28%,#ffffff_100%)] px-6 py-16 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.96)_0%,rgba(15,23,42,0.96)_30%,rgba(2,6,23,0.98)_100%)] md:py-20"
@@ -884,10 +952,10 @@ export default function LandingPage() {
                   >
                     Popular Massachusetts benefits students often ask about
                   </h2>
-                  <p className="mt-4 text-lg text-gray-600 dark:text-slate-300">
-                    CommonMASS helps organize information about major programs
-                    in one place, so students can compare options without
-                    bouncing between multiple websites.
+                  <p className="mt-4 text-lg text-gray-700 dark:text-slate-300">
+                    CommonMASS helps organize information about major programs in one
+                    place, so students can compare options without bouncing between
+                    multiple websites.
                   </p>
                 </motion.div>
 
@@ -897,7 +965,7 @@ export default function LandingPage() {
                       key={benefit.title}
                       {...getTightMobileRevealProps(
                         0.03 + Math.min(index * 0.025, 0.12),
-                        "0px 0px 12% 0px",
+                        '0px 0px 12% 0px'
                       )}
                       className="h-full"
                     >
@@ -918,10 +986,10 @@ export default function LandingPage() {
                   >
                     Popular Massachusetts benefits students often ask about
                   </h2>
-                  <p className="mt-4 text-lg text-gray-600 dark:text-slate-300">
-                    CommonMASS helps organize information about major programs
-                    in one place, so students can compare options without
-                    bouncing between multiple websites.
+                  <p className="mt-4 text-lg text-gray-700 dark:text-slate-300">
+                    CommonMASS helps organize information about major programs in one
+                    place, so students can compare options without bouncing between
+                    multiple websites.
                   </p>
                 </motion.div>
 
@@ -929,11 +997,7 @@ export default function LandingPage() {
                   {BENEFIT_SPOTLIGHTS.map((benefit, index) => (
                     <motion.div
                       key={benefit.title}
-                      {...getLandingRevealProps(
-                        Math.min(index * 0.05, 0.2),
-                        0.22,
-                        24,
-                      )}
+                      {...getLandingRevealProps(Math.min(index * 0.05, 0.2), 0.22, 24)}
                       className="h-full"
                     >
                       {renderBenefitCard(benefit)}
@@ -950,27 +1014,26 @@ export default function LandingPage() {
               <div className="rounded-3xl border border-[#1e3a5f]/10 bg-gradient-to-r from-[#eff6ff] to-[#fff7ed] p-8 dark:border-sky-200/10 dark:from-slate-900 dark:to-slate-900">
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                   <div>
-                    <h3 className="text-2xl font-bold text-[#1e3a5f] dark:text-slate-100">
+                    <h2 className="text-2xl font-bold text-[#1e3a5f] dark:text-slate-100">
                       Start with a quick screening
-                    </h3>
-                    <p className="mt-3 max-w-3xl text-gray-600 dark:text-slate-300">
-                      CommonMASS does not replace official benefit agencies or
-                      schools. It helps students understand what programs may be
-                      worth exploring first, then points them toward the next
-                      steps.
+                    </h2>
+                    <p className="mt-3 max-w-3xl text-gray-700 dark:text-slate-300">
+                      CommonMASS does not replace official benefit agencies or schools.
+                      It helps students understand what programs may be worth
+                      exploring first, then points them toward the next steps.
                     </p>
                   </div>
 
                   <div className="flex flex-wrap gap-3">
                     <Link to="/screener">
-                      <Button className="rounded-full bg-[#1e3a5f] px-6 py-5 text-white hover:bg-[#16304f] dark:bg-sky-200 dark:text-slate-950 dark:hover:bg-sky-100">
+                      <Button className="min-h-11 rounded-full bg-[#1e3a5f] px-6 py-5 text-white hover:bg-[#16304f] dark:bg-sky-200 dark:text-slate-950 dark:hover:bg-sky-100">
                         Go to Screener
                       </Button>
                     </Link>
 
                     <Link
                       to="/faq"
-                      className="inline-flex items-center rounded-full border border-[#1e3a5f]/15 bg-white px-6 py-3 text-sm font-semibold text-[#1e3a5f] shadow-sm transition-all hover:bg-[#f8fafc] dark:border-sky-200/20 dark:bg-slate-950 dark:text-sky-200 dark:hover:bg-slate-900"
+                      className="inline-flex min-h-11 items-center rounded-full border border-[#1e3a5f]/15 bg-white px-6 py-3 text-sm font-semibold text-[#1e3a5f] shadow-sm transition-all hover:bg-[#f8fafc] dark:border-sky-200/20 dark:bg-slate-950 dark:text-sky-200 dark:hover:bg-slate-900"
                     >
                       Read FAQs
                     </Link>

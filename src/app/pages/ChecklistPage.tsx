@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { Download, ExternalLink } from 'lucide-react';
 
 import { Navbar } from '../components/layout/Navbar';
@@ -11,7 +11,7 @@ import { InlineTooltipText } from '../components/ui/inline-tooltip-text';
 import { useBenefits } from '../context/BenefitsContext';
 import { getBenefitRichTextSegments } from '../data/benefitsData';
 import { useIsMobile } from '../components/ui/use-mobile';
-import { generatePacketRequest } from '@/lib/api';
+import { generatePacketRequest } from '../../lib/api';
 import { SiteFooter } from '../components/layout/SiteFooter';
 
 const desktopChecklistItemTransition = {
@@ -29,18 +29,30 @@ const mobileChecklistItemTransition = {
 
 const FEEDBACK_SURVEY_URL = 'https://forms.gle/x6J4fDrvWmUz6vFu9';
 
+function openUrlInNewTab(url: string) {
+  const link = document.createElement('a');
+  link.href = url;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.click();
+}
+
 export default function ChecklistPage() {
-  const { matchedBenefits, answers, checklistProgress, setChecklistItemChecked } = useBenefits();
+  const { matchedBenefits, answers, checklistProgress, setChecklistItemChecked } =
+    useBenefits();
   const isMobile = useIsMobile();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [generationStatus, setGenerationStatus] = useState<string>('');
 
   const checklistItemTransition = isMobile
     ? mobileChecklistItemTransition
     : desktopChecklistItemTransition;
 
   const checklistItemLayout = isMobile ? ('position' as const) : true;
-  const checklistListStyle = isMobile ? ({ overflowAnchor: 'none' } as const) : undefined;
+  const checklistListStyle = isMobile
+    ? ({ overflowAnchor: 'none' } as const)
+    : undefined;
 
   const checklistBenefits = matchedBenefits;
 
@@ -81,31 +93,12 @@ export default function ChecklistPage() {
   };
 
   const handleDownload = async () => {
-    if (checklistBenefits.length === 0) {
+    if (checklistBenefits.length === 0 || isGenerating) {
       return;
     }
 
-    const pendingTab = window.open('about:blank', '_blank');
-
-    if (pendingTab) {
-      pendingTab.document.write(`
-        <!doctype html>
-        <html>
-          <head>
-            <title>Preparing packet</title>
-          </head>
-          <body style="font-family: Arial, sans-serif; padding: 24px; line-height: 1.5;">
-            <h2 style="margin: 0 0 12px;">Preparing your PDF packet...</h2>
-            <p style="margin: 0; color: #444;">
-              Your personalized CommonMASS packet is being generated.
-            </p>
-          </body>
-        </html>
-      `);
-      pendingTab.document.close();
-    }
-
     setGenerationError(null);
+    setGenerationStatus('Preparing your PDF packet…');
     setIsGenerating(true);
 
     try {
@@ -117,13 +110,8 @@ export default function ChecklistPage() {
       });
 
       if (packetResult.url) {
-        if (pendingTab && !pendingTab.closed) {
-          pendingTab.location.replace(packetResult.url);
-          pendingTab.focus();
-        } else {
-          window.open(packetResult.url, '_blank', 'noopener,noreferrer');
-        }
-
+        openUrlInNewTab(packetResult.url);
+        setGenerationStatus('Your PDF packet is ready.');
         return;
       }
 
@@ -138,45 +126,17 @@ export default function ChecklistPage() {
         const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
         const objectUrl = window.URL.createObjectURL(pdfBlob);
 
-        if (pendingTab && !pendingTab.closed) {
-          pendingTab.location.replace(objectUrl);
-          pendingTab.focus();
-        } else {
-          window.open(objectUrl, '_blank', 'noopener,noreferrer');
-        }
-
+        openUrlInNewTab(objectUrl);
         window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 60_000);
+
+        setGenerationStatus('Your PDF packet is ready.');
         return;
       }
 
       throw new Error('No PDF data returned from API.');
     } catch (error) {
       console.error('Packet generation error:', error);
-
-      if (pendingTab && !pendingTab.closed) {
-        pendingTab.document.write(`
-          <!doctype html>
-          <html>
-            <head>
-              <title>Packet generation failed</title>
-            </head>
-            <body style="font-family: Arial, sans-serif; padding: 24px; line-height: 1.5;">
-              <h2 style="margin: 0 0 12px; color: #b91c1c;">Failed to generate packet</h2>
-              <p style="margin: 0; color: #444;">
-                Please return to the checklist and try again.
-              </p>
-            </body>
-          </html>
-        `);
-        pendingTab.document.close();
-
-        window.setTimeout(() => {
-          if (!pendingTab.closed) {
-            pendingTab.close();
-          }
-        }, 1800);
-      }
-
+      setGenerationStatus('');
       setGenerationError(
         error instanceof Error
           ? error.message
@@ -188,13 +148,17 @@ export default function ChecklistPage() {
   };
 
   return (
-    <div className="relative isolate min-h-screen overflow-x-hidden bg-[#f8fafc] text-black font-sans print:bg-white dark:bg-slate-950 dark:text-slate-100">
+    <div className="relative isolate min-h-screen overflow-x-hidden bg-[#f8fafc] font-sans text-black print:bg-white dark:bg-slate-950 dark:text-slate-100">
       <PageBackdrop />
       <div className="print:hidden">
         <Navbar />
       </div>
 
-      <main id="main-content" tabIndex={-1} className="container mx-auto max-w-3xl px-6 py-12 print:max-w-none print:py-0">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="container mx-auto max-w-3xl px-6 py-12 print:max-w-none print:py-0"
+      >
         <div className="relative mb-12 print:mb-8">
           <div
             className="relative overflow-hidden rounded-t-[2rem] border-x border-t border-white/70 bg-white/72 p-8 pb-20 shadow-[0_34px_80px_-60px_rgba(15,23,42,0.42)] backdrop-blur-sm print:border-none print:bg-transparent print:p-0 print:pb-0 print:shadow-none dark:border-white/10 dark:bg-slate-900/58"
@@ -218,19 +182,37 @@ export default function ChecklistPage() {
               </h1>
 
               <p className="max-w-2xl text-gray-600 print:text-black dark:text-slate-300">
-                Use this checklist to keep track of the next steps for your matched benefits. You can
-                check off anything you have already finished, and your downloaded PDF will show those
-                items as completed.
+                Use this checklist to keep track of the next steps for your matched
+                benefits. You can check off anything you have already finished, and your
+                downloaded PDF will show those items as completed.
               </p>
 
               {checklistBenefits.length > 0 && (
-                <p role="status" aria-live="polite" className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-400">
-                  {completedChecklistItems} of {totalChecklistItems} checklist items completed.
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-400"
+                >
+                  {completedChecklistItems} of {totalChecklistItems} checklist items
+                  completed.
+                </p>
+              )}
+
+              {generationStatus && (
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-400"
+                >
+                  {generationStatus}
                 </p>
               )}
 
               {generationError && (
-                <p role="alert" className="mt-4 text-sm font-medium text-red-600 dark:text-red-400">
+                <p
+                  role="alert"
+                  className="mt-4 text-sm font-medium text-red-600 dark:text-red-400"
+                >
                   {generationError}
                 </p>
               )}
@@ -238,14 +220,15 @@ export default function ChecklistPage() {
               {checklistBenefits.length > 0 && (
                 <div className="mt-6 flex justify-center print:hidden">
                   <Button
+                    type="button"
                     size="lg"
                     onClick={handleDownload}
                     disabled={isGenerating}
                     aria-busy={isGenerating}
                     className="cursor-pointer bg-[#1e3a5f] text-white hover:bg-[#152a45] dark:bg-sky-300 dark:text-slate-950 dark:hover:bg-sky-200 dark:shadow-[0_18px_36px_-24px_rgba(125,211,252,0.55)]"
                   >
-                    <Download className="h-5 w-5" />
-                    {isGenerating ? 'Generating PDF...' : 'Download PDF'}
+                    <Download className="h-5 w-5" aria-hidden="true" />
+                    {isGenerating ? 'Generating PDF…' : 'Download PDF'}
                   </Button>
                 </div>
               )}
@@ -288,14 +271,22 @@ export default function ChecklistPage() {
                       variant="outline"
                       className="group w-full border-[#355b8a] bg-white text-[#355b8a] shadow-sm transition-all duration-300 hover:border-[#f97316] hover:bg-[#f97316] hover:text-white hover:shadow-[0_12px_28px_-18px_rgba(249,115,22,0.4)] md:w-auto print:hidden dark:border-sky-200 dark:bg-transparent dark:text-sky-200 dark:hover:border-[#f97316] dark:hover:bg-[#f97316] dark:hover:text-white dark:hover:shadow-[0_0_24px_rgba(249,115,22,0.28)]"
                     >
-                      <a href={benefit.officialUrl} target="_blank" rel="noopener noreferrer">
+                      <a
+                        href={benefit.officialUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`${benefit.officialButtonLabel ?? 'Visit official site'} for ${benefit.title} (opens in a new tab)`}
+                      >
                         <ExternalLink className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                         {getOfficialButtonLabel(benefit.id, benefit.officialButtonLabel)}
                       </a>
                     </Button>
                   </div>
 
-                  <div className="space-y-3 pl-0 md:pl-11 print:pl-0" style={checklistListStyle}>
+                  <div
+                    className="space-y-3 pl-0 md:pl-11 print:pl-0"
+                    style={checklistListStyle}
+                  >
                     {getOrderedChecklistItems(benefit.id, benefit.checklist).map(
                       ({ item, originalIndex, checked }) => (
                         <motion.div
@@ -358,7 +349,12 @@ export default function ChecklistPage() {
             variant="outline"
             className="group border-[#355b8a] bg-white/92 px-6 py-5 text-[#1e3a5f] shadow-sm transition-all duration-300 hover:border-[#f97316] hover:bg-[#f97316] hover:text-white hover:shadow-[0_14px_32px_-20px_rgba(249,115,22,0.44)] dark:border-sky-200/55 dark:bg-slate-900/82 dark:text-sky-100 dark:hover:border-[#f97316] dark:hover:bg-[#f97316] dark:hover:text-white"
           >
-            <a href={FEEDBACK_SURVEY_URL} target="_blank" rel="noopener noreferrer">
+            <a
+              href={FEEDBACK_SURVEY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Open the CommonMASS feedback survey in a new tab"
+            >
               <ExternalLink className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
               Take Our Feedback Survey
             </a>

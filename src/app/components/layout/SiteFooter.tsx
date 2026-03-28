@@ -1,4 +1,5 @@
-﻿import { Link } from 'react-router';
+﻿// src/app/components/layout/SiteFooter.tsx
+import { Link } from 'react-router';
 
 const FEEDBACK_SURVEY_URL = 'https://forms.gle/x6J4fDrvWmUz6vFu9';
 
@@ -7,7 +8,6 @@ export function SiteFooter() {
 
   return (
     <footer
-      role="contentinfo"
       className="relative overflow-hidden border-t border-[#16304f]/80 bg-[#1e3a5f] py-10 text-white dark:border-white/10 dark:bg-[#0b1120]"
     >
       <div
@@ -37,52 +37,29 @@ export function SiteFooter() {
               Navigate
             </p>
             <ul className="mt-3 space-y-2 text-sm md:text-base">
-              <li>
-                <Link className="underline-offset-4 transition-colors hover:text-orange-300 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60" to="/">
-                  Home
-                </Link>
-              </li>
-              <li>
-                <Link className="underline-offset-4 transition-colors hover:text-orange-300 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60" to="/screener">
-                  Screener
-                </Link>
-              </li>
-              <li>
-                <Link className="underline-offset-4 transition-colors hover:text-orange-300 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60" to="/faq">
-                  FAQ
-                </Link>
-              </li>
+              <li><Link className="underline-offset-4 transition-colors hover:text-orange-300" to="/">Home</Link></li>
+              <li><Link className="underline-offset-4 transition-colors hover:text-orange-300" to="/screener">Screener</Link></li>
+              <li><Link className="underline-offset-4 transition-colors hover:text-orange-300" to="/faq">FAQ</Link></li>
             </ul>
           </nav>
 
-          <nav aria-label="Legal and support links">
+          <nav aria-label="Legal and accessibility links">
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-sky-100/85">
-              Legal and support
+              Policies and support
             </p>
             <ul className="mt-3 space-y-2 text-sm md:text-base">
-              <li>
-                <Link className="underline-offset-4 transition-colors hover:text-orange-300 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60" to="/privacy">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link className="underline-offset-4 transition-colors hover:text-orange-300 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60" to="/terms">
-                  Terms of Use
-                </Link>
-              </li>
-              <li>
-                <Link className="underline-offset-4 transition-colors hover:text-orange-300 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60" to="/cookies">
-                  Cookie Policy
-                </Link>
-              </li>
+              <li><Link className="underline-offset-4 transition-colors hover:text-orange-300" to="/accessibility">Accessibility Statement</Link></li>
+              <li><Link className="underline-offset-4 transition-colors hover:text-orange-300" to="/privacy">Privacy Policy</Link></li>
+              <li><Link className="underline-offset-4 transition-colors hover:text-orange-300" to="/terms">Terms of Use</Link></li>
+              <li><Link className="underline-offset-4 transition-colors hover:text-orange-300" to="/cookies">Cookie Policy</Link></li>
               <li>
                 <a
-                  className="underline-offset-4 transition-colors hover:text-orange-300 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                  className="underline-offset-4 transition-colors hover:text-orange-300"
                   href={FEEDBACK_SURVEY_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Feedback Survey
+                  Feedback Survey <span className="sr-only">(opens in a new tab)</span>
                 </a>
               </li>
             </ul>
