@@ -59,18 +59,6 @@ function uniqueBenefitIds(values: Benefit['id'][]): Benefit['id'][] {
   return Array.from(new Set(values));
 }
 
-function applyScreeningBenefitFilters(
-  matches: Benefit[],
-  selectedBenefitFilters: Benefit['id'][]
-): Benefit[] {
-  if (!selectedBenefitFilters.length) {
-    return matches;
-  }
-
-  const selectedBenefitIdSet = new Set(selectedBenefitFilters);
-  return matches.filter((benefit) => selectedBenefitIdSet.has(benefit.id));
-}
-
 function buildChecklistProgress(
   matches: Benefit[],
   previousProgress: ChecklistProgressMap
@@ -122,14 +110,9 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
   const [evaluationError, setEvaluationError] = useState<string | null>(null);
   const [checklistProgress, setChecklistProgress] = useState<ChecklistProgressMap>({});
 
-  const normalizedMatchedBenefits = useMemo(
+  const matchedBenefits = useMemo(
     () => withLocalChecklist(serverMatchedBenefits),
     [serverMatchedBenefits]
-  );
-
-  const matchedBenefits = useMemo(
-    () => applyScreeningBenefitFilters(normalizedMatchedBenefits, screeningBenefitFilters),
-    [normalizedMatchedBenefits, screeningBenefitFilters]
   );
 
   useEffect(() => {
@@ -160,17 +143,16 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
     setEvaluationError(null);
 
     try {
-      const apiMatches = await evaluateEligibilityRequest(profile);
-      const nextMatches = withLocalChecklist(apiMatches);
-      const filteredMatches = applyScreeningBenefitFilters(
-        nextMatches,
+      const apiMatches = await evaluateEligibilityRequest(
+        profile,
         screeningBenefitFilters
       );
+      const nextMatches = withLocalChecklist(apiMatches);
 
       setServerMatchedBenefits(nextMatches);
       setEvaluationError(null);
 
-      return filteredMatches;
+      return nextMatches;
     } catch (error) {
       const message =
         error instanceof Error

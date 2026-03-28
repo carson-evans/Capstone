@@ -33,6 +33,15 @@ function isLoopbackHost(hostname: string) {
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
 }
 
+function isAllowedDownloadHost(hostname: string) {
+  const normalizedHostname = hostname.toLowerCase();
+
+  return (
+    normalizedHostname.endsWith('.amazonaws.com') ||
+    normalizedHostname.endsWith('.cloudfront.net')
+  );
+}
+
 function firstString(...values: unknown[]): string | undefined {
   for (const value of values) {
     if (typeof value === 'string') {
@@ -97,7 +106,19 @@ function normalizeDownloadUrl(url: string): string {
     throw new Error('Download URL must use HTTPS outside local development.');
   }
 
-  return parsed.toString();
+  if (isLocal) {
+    return parsed.toString();
+  }
+
+  if (canUseWindow() && parsed.origin === window.location.origin) {
+    return parsed.toString();
+  }
+
+  if (isAllowedDownloadHost(parsed.hostname)) {
+    return parsed.toString();
+  }
+
+  throw new Error('Download URL origin is not allowed.');
 }
 
 function getEligibilityApiUrl(): string {
@@ -199,11 +220,17 @@ async function postJson(
 }
 
 export async function evaluateEligibilityRequest(
-  profile: AnswerMap
+  profile: AnswerMap,
+  selectedBenefits: string[] = []
 ): Promise<Benefit[]> {
+  const requestPayload =
+    selectedBenefits.length > 0
+      ? { profile, selectedBenefits }
+      : { profile };
+
   const { response, payload } = await postJson(
     getEligibilityApiUrl(),
-    { profile },
+    requestPayload,
     'Eligibility API'
   );
 
