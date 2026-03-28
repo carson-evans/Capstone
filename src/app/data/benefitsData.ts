@@ -1,4 +1,4 @@
-﻿import {
+import {
   formatCurrency,
   getEffectiveMassGrantPlusIncomeBand,
   getExactHouseholdSize,
@@ -75,10 +75,12 @@ const yesNoOptions: QuestionOption[] = [
   { label: 'No', value: 'no' },
 ];
 
+export const NOT_ENROLLED_NEXT_YEAR_VALUE = 'not_enrolled_next_year';
+
 const yesNoOrNotEnrolledNextYearOptions: QuestionOption[] = [
   { label: 'Yes', value: 'yes' },
   { label: 'No', value: 'no' },
-  { label: 'Not enrolling next academic year', value: 'not_enrolled_next_year' },
+  { label: 'Not enrolling next academic year', value: NOT_ENROLLED_NEXT_YEAR_VALUE },
 ];
 
 const studentOrFutureValues = ['full_time', 'part_time', 'future_full_time', 'future_part_time'];
@@ -114,6 +116,8 @@ export const MASFA_START_URL = 'https://www.mass.edu/osfa/students/masfa.asp';
 export const MASFA_STATUS_URL = 'https://madhestudentxprod.regenteducation.net/signin';
 export const DHE_AFFIDAVIT_ACTION_STATUS = 'Action Needed, Complete DHE Affidavit';
 export const GATHER_TAX_DOCUMENTS_CHECKLIST_ITEM = 'Gather tax documents';
+export const MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM =
+  'Attend a participating MASSGrant Plus school';
 export const COMPLETE_DHE_AFFIDAVIT_CHECKLIST_ITEM =
   'Complete the DHE Tuition Equity Form and Affidavit';
 export const PROVIDE_DHE_AFFIDAVIT_CHECKLIST_ITEM =
@@ -228,7 +232,7 @@ export const benefits: Benefit[] = [
     checklist: [
       'Complete the FAFSA or MASFA',
       'Be a Massachusetts resident for at least 12 months for reasons other than education',
-      'Attend a participating MASSGrant Plus school',
+      MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM,
       'Not already hold a bachelor\'s degree',
       'Review eligibility with your financial aid office',
     ],
@@ -632,6 +636,40 @@ export function isBenefitApplicationCompleted(
   return false;
 }
 
+export function shouldDeprioritizeBenefit(
+  benefitId: string,
+  answers: BenefitProfile
+): boolean {
+  const applicationType = getBenefitApplicationType(benefitId, answers);
+
+  if (applicationType === 'masfa') {
+    const masfaStatus = answers['masfa_completed'];
+    return masfaStatus === 'yes' || masfaStatus === NOT_ENROLLED_NEXT_YEAR_VALUE;
+  }
+
+  if (applicationType === 'fafsa') {
+    const fafsaStatus = answers['fafsa_completed'];
+    return fafsaStatus === 'yes' || fafsaStatus === NOT_ENROLLED_NEXT_YEAR_VALUE;
+  }
+
+  return false;
+}
+
+export function sortBenefitsForDisplay<T extends Pick<Benefit, 'id'>>(
+  matchedBenefits: T[],
+  answers: BenefitProfile
+): T[] {
+  return matchedBenefits
+    .map((benefit, index) => ({ benefit, index }))
+    .sort(
+      (left, right) =>
+        Number(shouldDeprioritizeBenefit(left.benefit.id, answers)) -
+          Number(shouldDeprioritizeBenefit(right.benefit.id, answers)) ||
+        left.index - right.index
+    )
+    .map(({ benefit }) => benefit);
+}
+
 export function isPositiveActionStatus(actionStatus?: string): boolean {
   if (typeof actionStatus !== 'string') {
     return false;
@@ -680,9 +718,13 @@ export function getBenefitRichTextSegments(text: string): InlineTextSegment[] | 
       return [
         { type: 'tooltip', text: 'Choose a MassHealth plan', tooltip: massHealthPlanSelectionTooltip },
       ];
-    case 'Attend a participating MASSGrant Plus school':
+    case MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM:
       return [
-        { type: 'tooltip', text: 'Attend a participating MASSGrant Plus school', tooltip: massGrantPlusSchoolsTooltip },
+        {
+          type: 'tooltip',
+          text: MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM,
+          tooltip: massGrantPlusSchoolsTooltip,
+        },
       ];
     case DHE_AFFIDAVIT_ACTION_STATUS:
       return [

@@ -1,4 +1,4 @@
-﻿import base64
+import base64
 import os
 import re
 import uuid
@@ -123,6 +123,42 @@ PROFILE_VALUE_LABELS = {
 }
 
 NOT_ENROLLED_NEXT_YEAR_VALUE = "not_enrolled_next_year"
+MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM = "Attend a participating MASSGrant Plus school"
+
+
+def _benefit_application_type(profile: dict, benefit_id: str) -> str | None:
+    if benefit_id == "pell-grant":
+        return "fafsa"
+
+    if benefit_id in {"massgrant", "massgrant-plus"}:
+        return "masfa" if profile.get("citizen_status") == "no" else "fafsa"
+
+    return None
+
+
+def _should_deprioritize_benefit(profile: dict, benefit_id: str) -> bool:
+    application_type = _benefit_application_type(profile, benefit_id)
+
+    if application_type == "masfa":
+        status = profile.get("masfa_completed")
+        return status in {"yes", NOT_ENROLLED_NEXT_YEAR_VALUE}
+
+    if application_type == "fafsa":
+        status = profile.get("fafsa_completed")
+        return status in {"yes", NOT_ENROLLED_NEXT_YEAR_VALUE}
+
+    return False
+
+
+def _sort_matches_for_display(profile: dict, matches: list[dict]) -> list[dict]:
+    enumerated_matches = list(enumerate(matches))
+    enumerated_matches.sort(
+        key=lambda item: (
+            _should_deprioritize_benefit(profile, item[1].get("id", "")),
+            item[0],
+        )
+    )
+    return [match for _, match in enumerated_matches]
 
 
 def _strip_state_aid_statuses_for_not_enrolling(profile: dict, matches: list[dict]) -> list[dict]:
@@ -205,6 +241,13 @@ def _profile_summary_items(profile: dict) -> list[tuple[str, str]]:
     return rows
 
 
+def _should_default_checklist_item_to_checked(benefit_id: str, item: str) -> bool:
+    return (
+        benefit_id == "massgrant-plus"
+        and item == MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM
+    )
+
+
 def _normalize_checklist_progress(
     checklist_progress: dict,
     matches: list[dict],
@@ -221,8 +264,10 @@ def _normalize_checklist_progress(
             raw_progress = []
 
         normalized[benefit_id] = [
-            bool(raw_progress[index]) if index < len(raw_progress) else False
-            for index in range(len(checklist))
+            bool(raw_progress[index])
+            if index < len(raw_progress)
+            else _should_default_checklist_item_to_checked(benefit_id, item)
+            for index, item in enumerate(checklist)
         ]
 
     return normalized
@@ -573,6 +618,7 @@ def lambda_handler(event, context):
     )
 
     matches = _strip_state_aid_statuses_for_not_enrolling(profile, matches)
+    matches = _sort_matches_for_display(safe_profile, matches)
     normalized_progress = _normalize_checklist_progress(checklist_progress, matches)
 
     run_id = str(uuid.uuid4())

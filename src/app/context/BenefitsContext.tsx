@@ -10,6 +10,8 @@ import React, {
 import {
   benefits as localBenefitCatalog,
   isPositiveActionStatus,
+  MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM,
+  sortBenefitsForDisplay,
   type Benefit,
 } from '../data/benefitsData';
 import {
@@ -59,6 +61,12 @@ function uniqueBenefitIds(values: Benefit['id'][]): Benefit['id'][] {
   return Array.from(new Set(values));
 }
 
+function shouldDefaultChecklistItemToChecked(benefitId: string, item: string): boolean {
+  return (
+    benefitId === 'massgrant-plus' && item === MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM
+  );
+}
+
 function buildChecklistProgress(
   matches: Benefit[],
   previousProgress: ChecklistProgressMap
@@ -80,12 +88,17 @@ function buildChecklistProgress(
     const shouldAutoCheckAllItems =
       hasAlreadyCompletedStatus && allStatusesPositive;
 
-    accumulator[benefit.id] = benefit.checklist.map((_, index) => {
+    accumulator[benefit.id] = benefit.checklist.map((item, index) => {
       if (shouldAutoCheckAllItems) {
         return true;
       }
 
-      return previousProgress[benefit.id]?.[index] ?? false;
+      const savedProgress = previousProgress[benefit.id]?.[index];
+      if (savedProgress !== undefined) {
+        return savedProgress;
+      }
+
+      return shouldDefaultChecklistItemToChecked(benefit.id, item);
     });
 
     return accumulator;
@@ -111,8 +124,8 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
   const [checklistProgress, setChecklistProgress] = useState<ChecklistProgressMap>({});
 
   const matchedBenefits = useMemo(
-    () => withLocalChecklist(serverMatchedBenefits),
-    [serverMatchedBenefits]
+    () => sortBenefitsForDisplay(withLocalChecklist(serverMatchedBenefits), answers),
+    [answers, serverMatchedBenefits]
   );
 
   useEffect(() => {

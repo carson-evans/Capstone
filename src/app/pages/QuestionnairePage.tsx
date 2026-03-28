@@ -174,10 +174,14 @@ export default function QuestionnairePage() {
     : [];
 
   useEffect(() => {
-    if (currentQuestion?.id !== 'school_name') {
-      setSchoolListOpen(false);
+    if (currentQuestion?.id === 'school_name') {
+      setSchoolListOpen(true);
       setHighlightedSchoolIndex(-1);
+      return;
     }
+
+    setSchoolListOpen(false);
+    setHighlightedSchoolIndex(-1);
   }, [currentQuestion?.id]);
 
   const normalizedSelectedOption = selectedOption.trim();
@@ -432,7 +436,7 @@ export default function QuestionnairePage() {
         <div className="space-y-3">
           <div className="h-14 rounded-lg border border-gray-200 bg-white px-4" />
           <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-            <div className="max-h-64 min-h-64 overflow-y-auto p-2 md:max-h-[22rem] md:min-h-[22rem]">
+            <div className="max-h-64 min-h-64 overflow-y-scroll p-2 md:max-h-[22rem] md:min-h-[22rem]">
               {questionOptions.slice(0, 6).map((option) => (
                 <div
                   key={option.value}
@@ -515,6 +519,7 @@ export default function QuestionnairePage() {
           setSelectedOption(label);
           setSchoolListOpen(false);
           setHighlightedSchoolIndex(-1);
+          schoolInputRef.current?.focus();
         };
 
         const handleSchoolKeyDown = (
@@ -549,7 +554,6 @@ export default function QuestionnairePage() {
           }
 
           if (event.key === 'Escape') {
-            setSchoolListOpen(false);
             setHighlightedSchoolIndex(-1);
           }
         };
@@ -558,7 +562,7 @@ export default function QuestionnairePage() {
           currentQuestionHelperText ? helperId : null,
           currentValidationError ? errorId : null,
           schoolInstructionsId,
-          schoolStatusId,
+          schoolListOpen ? schoolStatusId : null,
         ]
           .filter(Boolean)
           .join(' ');
@@ -587,11 +591,12 @@ export default function QuestionnairePage() {
                   setHighlightedSchoolIndex(-1);
                 }}
                 onFocus={() => setSchoolListOpen(true)}
+                onClick={() => setSchoolListOpen(true)}
                 onBlur={() => {
-                  window.setTimeout(() => {
+                  if (selectedSchool) {
                     setSchoolListOpen(false);
-                    setHighlightedSchoolIndex(-1);
-                  }, 100);
+                  }
+                  setHighlightedSchoolIndex(-1);
                 }}
                 onKeyDown={handleSchoolKeyDown}
                 placeholder="Start typing or scroll to select"
@@ -626,16 +631,18 @@ export default function QuestionnairePage() {
               )}
             </div>
 
-            <p
-              id={schoolStatusId}
-              role="status"
-              aria-live="polite"
-              className="text-sm text-slate-500 dark:text-slate-400"
-            >
-              {searchTerm
-                ? `${filteredOptions.length} school${filteredOptions.length === 1 ? '' : 's'} found.`
-                : `Showing ${filteredOptions.length} available schools.`}
-            </p>
+            {schoolListOpen && (
+              <p
+                id={schoolStatusId}
+                role="status"
+                aria-live="polite"
+                className="text-sm text-slate-500 dark:text-slate-400"
+              >
+                {searchTerm
+                  ? `${filteredOptions.length} school${filteredOptions.length === 1 ? '' : 's'} found.`
+                  : `Showing ${filteredOptions.length} available schools.`}
+              </p>
+            )}
 
             {schoolListOpen && (
               <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
@@ -643,7 +650,7 @@ export default function QuestionnairePage() {
                   id={schoolListboxId}
                   role="listbox"
                   aria-label="Matching schools"
-                  className="max-h-64 overflow-y-auto p-2 md:max-h-[22rem]"
+                  className="max-h-64 overflow-y-scroll p-2 md:max-h-[22rem]"
                 >
                   {filteredOptions.length > 0 ? (
                     filteredOptions.map((option, index) => {
@@ -766,6 +773,7 @@ export default function QuestionnairePage() {
         >
           {questionOptions.map((option) => {
             const optionId = `${question.id}-${option.value}`;
+            const isSelected = selectedOption === option.value;
 
             return (
               <motion.div
@@ -777,15 +785,18 @@ export default function QuestionnairePage() {
                     ? { duration: 0.14, ease: 'easeOut' }
                     : { type: 'spring', stiffness: 420, damping: 28 }
                 }
-                className="flex cursor-pointer items-start space-x-3 rounded-lg border border-transparent px-3 py-2 transition-colors hover:border-gray-200 hover:bg-gray-50 dark:hover:border-slate-700 dark:hover:bg-slate-800/70 md:p-4"
-                onClick={() => setSelectedOption(option.value)}
+                className="rounded-lg"
               >
-                <RadioGroupItem value={option.value} id={optionId} className="mt-1" />
                 <Label
                   htmlFor={optionId}
-                  className="flex-1 cursor-pointer text-[0.98rem] font-medium leading-relaxed md:text-lg"
+                  className={`flex w-full cursor-pointer items-start gap-3 rounded-lg border px-3 py-2 text-[0.98rem] font-medium leading-relaxed transition-colors md:p-4 md:text-lg ${
+                    isSelected
+                      ? 'border-[#355b8a] bg-[#eff6ff] dark:border-sky-300/50 dark:bg-slate-800/90'
+                      : 'border-transparent hover:border-gray-200 hover:bg-gray-50 dark:hover:border-slate-700 dark:hover:bg-slate-800/70'
+                  }`}
                 >
-                  {option.label}
+                  <RadioGroupItem value={option.value} id={optionId} className="mt-1" />
+                  <span className="flex-1">{option.label}</span>
                 </Label>
               </motion.div>
             );
@@ -815,7 +826,7 @@ export default function QuestionnairePage() {
           className="container mx-auto max-w-3xl px-6 py-12"
         >
           <p className="text-base text-slate-600 dark:text-slate-300">
-            Loading questionnaire…
+            Loading questionnaireÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦
           </p>
         </main>
       </div>
