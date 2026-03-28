@@ -1,4 +1,3 @@
-// tsconfig.json
 {
   "compilerOptions": {
     "target": "ES2020",
@@ -7,7 +6,6 @@
     "allowJs": false,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "allowJs": false,
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "isolatedModules": true,

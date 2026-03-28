@@ -11,6 +11,7 @@ from commonmass_backend import (
     load_catalog,
     parse_json_payload,
     sanitize_profile,
+    sanitize_selected_benefits,
     secret_is_valid,
     validate_json_request,
 )
@@ -52,8 +53,13 @@ def lambda_handler(event, context):
         return build_response(status_code, {"error": message}, event=event)
 
     profile = payload.get("profile") or {}
+    selected = payload.get("selectedBenefits") or payload.get("selected_benefits") or []
+
     if not isinstance(profile, dict):
         return build_response(400, {"error": "profile must be an object"}, event=event)
+
+    if selected is not None and not isinstance(selected, list):
+        return build_response(400, {"error": "selectedBenefits must be a list if provided"}, event=event)
 
     safe_profile = sanitize_profile(profile)
 
@@ -73,7 +79,12 @@ def lambda_handler(event, context):
         )
 
     catalog = load_catalog(s3, RULES_BUCKET, BENEFITS_CATALOG_KEY)
-    matched_benefits = get_authoritative_matches(safe_profile, catalog)
+    safe_selected = sanitize_selected_benefits(selected, catalog)
+    matched_benefits = get_authoritative_matches(
+        safe_profile,
+        catalog,
+        selected_benefit_ids=safe_selected,
+    )
 
     extra_headers = {}
     if context and getattr(context, "aws_request_id", None):

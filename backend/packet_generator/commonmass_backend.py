@@ -71,10 +71,12 @@ PROFILE_VALUE_LABELS = {
     "fafsa_completed": {
         "yes": "Yes",
         "no": "No",
+        "not_enrolled_next_year": "Not enrolling next academic year",
     },
     "masfa_completed": {
         "yes": "Yes",
         "no": "No",
+        "not_enrolled_next_year": "Not enrolling next academic year",
     },
     "masfa_high_school_completer": {
         "yes": "Yes",
@@ -126,8 +128,8 @@ ALLOWED_PROFILE_VALUES = {
         "one_to_five_years",
         "over_five_years",
     },
-    "fafsa_completed": {"yes", "no"},
-    "masfa_completed": {"yes", "no"},
+    "fafsa_completed": {"yes", "no", "not_enrolled_next_year"},
+    "masfa_completed": {"yes", "no", "not_enrolled_next_year"},
     "masfa_high_school_completer": {"yes", "no"},
     "masfa_documentation_ready": {"yes", "no"},
     "dhe_affidavit_completed": {"yes", "no"},
@@ -385,6 +387,10 @@ def build_response(
         "X-Permitted-Cross-Domain-Policies": "none",
         "Permissions-Policy": "camera=(), microphone=(), geolocation=(), usb=(), payment=()",
         "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Resource-Policy": "same-origin",
+        "Origin-Agent-Cluster": "?1",
+        "X-Robots-Tag": "noindex, nofollow",
     }
 
     if _request_is_https(event):
