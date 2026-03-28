@@ -76,13 +76,24 @@ function buildChecklistProgress(
   previousProgress: ChecklistProgressMap
 ): ChecklistProgressMap {
   return matches.reduce<ChecklistProgressMap>((accumulator, benefit) => {
-    const statuses = benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
-    const isAlreadyCompleted = statuses.some(
-      (status) => isPositiveActionStatus(status) && status.toLowerCase().includes('already completed')
+    const statuses =
+      benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
+
+    const hasAlreadyCompletedStatus = statuses.some(
+      (status) =>
+        isPositiveActionStatus(status) &&
+        status.toLowerCase().includes('already completed')
     );
 
+    const allStatusesPositive =
+      statuses.length > 0 &&
+      statuses.every((status) => isPositiveActionStatus(status));
+
+    const shouldAutoCheckAllItems =
+      hasAlreadyCompletedStatus && allStatusesPositive;
+
     accumulator[benefit.id] = benefit.checklist.map((_, index) => {
-      if (isAlreadyCompleted) {
+      if (shouldAutoCheckAllItems) {
         return true;
       }
 
