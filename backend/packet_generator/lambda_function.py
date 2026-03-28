@@ -36,9 +36,9 @@ MAX_BODY_BYTES = int(os.environ.get("MAX_BODY_BYTES", "65536"))
 RULES_BUCKET = os.environ.get("RULES_BUCKET", "")
 BENEFITS_CATALOG_KEY = os.environ.get("BENEFITS_CATALOG_KEY", "benefits/catalog.json")
 
-REQUIRE_SHARED_SECRET = os.environ.get("REQUIRE_SHARED_SECRET", "false").lower() == "true"
-SHARED_SECRET_HEADER = os.environ.get("SHARED_SECRET_HEADER", "x-commonmass-secret")
-SHARED_SECRET_VALUE = os.environ.get("SHARED_SECRET_VALUE", "")
+REQUIRE_SHARED_SECRET = os.environ.get("REQUIRE_SHARED_SECRET", "false").strip().lower() == "true"
+SHARED_SECRET_HEADER = os.environ.get("SHARED_SECRET_HEADER", "x-commonmass-secret").strip()
+SHARED_SECRET_VALUE = os.environ.get("SHARED_SECRET_VALUE", "").strip()
 
 PROFILE_LABELS = {
     "student_status": "Student status",
@@ -413,7 +413,7 @@ def _build_accessible_rml(
 
     story_xml = "\n    ".join(story_parts)
 
-    return f"""<?xml version="1.0" encoding="UTF-8"?>
+    return f"""
 <!DOCTYPE document SYSTEM "rml.dtd">
 <document filename="CommonMASS-Packet.pdf" tagged="1">
   <template
@@ -502,9 +502,8 @@ def _build_pdf_bytes(
     )
 
     output = BytesIO()
-    rml2pdf.go(rml, outputFileName=output)
+    rml2pdf.go(rml.encode("utf-8"), outputFileName=output)
     return output.getvalue()
-
 
 def lambda_handler(event, context):
     method = get_http_method(event or {})
