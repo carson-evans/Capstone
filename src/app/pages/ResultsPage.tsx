@@ -228,7 +228,8 @@ export default function ResultsPage() {
           isMobile ? (
             <section aria-labelledby="results-heading" className="space-y-6">
               {matchedBenefits.map((benefit) => {
-                const statuses = benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
+                const statuses =
+                  benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
                 const isDetailsOpen = Boolean(mobileOpenDetails[benefit.id]);
                 const titleId = `${benefit.id}-title`;
                 const regionId = `${benefit.id}-details`;
@@ -318,7 +319,8 @@ export default function ResultsPage() {
             <section aria-labelledby="results-heading">
               <Accordion type="multiple" className="space-y-6">
                 {matchedBenefits.map((benefit, index) => {
-                  const statuses = benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
+                  const statuses =
+                    benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
 
                   return (
                     <motion.div

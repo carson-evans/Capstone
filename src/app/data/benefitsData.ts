@@ -16,8 +16,15 @@ import {
   grossIncomeTooltip,
   householdSizeTooltip,
   itinTooltip,
+  massHealthApplicationStepTooltip,
+  massGrantPlusSchoolsTooltip,
   residencyStatusTooltip,
   selectiveServiceTooltip,
+  massHealthIdentityCitizenshipTooltip,
+  massHealthIncomeDocumentationTooltip,
+  massHealthPlanSelectionTooltip,
+  massHealthResidencyTooltip,
+  taxDocumentsTooltip,
 } from './questionTooltipContent';
 import {
   allMassachusettsSchoolOptions,
@@ -68,6 +75,12 @@ const yesNoOptions: QuestionOption[] = [
   { label: 'No', value: 'no' },
 ];
 
+const yesNoOrNotEnrolledNextYearOptions: QuestionOption[] = [
+  { label: 'Yes', value: 'yes' },
+  { label: 'No', value: 'no' },
+  { label: 'Not enrolling next academic year', value: 'not_enrolled_next_year' },
+];
+
 const studentOrFutureValues = ['full_time', 'part_time', 'future_full_time', 'future_part_time'];
 
 const householdSizeOptions: QuestionOption[] = [
@@ -100,6 +113,7 @@ export const FAFSA_STATUS_URL =
 export const MASFA_START_URL = 'https://www.mass.edu/osfa/students/masfa.asp';
 export const MASFA_STATUS_URL = 'https://madhestudentxprod.regenteducation.net/signin';
 export const DHE_AFFIDAVIT_ACTION_STATUS = 'Action Needed, Complete DHE Affidavit';
+export const GATHER_TAX_DOCUMENTS_CHECKLIST_ITEM = 'Gather tax documents';
 export const COMPLETE_DHE_AFFIDAVIT_CHECKLIST_ITEM =
   'Complete the DHE Tuition Equity Form and Affidavit';
 export const PROVIDE_DHE_AFFIDAVIT_CHECKLIST_ITEM =
@@ -329,7 +343,7 @@ export const questions: Question[] = [
         values: studentOrFutureValues,
       },
     ],
-    options: yesNoOptions,
+    options: yesNoOrNotEnrolledNextYearOptions,
   },
   {
     id: 'masfa_completed',
@@ -347,7 +361,7 @@ export const questions: Question[] = [
       },
     ],
     isVisible: (answers) => hasQualifyingGrantResidency(answers),
-    options: yesNoOptions,
+    options: yesNoOrNotEnrolledNextYearOptions,
   },
   {
     id: 'masfa_high_school_completer',
@@ -642,6 +656,34 @@ export function shouldShowDheAffidavitActionStatus(
 
 export function getBenefitRichTextSegments(text: string): InlineTextSegment[] | null {
   switch (text) {
+    case GATHER_TAX_DOCUMENTS_CHECKLIST_ITEM:
+      return [
+        { type: 'tooltip', text: 'Gather tax documents', tooltip: taxDocumentsTooltip },
+      ];
+    case 'Verify Massachusetts residency':
+      return [
+        { type: 'tooltip', text: 'Verify Massachusetts residency', tooltip: massHealthResidencyTooltip },
+      ];
+    case 'Gather income documentation':
+      return [
+        { type: 'tooltip', text: 'Gather income documentation', tooltip: massHealthIncomeDocumentationTooltip },
+      ];
+    case 'Collect proof of identity and citizenship':
+      return [
+        { type: 'tooltip', text: 'Collect proof of identity and citizenship', tooltip: massHealthIdentityCitizenshipTooltip },
+      ];
+    case 'Apply online at MAhealthconnector.org':
+      return [
+        { type: 'tooltip', text: 'Apply online at MAhealthconnector.org', tooltip: massHealthApplicationStepTooltip },
+      ];
+    case 'Choose a MassHealth plan':
+      return [
+        { type: 'tooltip', text: 'Choose a MassHealth plan', tooltip: massHealthPlanSelectionTooltip },
+      ];
+    case 'Attend a participating MASSGrant Plus school':
+      return [
+        { type: 'tooltip', text: 'Attend a participating MASSGrant Plus school', tooltip: massGrantPlusSchoolsTooltip },
+      ];
     case DHE_AFFIDAVIT_ACTION_STATUS:
       return [
         { type: 'text', text: 'Action Needed, Complete the ' },

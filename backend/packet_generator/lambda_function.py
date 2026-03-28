@@ -42,7 +42,125 @@ REQUIRE_SHARED_SECRET = os.environ.get("REQUIRE_SHARED_SECRET", "false").lower()
 SHARED_SECRET_HEADER = os.environ.get("SHARED_SECRET_HEADER", "x-commonmass-secret")
 SHARED_SECRET_VALUE = os.environ.get("SHARED_SECRET_VALUE", "")
 
+PROFILE_LABELS = {
+    "student_status": "Student status",
+    "citizen_status": "Citizen / eligible non-citizen",
+    "residency_length": "Massachusetts residency status",
+    "fafsa_completed": "FAFSA completed",
+    "masfa_completed": "MASFA completed",
+    "masfa_high_school_completer": "Massachusetts high school completer status",
+    "masfa_documentation_ready": "Has MASFA document option",
+    "dhe_affidavit_completed": "DHE Tuition Equity Form and Affidavit completed",
+    "prior_bachelors_degree": "Already has bachelor's degree",
+    "massgrant_plus_income_band": "MASSGrant Plus family income",
+    "work_study": "Federal work-study",
+    "household_sizes": "Household size",
+    "household_size_exact": "Exact household size",
+    "masshealth_income_under_limit": "Below MassHealth yearly threshold",
+    "snap_income_under_limit": "Below SNAP monthly threshold",
+    "school_name": "College or university",
+}
+
+PROFILE_VALUE_LABELS = {
+    "student_status": {
+        "full_time": "Yes, full-time",
+        "part_time": "Yes, part-time",
+        "future_full_time": "Will enroll full-time within the next year",
+        "future_part_time": "Will enroll part-time within the next year",
+        "no": "No",
+    },
+    "citizen_status": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "residency_length": {
+        "not_ma_resident": "Not a Massachusetts resident",
+        "under_12_months": "Less than 12 months",
+        "one_to_five_years": "12 months or more",
+        "over_five_years": "12 months or more",
+    },
+    "fafsa_completed": {
+        "yes": "Yes",
+        "no": "No",
+        "not_enrolled_next_year": "Not enrolling next academic year",
+    },
+    "masfa_completed": {
+        "yes": "Yes",
+        "no": "No",
+        "not_enrolled_next_year": "Not enrolling next academic year",
+    },
+    "masfa_high_school_completer": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "masfa_documentation_ready": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "dhe_affidavit_completed": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "prior_bachelors_degree": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "massgrant_plus_income_band": {
+        "under_85k": "Less than $85,000 per year before taxes",
+        "85k_to_100k": "$85,000 to $100,000 per year before taxes",
+        "over_100k": "More than $100,000 per year before taxes",
+    },
+    "work_study": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "masshealth_income_under_limit": {
+        "yes": "Yes",
+        "no": "No",
+    },
+    "snap_income_under_limit": {
+        "yes": "Yes",
+        "no": "No",
+    },
+}
 ENABLE_PACKET_LOGO = os.environ.get("ENABLE_PACKET_LOGO", "false").lower() == "true"
+
+NOT_ENROLLED_NEXT_YEAR_VALUE = "not_enrolled_next_year"
+
+
+def _strip_state_aid_statuses_for_not_enrolling(profile: dict, matches: list[dict]) -> list[dict]:
+    if not isinstance(profile, dict):
+        return matches
+
+    is_not_enrolling = (
+        profile.get("fafsa_completed") == NOT_ENROLLED_NEXT_YEAR_VALUE
+        or profile.get("masfa_completed") == NOT_ENROLLED_NEXT_YEAR_VALUE
+    )
+
+    if not is_not_enrolling:
+        return matches
+
+    target_ids = {"pell-grant", "massgrant", "massgrant-plus"}
+    sanitized_matches: list[dict] = []
+
+    for match in matches:
+        if not isinstance(match, dict):
+            sanitized_matches.append(match)
+            continue
+
+        if match.get("id") in target_ids:
+            sanitized_matches.append(
+                {
+                    **match,
+                    "actionStatuses": [],
+                    "actionStatus": None,
+                }
+            )
+            continue
+
+        sanitized_matches.append(match)
+
+    return sanitized_matches
 
 
 def _resolve_logo_path() -> Path | None:
@@ -582,6 +700,8 @@ def lambda_handler(event, context):
         catalog=catalog,
         selected_benefit_ids=safe_selected,
     )
+
+    matches = _strip_state_aid_statuses_for_not_enrolling(profile, matches)
 
     normalized_progress = _normalize_checklist_progress(checklist_progress, matches)
 
