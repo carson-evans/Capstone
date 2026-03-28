@@ -1,17 +1,15 @@
 ﻿import base64
 import os
+import re
 import uuid
 from datetime import datetime, timezone
 from io import BytesIO
-from pathlib import Path
+from xml.sax.saxutils import escape
 
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.units import inch
-from reportlab.pdfgen import canvas
+from rlextra.rml2pdf import rml2pdf
 
 from commonmass_backend import (
     PROFILE_LABELS,
@@ -123,7 +121,6 @@ PROFILE_VALUE_LABELS = {
         "no": "No",
     },
 }
-ENABLE_PACKET_LOGO = os.environ.get("ENABLE_PACKET_LOGO", "false").lower() == "true"
 
 NOT_ENROLLED_NEXT_YEAR_VALUE = "not_enrolled_next_year"
 
@@ -163,226 +160,20 @@ def _strip_state_aid_statuses_for_not_enrolling(profile: dict, matches: list[dic
     return sanitized_matches
 
 
-def _resolve_logo_path() -> Path | None:
-    if not ENABLE_PACKET_LOGO:
-        return None
+def _markdown_links_to_plain_text(value: str) -> str:
+    if not value:
+        return ""
 
-    candidates = [
-        Path(__file__).with_name("Common.png"),
-        Path(__file__).resolve().parents[2] / "src" / "assets" / "Common.png",
-        Path(__file__).with_name("CommonDark.png"),
-    ]
-
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate
-
-    return None
+    text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1 (\2)", value)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
 
 
-LOGO_PATH = _resolve_logo_path()
+def _xml_text(value: str | None) -> str:
+    return escape((value or "").strip(), {'"': "&quot;", "'": "&apos;"})
 
 
-def _wrap_text(c, text: str, max_width: float, font_name="Helvetica", font_size=11) -> list[str]:
-    c.setFont(font_name, font_size)
-
-    words = (text or "").split()
-    if not words:
-        return []
-
-    lines = []
-    current = ""
-
-    for word in words:
-        test_line = (current + " " + word).strip()
-        if c.stringWidth(test_line, font_name, font_size) <= max_width:
-            current = test_line
-        else:
-            if current:
-                lines.append(current)
-            current = word
-
-    if current:
-        lines.append(current)
-
-    return lines
-
-
-def _new_page(c):
-    c.showPage()
-
-
-def _ensure_space(c, y, height, needed=50):
-    if y < 0.9 * inch + needed:
-        _new_page(c)
-        _draw_header_band(c, letter[0], letter[1])
-        return height - 1.15 * inch
-    return y
-
-
-def _draw_header_band(c, width, height):
-    c.setFillColor(colors.HexColor("#1e3a5f"))
-    c.rect(0, height - 0.85 * inch, width, 0.85 * inch, stroke=0, fill=1)
-
-    c.setFillColor(colors.white)
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(0.75 * inch, height - 0.51 * inch, "CommonMASS Application Preparation Packet")
-
-    if LOGO_PATH is not None:
-        try:
-            from reportlab.lib.utils import ImageReader
-
-            logo = ImageReader(str(LOGO_PATH))
-            image_width, image_height = logo.getSize()
-            logo_height = 0.30 * inch
-            logo_width = logo_height * (image_width / image_height)
-            c.drawImage(
-                logo,
-                width - 0.75 * inch - logo_width,
-                height - 0.68 * inch,
-                width=logo_width,
-                height=logo_height,
-                mask="auto",
-                preserveAspectRatio=True,
-            )
-        except Exception:
-            pass
-
-    c.setFillColor(colors.black)
-
-
-def _draw_section_title(c, x, y, text):
-    c.setFillColor(colors.HexColor("#1e3a5f"))
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(x, y, text)
-    c.setStrokeColor(colors.HexColor("#d9e2ec"))
-    c.setLineWidth(1)
-    c.line(x, y - 4, 7.75 * inch, y - 4)
-    c.setFillColor(colors.black)
-    return y - 18
-
-
-def _draw_small_meta(c, x, y, left_text, right_text=None):
-    c.setFont("Helvetica", 9)
-    c.setFillColor(colors.HexColor("#4b5563"))
-    c.drawString(x, y, left_text)
-
-    if right_text:
-        c.drawRightString(7.75 * inch, y, right_text)
-
-    c.setFillColor(colors.black)
-    return y - 12
-
-
-def _draw_bullet_text(c, x, y, label, value, max_label_width=220):
-    c.setFont("Helvetica-Bold", 10)
-    label_text = f"{label}:"
-    c.drawString(x, y, label_text)
-
-    label_width = c.stringWidth(label_text, "Helvetica-Bold", 10)
-    value_x = x + max(max_label_width, label_width + 12)
-
-    c.setFont("Helvetica", 10)
-    wrapped = _wrap_text(c, value, 7.75 * inch - value_x, font_size=10)
-
-    if not wrapped:
-        return y - 15
-
-    c.drawString(value_x, y, wrapped[0])
-    line_y = y - 12
-    for line in wrapped[1:]:
-        c.drawString(value_x, line_y, line)
-        line_y -= 12
-
-    return line_y - 3
-
-
-def _draw_status_pill(c, x, y, text, good=False):
-    pad_x = 6
-    pill_height = 14
-
-    c.setFont("Helvetica", 8)
-    text_width = c.stringWidth(text, "Helvetica", 8)
-    pill_width = text_width + (pad_x * 2)
-
-    if good:
-        fill = colors.HexColor("#dcfce7")
-        stroke = colors.HexColor("#86efac")
-        text_color = colors.HexColor("#166534")
-    else:
-        fill = colors.HexColor("#dbeafe")
-        stroke = colors.HexColor("#93c5fd")
-        text_color = colors.HexColor("#1d4ed8")
-
-    c.setFillColor(fill)
-    c.setStrokeColor(stroke)
-    c.roundRect(x, y - 10, pill_width, pill_height, 4, stroke=1, fill=1)
-
-    c.setFillColor(text_color)
-    c.drawString(x + pad_x, y - 6, text)
-
-    c.setFillColor(colors.black)
-    c.setStrokeColor(colors.black)
-
-
-def _draw_checkbox(c, x, y, checked: bool):
-    size = 10
-
-    if checked:
-        c.setFillColor(colors.HexColor("#1e3a5f"))
-        c.setStrokeColor(colors.HexColor("#1e3a5f"))
-        c.rect(x, y - size, size, size, stroke=1, fill=1)
-        c.setFillColor(colors.white)
-        c.setFont("Helvetica-Bold", 8)
-        c.drawString(x + 2, y - 8, "X")
-        c.setFillColor(colors.black)
-    else:
-        c.setStrokeColor(colors.HexColor("#6b7280"))
-        c.rect(x, y - size, size, size, stroke=1, fill=0)
-
-    c.setStrokeColor(colors.black)
-
-
-def _normalize_checklist_progress(checklist_progress: dict, matches: list[dict]) -> dict[str, list[bool]]:
-    normalized = {}
-    incoming = checklist_progress if isinstance(checklist_progress, dict) else {}
-
-    for match in matches:
-        benefit_id = match["id"]
-        checklist = match.get("checklist") or []
-        raw_progress = incoming.get(benefit_id, [])
-
-        if not isinstance(raw_progress, list):
-            raw_progress = []
-
-        normalized[benefit_id] = [
-            bool(raw_progress[index]) if index < len(raw_progress) else False
-            for index in range(len(checklist))
-        ]
-
-    return normalized
-
-
-def _get_ordered_checklist_items(checklist: list[str], progress: list[bool]) -> list[tuple[str, bool]]:
-    ordered_items = [
-        {
-            "item": item,
-            "checked": progress[index] if index < len(progress) else False,
-            "original_index": index,
-        }
-        for index, item in enumerate(checklist)
-    ]
-
-    ordered_items.sort(key=lambda item: (bool(item["checked"]), item["original_index"]))
-    return [(item["item"], bool(item["checked"])) for item in ordered_items]
-
-
-def _build_accessible_packet_data(
-    run_id: str,
-    profile: dict,
-    matches: list[dict],
-    checklist_progress: dict[str, list[bool]],
-) -> dict:
+def _profile_summary_items(profile: dict) -> list[tuple[str, str]]:
     ordered_keys = [
         "student_status",
         "citizen_status",
@@ -402,22 +193,81 @@ def _build_accessible_packet_data(
         "prior_bachelors_degree",
     ]
 
-    profile_summary = []
+    rows: list[tuple[str, str]] = []
     for key in ordered_keys:
         if key in profile:
-            profile_summary.append(
-                {
-                    "key": key,
-                    "label": PROFILE_LABELS.get(key, key),
-                    "value": friendly_profile_value(key, profile.get(key)),
-                }
+            rows.append(
+                (
+                    PROFILE_LABELS.get(key, key),
+                    friendly_profile_value(key, profile.get(key)),
+                )
             )
+    return rows
+
+
+def _normalize_checklist_progress(
+    checklist_progress: dict,
+    matches: list[dict],
+) -> dict[str, list[bool]]:
+    normalized: dict[str, list[bool]] = {}
+    incoming = checklist_progress if isinstance(checklist_progress, dict) else {}
+
+    for match in matches:
+        benefit_id = match["id"]
+        checklist = match.get("checklist") or []
+        raw_progress = incoming.get(benefit_id, [])
+
+        if not isinstance(raw_progress, list):
+            raw_progress = []
+
+        normalized[benefit_id] = [
+            bool(raw_progress[index]) if index < len(raw_progress) else False
+            for index in range(len(checklist))
+        ]
+
+    return normalized
+
+
+def _get_ordered_checklist_items(
+    checklist: list[str],
+    progress: list[bool],
+) -> list[tuple[str, bool]]:
+    ordered_items = [
+        {
+            "item": item,
+            "checked": progress[index] if index < len(progress) else False,
+            "original_index": index,
+        }
+        for index, item in enumerate(checklist)
+    ]
+
+    ordered_items.sort(
+        key=lambda item: (bool(item["checked"]), item["original_index"])
+    )
+    return [(item["item"], bool(item["checked"])) for item in ordered_items]
+
+
+def _build_accessible_packet_data(
+    run_id: str,
+    profile: dict,
+    matches: list[dict],
+    checklist_progress: dict[str, list[bool]],
+) -> dict:
+    profile_summary = []
+    for label, value in _profile_summary_items(profile):
+        profile_summary.append(
+            {
+                "label": label,
+                "value": value,
+            }
+        )
 
     checklist_sections = []
     for match in matches:
         checklist = match.get("checklist") or []
         progress = checklist_progress.get(match["id"], [False] * len(checklist))
         ordered_items = _get_ordered_checklist_items(checklist, progress)
+
         checklist_sections.append(
             {
                 "id": match["id"],
@@ -453,185 +303,207 @@ def _build_accessible_packet_data(
     }
 
 
+def _paragraph(text: str, style: str = "cmBody", tag_type: str = "P") -> str:
+    return f'<para style="{style}" tagType="{tag_type}">{_xml_text(text)}</para>'
+
+
+def _heading(text: str, style: str, tag_type: str) -> str:
+    return f'<para style="{style}" tagType="{tag_type}">{_xml_text(text)}</para>'
+
+
+def _build_accessible_rml(
+    run_id: str,
+    profile: dict,
+    matches: list[dict],
+    checklist_progress: dict[str, list[bool]],
+) -> str:
+    story_parts: list[str] = []
+
+    story_parts.append(_heading("CommonMASS Application Preparation Packet", "cmTitle", "H1"))
+    story_parts.append(
+        _paragraph(
+            f"Run ID: {run_id} | Generated at UTC: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}",
+            "cmMeta",
+            "P",
+        )
+    )
+
+    story_parts.append(_heading("Profile Summary", "cmSection", "H2"))
+    profile_items = _profile_summary_items(profile)
+    if profile_items:
+        for label, value in profile_items:
+            story_parts.append(_paragraph(f"{label}: {value}", "cmBody", "P"))
+    else:
+        story_parts.append(_paragraph("No profile data was provided.", "cmBody", "P"))
+
+    story_parts.append(_heading("Matched Benefits", "cmSection", "H2"))
+    if matches:
+        for match in matches:
+            title = match.get("title", match.get("id", "Benefit"))
+            description = _markdown_links_to_plain_text(match.get("description", ""))
+            details = _markdown_links_to_plain_text(match.get("details", ""))
+            action_statuses = match.get("actionStatuses") or []
+            official_url = match.get("officialUrl", "")
+            official_button_label = match.get("officialButtonLabel", "")
+
+            story_parts.append(_heading(title, "cmSubsection", "H3"))
+
+            if description:
+                story_parts.append(_paragraph(description, "cmBody", "P"))
+
+            if details and details != description:
+                story_parts.append(_paragraph(details, "cmBody", "P"))
+
+            if action_statuses:
+                story_parts.append(_paragraph("Current status", "cmLabel", "P"))
+                for status in action_statuses:
+                    story_parts.append(
+                        _paragraph(f"• {_markdown_links_to_plain_text(status)}", "cmBody", "P")
+                    )
+
+            if official_url:
+                if official_button_label:
+                    story_parts.append(
+                        _paragraph(
+                            f"{official_button_label}: {official_url}",
+                            "cmLink",
+                            "P",
+                        )
+                    )
+                else:
+                    story_parts.append(_paragraph(f"Official site: {official_url}", "cmLink", "P"))
+    else:
+        story_parts.append(
+            _paragraph(
+                "No matched benefits based on the submitted profile.",
+                "cmBody",
+                "P",
+            )
+        )
+
+    story_parts.append(_heading("Application Checklists", "cmSection", "H2"))
+    if matches:
+        for match in matches:
+            benefit_id = match["id"]
+            title = match.get("title", benefit_id)
+            checklist = match.get("checklist") or []
+            progress = checklist_progress.get(benefit_id, [False] * len(checklist))
+            completed = sum(1 for item in progress if item)
+            total = len(checklist)
+
+            story_parts.append(_heading(title, "cmSubsection", "H3"))
+            story_parts.append(
+                _paragraph(f"Completed {completed} of {total} checklist items.", "cmBody", "P")
+            )
+
+            if checklist:
+                for item_text, checked in _get_ordered_checklist_items(checklist, progress):
+                    mark = "Completed" if checked else "Not completed"
+                    story_parts.append(
+                        _paragraph(
+                            f"• {item_text} — {mark}",
+                            "cmBody",
+                            "P",
+                        )
+                    )
+            else:
+                story_parts.append(_paragraph("No checklist items available.", "cmBody", "P"))
+    else:
+        story_parts.append(_paragraph("No checklist items available.", "cmBody", "P"))
+
+    story_xml = "\n    ".join(story_parts)
+
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE document SYSTEM "rml.dtd">
+<document filename="CommonMASS-Packet.pdf" tagged="1">
+  <template
+      title="CommonMASS Application Preparation Packet"
+      author="CommonMASS"
+      subject="Application preparation checklist packet"
+      lang="en-US"
+      pageSize="(612.0,792.0)"
+      leftMargin="54"
+      rightMargin="54"
+      topMargin="54"
+      bottomMargin="54">
+    <pageTemplate id="main">
+      <frame id="mainFrame" x1="54" y1="54" width="504" height="684"/>
+    </pageTemplate>
+  </template>
+
+  <stylesheet>
+    <paraStyle
+        name="cmTitle"
+        fontName="Helvetica-Bold"
+        fontSize="20"
+        leading="24"
+        spaceAfter="12"/>
+    <paraStyle
+        name="cmSection"
+        fontName="Helvetica-Bold"
+        fontSize="15"
+        leading="18"
+        spaceBefore="14"
+        spaceAfter="8"/>
+    <paraStyle
+        name="cmSubsection"
+        fontName="Helvetica-Bold"
+        fontSize="12"
+        leading="15"
+        spaceBefore="10"
+        spaceAfter="6"/>
+    <paraStyle
+        name="cmLabel"
+        fontName="Helvetica-Bold"
+        fontSize="10"
+        leading="13"
+        spaceBefore="4"
+        spaceAfter="2"/>
+    <paraStyle
+        name="cmMeta"
+        fontName="Helvetica"
+        fontSize="9"
+        leading="12"
+        textColor="#555555"
+        spaceAfter="10"/>
+    <paraStyle
+        name="cmBody"
+        fontName="Helvetica"
+        fontSize="10"
+        leading="14"
+        spaceAfter="5"/>
+    <paraStyle
+        name="cmLink"
+        fontName="Helvetica"
+        fontSize="10"
+        leading="14"
+        textColor="#1e3a5f"
+        spaceAfter="5"/>
+  </stylesheet>
+
+  <story>
+    {story_xml}
+  </story>
+</document>
+"""
+
+
 def _build_pdf_bytes(
     run_id: str,
     profile: dict,
     matches: list[dict],
     checklist_progress: dict[str, list[bool]],
 ) -> bytes:
-    buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=letter)
-    width, height = letter
-
-    c.setTitle("CommonMASS Application Preparation Packet")
-    c.setAuthor("CommonMASS")
-    c.setSubject("Application preparation checklist packet")
-    c.setCreator("CommonMASS packet generator")
-    c.setKeywords("CommonMASS, benefits, checklist, Massachusetts")
-
-    margin_x = 0.75 * inch
-
-    _draw_header_band(c, width, height)
-    y = height - 1.15 * inch
-
-    y = _draw_small_meta(
-        c,
-        margin_x,
-        y,
-        f"Run ID: {run_id}",
-        f"UTC: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}",
+    rml = _build_accessible_rml(
+        run_id=run_id,
+        profile=profile,
+        matches=matches,
+        checklist_progress=checklist_progress,
     )
 
-    y -= 8
-    y = _draw_section_title(c, margin_x, y, "Profile Summary")
-
-    ordered_keys = [
-        "student_status",
-        "citizen_status",
-        "school_name",
-        "residency_length",
-        "fafsa_completed",
-        "masfa_completed",
-        "masfa_high_school_completer",
-        "masfa_documentation_ready",
-        "dhe_affidavit_completed",
-        "work_study",
-        "household_sizes",
-        "household_size_exact",
-        "masshealth_income_under_limit",
-        "snap_income_under_limit",
-        "massgrant_plus_income_band",
-        "prior_bachelors_degree",
-    ]
-
-    for key in ordered_keys:
-        if key in profile:
-            y = _ensure_space(c, y, height, 32)
-            label = PROFILE_LABELS.get(key, key)
-            value = friendly_profile_value(key, profile.get(key))
-            y = _draw_bullet_text(c, margin_x, y, label, value)
-
-    y -= 14
-    y = _draw_section_title(c, margin_x, y, "Matched Benefits")
-
-    if not matches:
-        c.setFont("Helvetica", 10)
-        c.drawString(margin_x, y, "No matched benefits based on the submitted profile.")
-        y -= 14
-    else:
-        for match in matches:
-            title = match.get("title", match["id"])
-            description = match.get("description", "")
-            action_statuses = match.get("actionStatuses") or []
-            primary_action = action_statuses[0] if action_statuses else ""
-
-            y = _ensure_space(c, y, height, 96)
-
-            c.setFont("Helvetica-Bold", 11)
-            c.setFillColor(colors.HexColor("#111827"))
-            c.drawString(margin_x, y, title)
-
-            if primary_action:
-                pill_x = margin_x + 170
-                max_pill_width = width - margin_x - pill_x
-                shortened_action = primary_action
-
-                if c.stringWidth(shortened_action, "Helvetica", 8) + 12 > max_pill_width:
-                    words = shortened_action.split()
-                    truncated = ""
-
-                    for word in words:
-                        candidate = (truncated + " " + word).strip()
-                        if c.stringWidth(candidate + "...", "Helvetica", 8) + 12 <= max_pill_width:
-                            truncated = candidate
-                        else:
-                            break
-
-                    if truncated and truncated != shortened_action:
-                        shortened_action = truncated + "..."
-
-                _draw_status_pill(
-                    c,
-                    pill_x,
-                    y + 7,
-                    shortened_action,
-                    good=("No action needed" in primary_action or "Already Completed" in primary_action),
-                )
-
-            y -= 17
-
-            c.setFont("Helvetica", 10)
-            c.setFillColor(colors.HexColor("#374151"))
-            wrapped_description = _wrap_text(c, description, width - 2 * margin_x - 12, font_size=10)
-            for line in wrapped_description:
-                c.drawString(margin_x + 12, y, line)
-                y -= 13
-
-            for extra_status in action_statuses[1:]:
-                y = _ensure_space(c, y, height, 20)
-                c.setFont("Helvetica-Oblique", 9)
-                c.setFillColor(colors.HexColor("#4b5563"))
-                c.drawString(margin_x + 12, y, f"- {extra_status}")
-                y -= 12
-
-            y -= 10
-
-    _new_page(c)
-    _draw_header_band(c, width, height)
-    y = height - 1.15 * inch
-    y = _draw_section_title(c, margin_x, y, "Application Checklists")
-
-    if not matches:
-        c.setFont("Helvetica", 10)
-        c.drawString(margin_x, y, "No checklist items available.")
-    else:
-        for match in matches:
-            benefit_id = match["id"]
-            title = match.get("title", benefit_id)
-            checklist = match.get("checklist") or []
-            progress = checklist_progress.get(benefit_id, [False] * len(checklist))
-
-            if not checklist:
-                continue
-
-            completed = sum(1 for item in progress if item)
-            total = len(checklist)
-
-            y = _ensure_space(c, y, height, 80)
-
-            c.setFont("Helvetica-Bold", 12)
-            c.setFillColor(colors.HexColor("#111827"))
-            c.drawString(margin_x, y, title)
-            _draw_status_pill(
-                c,
-                margin_x + 220,
-                y + 2,
-                f"{completed}/{total} complete",
-                good=(completed == total),
-            )
-            y -= 20
-
-            for step, checked in _get_ordered_checklist_items(checklist, progress):
-                wrapped = _wrap_text(c, step, width - 2 * margin_x - 24, font_size=10)
-                needed_height = max(18, len(wrapped) * 12) + 8
-                y = _ensure_space(c, y, height, needed_height + 18)
-
-                _draw_checkbox(c, margin_x, y, checked)
-
-                text_y = y - 8
-                c.setFillColor(colors.HexColor("#6b7280") if checked else colors.HexColor("#111827"))
-                c.setFont("Helvetica", 10)
-
-                for line in wrapped:
-                    c.drawString(margin_x + 18, text_y, line)
-                    text_y -= 12
-
-                y = text_y - 5
-
-            y -= 14
-
-    c.save()
-    return buffer.getvalue()
+    output = BytesIO()
+    rml2pdf.go(rml, outputFileName=output)
+    return output.getvalue()
 
 
 def lambda_handler(event, context):
@@ -702,7 +574,6 @@ def lambda_handler(event, context):
     )
 
     matches = _strip_state_aid_statuses_for_not_enrolling(profile, matches)
-
     normalized_progress = _normalize_checklist_progress(checklist_progress, matches)
 
     run_id = str(uuid.uuid4())
