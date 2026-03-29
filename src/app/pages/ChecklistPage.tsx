@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'framer-motion';
 import { Download, ExternalLink } from 'lucide-react';
@@ -29,12 +29,49 @@ const mobileChecklistItemTransition = {
 
 const FEEDBACK_SURVEY_URL = 'https://forms.gle/x6J4fDrvWmUz6vFu9';
 
-function openUrlInNewTab(url: string) {
-  const link = document.createElement('a');
-  link.href = url;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  link.click();
+function openGeneratedPdf(
+  url: string,
+  {
+    isMobile,
+    pendingWindow,
+  }: {
+    isMobile: boolean;
+    pendingWindow: Window | null;
+  }
+) {
+  if (isMobile) {
+    window.location.assign(url);
+    return;
+  }
+
+  if (pendingWindow && !pendingWindow.closed) {
+    try {
+      pendingWindow.location.replace(url);
+      pendingWindow.focus();
+      return;
+    } catch (error) {
+      console.warn('Unable to reuse pending PDF window:', error);
+    }
+  }
+
+  const fallbackWindow = window.open(url, '_blank', 'noopener,noreferrer');
+
+  if (!fallbackWindow) {
+    // Popup blocker fallback: leave the direct link on the page and redirect as a last resort.
+    window.location.assign(url);
+  }
+}
+
+function createPdfObjectUrl(pdfBase64: string) {
+  const binaryString = window.atob(pdfBase64);
+  const pdfBytes = new Uint8Array(binaryString.length);
+
+  for (let index = 0; index < binaryString.length; index += 1) {
+    pdfBytes[index] = binaryString.charCodeAt(index);
+  }
+
+  const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+  return window.URL.createObjectURL(pdfBlob);
 }
 
 export default function ChecklistPage() {
@@ -44,6 +81,22 @@ export default function ChecklistPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [generationStatus, setGenerationStatus] = useState<string>('');
+  const [readyDownloadUrl, setReadyDownloadUrl] = useState<string | null>(null);
+  const readyDownloadLinkRef = useRef<HTMLAnchorElement | null>(null);
+
+  useEffect(() => {
+    if (readyDownloadUrl && !isMobile) {
+      readyDownloadLinkRef.current?.focus();
+    }
+  }, [readyDownloadUrl, isMobile]);
+
+  useEffect(() => {
+    return () => {
+      if (readyDownloadUrl?.startsWith('blob:')) {
+        window.URL.revokeObjectURL(readyDownloadUrl);
+      }
+    };
+  }, [readyDownloadUrl]);
 
   const checklistItemTransition = isMobile
     ? mobileChecklistItemTransition
@@ -74,7 +127,9 @@ export default function ChecklistPage() {
         originalIndex,
         checked: checklistProgress[benefitId]?.[originalIndex] ?? false,
       }))
-      .sort((a, b) => Number(a.checked) - Number(b.checked) || a.originalIndex - b.originalIndex);
+      .sort(
+        (a, b) => Number(a.checked) - Number(b.checked) || a.originalIndex - b.originalIndex
+      );
 
   const renderChecklistItemText = (item: string) => {
     const richTextSegments = getBenefitRichTextSegments(item);
@@ -84,7 +139,9 @@ export default function ChecklistPage() {
   const getOfficialButtonLabel = (benefitId: string, fallbackLabel?: string) => {
     if (
       answers['fafsa_completed'] === 'not_enrolled_next_year' &&
-      (benefitId === 'pell-grant' || benefitId === 'massgrant' || benefitId === 'massgrant-plus')
+      (benefitId === 'pell-grant' ||
+        benefitId === 'massgrant' ||
+        benefitId === 'massgrant-plus')
     ) {
       return 'View Official Site';
     }
@@ -97,7 +154,30 @@ export default function ChecklistPage() {
       return;
     }
 
+    let pendingWindow: Window | null = null;
+    let objectUrlToRevokeOnError: string | null = null;
+
+    if (!isMobile) {
+      pendingWindow = window.open('', '_blank');
+
+      if (pendingWindow) {
+        try {
+          pendingWindow.opener = null;
+          pendingWindow.document.title = 'Preparing your PDF packet…';
+          pendingWindow.document.body.innerHTML = `
+            <main style="font-family: Arial, sans-serif; padding: 24px; line-height: 1.5;">
+              <h1 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Preparing your PDF packet…</h1>
+              <p>You can return to CommonMASS while the packet finishes loading.</p>
+            </main>
+          `;
+        } catch (error) {
+          console.warn('Unable to write placeholder content to pending PDF window:', error);
+        }
+      }
+    }
+
     setGenerationError(null);
+    setReadyDownloadUrl(null);
     setGenerationStatus('Preparing your PDF packet…');
     setIsGenerating(true);
 
@@ -106,37 +186,45 @@ export default function ChecklistPage() {
         profile: answers,
         selectedBenefits: checklistBenefits.map((benefit) => benefit.id),
         checklistProgress,
-        matchedBenefits: []
+        matchedBenefits: [],
       });
 
+      let resolvedUrl: string | null = null;
+
       if (packetResult.url) {
-        openUrlInNewTab(packetResult.url);
-        setGenerationStatus('Your PDF packet is ready.');
-        return;
+        resolvedUrl = packetResult.url;
+      } else if (packetResult.pdfBase64) {
+        objectUrlToRevokeOnError = createPdfObjectUrl(packetResult.pdfBase64);
+        resolvedUrl = objectUrlToRevokeOnError;
       }
 
-      if (packetResult.pdfBase64) {
-        const binaryString = window.atob(packetResult.pdfBase64);
-        const pdfBytes = new Uint8Array(binaryString.length);
-
-        for (let index = 0; index < binaryString.length; index += 1) {
-          pdfBytes[index] = binaryString.charCodeAt(index);
-        }
-
-        const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-        const objectUrl = window.URL.createObjectURL(pdfBlob);
-
-        openUrlInNewTab(objectUrl);
-        window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 60_000);
-
-        setGenerationStatus('Your PDF packet is ready.');
-        return;
+      if (!resolvedUrl) {
+        throw new Error('No PDF data returned from API.');
       }
 
-      throw new Error('No PDF data returned from API.');
+      setReadyDownloadUrl(resolvedUrl);
+      setGenerationStatus(
+        isMobile
+          ? 'Opening your PDF packet…'
+          : 'Your PDF packet is ready. If it did not open automatically, use the direct link below.'
+      );
+
+      openGeneratedPdf(resolvedUrl, {
+        isMobile,
+        pendingWindow,
+      });
     } catch (error) {
+      if (pendingWindow && !pendingWindow.closed) {
+        pendingWindow.close();
+      }
+
+      if (objectUrlToRevokeOnError) {
+        window.URL.revokeObjectURL(objectUrlToRevokeOnError);
+      }
+
       console.error('Packet generation error:', error);
       setGenerationStatus('');
+      setReadyDownloadUrl(null);
       setGenerationError(
         error instanceof Error
           ? error.message
@@ -191,7 +279,7 @@ export default function ChecklistPage() {
                 <p
                   role="status"
                   aria-live="polite"
-                  className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-400"
+                  className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-300"
                 >
                   {completedChecklistItems} of {totalChecklistItems} checklist items
                   completed.
@@ -202,7 +290,7 @@ export default function ChecklistPage() {
                 <p
                   role="status"
                   aria-live="polite"
-                  className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-400"
+                  className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-300"
                 >
                   {generationStatus}
                 </p>
@@ -215,6 +303,27 @@ export default function ChecklistPage() {
                 >
                   {generationError}
                 </p>
+              )}
+
+              {readyDownloadUrl && (
+                <div className="mt-4 rounded-2xl border border-[#1e3a5f]/15 bg-white/90 p-4 shadow-sm dark:border-sky-200/20 dark:bg-slate-900/85">
+                  <p
+                    id="pdf-direct-link-help"
+                    className="text-sm text-slate-700 dark:text-slate-300"
+                  >
+                    If your PDF did not open automatically, use this direct link.
+                  </p>
+
+                  <a
+                    ref={readyDownloadLinkRef}
+                    href={readyDownloadUrl}
+                    target={isMobile ? '_self' : '_blank'}
+                    rel={isMobile ? undefined : 'noopener noreferrer'}
+                    className="mt-3 inline-flex min-h-11 items-center rounded-full bg-[#1e3a5f] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#16304f] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1e3a5f]/25 dark:bg-sky-300 dark:text-slate-950 dark:hover:bg-sky-200"
+                  >
+                    {isMobile ? 'Open PDF packet' : 'Open PDF packet in a new tab'}
+                  </a>
+                </div>
               )}
 
               {checklistBenefits.length > 0 && (
@@ -260,7 +369,7 @@ export default function ChecklistPage() {
                         <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
                           {benefit.title}
                         </h2>
-                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
                           {completedSteps} of {benefit.checklist.length} steps completed
                         </p>
                       </div>
@@ -275,7 +384,9 @@ export default function ChecklistPage() {
                         href={benefit.officialUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        aria-label={`${benefit.officialButtonLabel ?? 'Visit official site'} for ${benefit.title} (opens in a new tab)`}
+                        aria-label={`${
+                          benefit.officialButtonLabel ?? 'Visit official site'
+                        } for ${benefit.title} (opens in a new tab)`}
                       >
                         <ExternalLink className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                         {getOfficialButtonLabel(benefit.id, benefit.officialButtonLabel)}
@@ -296,7 +407,7 @@ export default function ChecklistPage() {
                           style={isMobile ? { willChange: 'transform' } : undefined}
                           className={`flex items-start gap-3 rounded-2xl border px-4 py-3 transition-colors duration-200 md:transition-all md:duration-300 print:border-none print:bg-white print:px-0 print:py-1 print:shadow-none ${
                             checked
-                              ? 'border-slate-200 bg-slate-100/80 opacity-70 dark:border-slate-800 dark:bg-slate-800/70'
+                              ? 'border-slate-200 bg-slate-100/80 dark:border-slate-800 dark:bg-slate-800/70'
                               : 'border-white/90 bg-white shadow-[0_14px_36px_-28px_rgba(15,23,42,0.55)] hover:-translate-y-0.5 hover:border-[#355b8a]/20 hover:shadow-[0_20px_38px_-28px_rgba(30,58,95,0.45)] dark:border-slate-800 dark:bg-slate-950/80 dark:shadow-[0_20px_44px_-30px_rgba(2,6,23,0.95)] dark:hover:border-slate-700 dark:hover:shadow-[0_24px_50px_-30px_rgba(2,6,23,1)]'
                           }`}
                         >
@@ -317,7 +428,7 @@ export default function ChecklistPage() {
                             htmlFor={`${benefit.id}-${originalIndex}`}
                             className={`flex-1 cursor-pointer text-base font-medium leading-relaxed transition-colors ${
                               checked
-                                ? 'text-slate-400 line-through dark:text-slate-500'
+                                ? 'text-slate-600 line-through decoration-2 decoration-slate-500 dark:text-slate-300 dark:decoration-slate-400'
                                 : 'text-slate-900 dark:text-slate-100'
                             }`}
                           >
@@ -333,7 +444,7 @@ export default function ChecklistPage() {
           </div>
         ) : (
           <div className="rounded-[1.75rem] border border-dashed border-gray-300 bg-white/72 py-20 text-center shadow-[0_24px_60px_-42px_rgba(15,23,42,0.28)] backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/70">
-            <p className="mb-4 text-gray-500 dark:text-slate-400">
+            <p className="mb-4 text-gray-500 dark:text-slate-300">
               Complete the screener first to generate a personalized checklist.
             </p>
 
