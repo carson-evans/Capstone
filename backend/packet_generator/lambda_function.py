@@ -4,6 +4,7 @@ import re
 import uuid
 from datetime import datetime, timezone
 from io import BytesIO
+from urllib.parse import urlsplit
 from xml.sax.saxutils import escape
 
 import boto3
@@ -39,6 +40,7 @@ REQUIRE_SHARED_SECRET = os.environ.get("REQUIRE_SHARED_SECRET", "false").strip()
 SHARED_SECRET_HEADER = os.environ.get("SHARED_SECRET_HEADER", "x-commonmass-secret").strip()
 SHARED_SECRET_VALUE = os.environ.get("SHARED_SECRET_VALUE", "").strip()
 
+PDF_FILENAME = "CommonMASS-Application-Preparation-Packet.pdf"
 NOT_ENROLLED_NEXT_YEAR_VALUE = "not_enrolled_next_year"
 MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM = "Attend a participating MASSGrant Plus school"
 
@@ -136,13 +138,62 @@ def _markdown_links_to_plain_text(value: str) -> str:
     if not value:
         return ""
 
-    text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1 (\2)", value)
-    text = re.sub(r"\s+", " ", text).strip()
+    text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1", value)
+    text = re.sub(r"https?://\S+", "", text)
+    text = re.sub(r"\s+", " ", text).strip(" -:;,.")
     return text
 
 
 def _xml_text(value: str | None) -> str:
     return escape((value or "").strip(), {'"': "&quot;", "'": "&apos;"})
+
+
+def _spacer(length: int | str = 8) -> str:
+    return f'<spacer length="{length}"/>'
+
+
+def _display_url_value(url: str) -> str:
+    if not url:
+        return ""
+
+    parts = urlsplit(url.strip())
+    host = (parts.netloc or "").replace("www.", "").strip()
+    path = parts.path or ""
+    compact = f"{host}{path}".rstrip("/")
+
+    if not compact:
+        compact = url.strip().replace("https://", "").replace("http://", "")
+
+    return compact
+
+
+def _display_url_label(label: str, url: str) -> str:
+    clean_label = _markdown_links_to_plain_text(label or "")
+    if clean_label:
+        return clean_label
+
+    normalized = (url or "").lower()
+
+    known_labels = {
+        "studentaid.gov/h/apply-for-aid/fafsa": "Open FAFSA application page",
+        "studentaid.gov/fsa-id/sign-in/landing": "Open StudentAid.gov account page",
+        "mass.edu/osfa/students/masfa.asp": "Open MASFA information page",
+        "madhestudentxprod.regenteducation.net/signin": "Open MASFA sign-in page",
+        "mahealthconnector.org": "Open MA Health Connector",
+        "mahix.org/individual": "Open MassHealth information page",
+        "dtaconnect.eohhs.mass.gov": "Open DTA Connect",
+        "mass.gov/orgs/department-of-transitional-assistance": "Open DTA program page",
+        "mbta.com/fares/college-student-semester-passes": "Open MBTA student pass information",
+        "mbta.com": "Open MBTA website",
+    }
+
+    for key, value in known_labels.items():
+        if key in normalized:
+            return value
+
+    parts = urlsplit(url or "")
+    host = (parts.netloc or "").replace("www.", "").strip()
+    return f"Open {host}" if host else "Open official website"
 
 
 def _profile_summary_items(profile: dict) -> list[tuple[str, str]]:
@@ -166,6 +217,7 @@ def _profile_summary_items(profile: dict) -> list[tuple[str, str]]:
     ]
 
     rows: list[tuple[str, str]] = []
+
     for key in ordered_keys:
         if key in profile:
             rows.append(
@@ -174,14 +226,12 @@ def _profile_summary_items(profile: dict) -> list[tuple[str, str]]:
                     friendly_profile_value(key, profile.get(key)),
                 )
             )
+
     return rows
 
 
 def _should_default_checklist_item_to_checked(benefit_id: str, item: str) -> bool:
-    return (
-        benefit_id == "massgrant-plus"
-        and item == MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM
-    )
+    return benefit_id == "massgrant-plus" and item == MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM
 
 
 def _normalize_checklist_progress(
@@ -200,9 +250,7 @@ def _normalize_checklist_progress(
             raw_progress = []
 
         normalized[benefit_id] = [
-            bool(raw_progress[index])
-            if index < len(raw_progress)
-            else _should_default_checklist_item_to_checked(benefit_id, item)
+            bool(raw_progress[index]) if index < len(raw_progress) else _should_default_checklist_item_to_checked(benefit_id, item)
             for index, item in enumerate(checklist)
         ]
 
@@ -225,12 +273,12 @@ def _get_ordered_checklist_items(
     ordered_items.sort(
         key=lambda item: (bool(item["checked"]), item["original_index"])
     )
+
     return [(item["item"], bool(item["checked"])) for item in ordered_items]
 
 
 def _is_positive_status(status: str) -> bool:
     normalized = (status or "").strip().lower()
-
     positive_markers = (
         "no action needed",
         "already completed",
@@ -243,11 +291,11 @@ def _is_positive_status(status: str) -> bool:
 
 
 def _status_style(status: str) -> str:
-    return "cmStatusDone" if _is_positive_status(status) else "cmStatusTodo"
+    return "govStatusDone" if _is_positive_status(status) else "govStatusAction"
 
 
 def _checklist_item_style(checked: bool) -> str:
-    return "cmChecklistDone" if checked else "cmChecklistTodo"
+    return "govChecklistDone" if checked else "govChecklistAction"
 
 
 def _build_accessible_packet_data(
@@ -257,6 +305,7 @@ def _build_accessible_packet_data(
     checklist_progress: dict[str, list[bool]],
 ) -> dict:
     profile_summary = []
+
     for label, value in _profile_summary_items(profile):
         profile_summary.append(
             {
@@ -266,6 +315,7 @@ def _build_accessible_packet_data(
         )
 
     checklist_sections = []
+
     for match in matches:
         checklist = match.get("checklist") or []
         progress = checklist_progress.get(match["id"], [False] * len(checklist))
@@ -285,6 +335,7 @@ def _build_accessible_packet_data(
         )
 
     matched_benefits = []
+
     for match in matches:
         matched_benefits.append(
             {
@@ -320,12 +371,16 @@ def _build_accessible_packet_data(
     }
 
 
-def _paragraph(text: str, style: str = "cmBody", tag_type: str = "P") -> str:
+def _paragraph(text: str, style: str = "govBody", tag_type: str = "P") -> str:
     return f'<para style="{style}" tagType="{tag_type}">{_xml_text(text)}</para>'
 
 
 def _heading(text: str, style: str, tag_type: str) -> str:
     return f'<para style="{style}" tagType="{tag_type}">{_xml_text(text)}</para>'
+
+
+def _data_line(label: str, value: str, style: str = "govDataLine") -> str:
+    return _paragraph(f"{label}: {value}", style, "P")
 
 
 def _build_accessible_rml(
@@ -334,9 +389,9 @@ def _build_accessible_rml(
     matches: list[dict],
     checklist_progress: dict[str, list[bool]],
 ) -> str:
-    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-
+    generated_at = datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC")
     profile_items = _profile_summary_items(profile)
+
     total_checklist_items = sum(len(match.get("checklist") or []) for match in matches)
     completed_checklist_items = 0
 
@@ -349,80 +404,138 @@ def _build_accessible_rml(
     story_parts: list[str] = []
 
     story_parts.append(
-        _heading("CommonMASS Application Preparation Packet", "cmTitle", "H1")
-    )
-    story_parts.append(
         _paragraph(
-            "A personalized summary of your current CommonMASS matches and next steps.",
-            "cmLead",
+            "CommonMASS | Massachusetts Benefits Screening and Application Preparation",
+            "govKicker",
             "P",
         )
     )
+    story_parts.append(_heading("Application Preparation Packet", "govTitle", "H1"))
     story_parts.append(
         _paragraph(
-            f"Run ID: {run_id} | Generated at UTC: {generated_at}",
-            "cmMeta",
-            "P",
-        )
-    )
-    story_parts.append(
-        _paragraph(
-            f"Matched benefits: {len(matches)} | Completed checklist items: "
-            f"{completed_checklist_items} of {total_checklist_items}",
-            "cmSummary",
+            "This packet summarizes possible programs, current statuses, and preparation steps based on the information submitted to CommonMASS.",
+            "govSubtitle",
             "P",
         )
     )
 
-    story_parts.append(_heading("Profile Summary", "cmSection", "H2"))
+    story_parts.append(_spacer(14))
+
+    story_parts.append(_heading("Document Information", "govSection", "H2"))
+    story_parts.append(_data_line("Reference ID", run_id))
+    story_parts.append(_data_line("Generated", generated_at))
+
+    story_parts.append(_spacer(10))
+
+    story_parts.append(_heading("Summary of Results", "govSection", "H2"))
+    story_parts.append(
+        _paragraph(
+            f"Matched programs: {len(matches)}",
+            "govSummaryLine",
+            "P",
+        )
+    )
+    story_parts.append(
+        _paragraph(
+            f"Checklist progress: {completed_checklist_items} of {total_checklist_items} items completed",
+            "govSummaryLine",
+            "P",
+        )
+    )
+    story_parts.append(
+        _paragraph(
+            "CommonMASS is a screening and preparation tool. Final eligibility, enrollment, and award decisions are made by the relevant agency, school, or program administrator.",
+            "govCallout",
+            "P",
+        )
+    )
+
+    story_parts.append(_spacer(10))
+
+    story_parts.append(_heading("Submitted Profile", "govSection", "H2"))
     if profile_items:
         for label, value in profile_items:
-            story_parts.append(_paragraph(label, "cmLabel", "P"))
-            story_parts.append(_paragraph(value, "cmBody", "P"))
+            story_parts.append(_data_line(label, value))
     else:
-        story_parts.append(_paragraph("No profile data was provided.", "cmBody", "P"))
+        story_parts.append(
+            _paragraph(
+                "No profile information was available in the submitted request.",
+                "govBody",
+                "P",
+            )
+        )
 
-    story_parts.append(_heading("Matched Benefits Overview", "cmSection", "H2"))
+    story_parts.append(_spacer(12))
+    story_parts.append(_heading("Matched Programs and Recommended Actions", "govSection", "H2"))
+
     if matches:
         for match in matches:
-            title = match.get("title", match.get("id", "Benefit"))
+            title = match.get("title", match.get("id", "Program"))
             description = _markdown_links_to_plain_text(match.get("description", ""))
             details = _markdown_links_to_plain_text(match.get("details", ""))
             action_statuses = match.get("actionStatuses") or []
             official_url = match.get("officialUrl", "")
             official_button_label = match.get("officialButtonLabel", "")
 
-            story_parts.append(_heading(title, "cmSubsection", "H3"))
+            story_parts.append(_heading(title, "govProgramTitle", "H3"))
 
             if description:
-                story_parts.append(_paragraph(description, "cmBody", "P"))
+                story_parts.append(_paragraph(description, "govBody", "P"))
 
             if details and details != description:
-                story_parts.append(_paragraph(details, "cmMuted", "P"))
-
-            if action_statuses:
-                story_parts.append(_paragraph("Current status", "cmLabel", "P"))
-                for status in action_statuses:
-                    clean_status = _markdown_links_to_plain_text(status)
-                    story_parts.append(
-                        _paragraph(clean_status, _status_style(clean_status), "P")
-                    )
+                story_parts.append(_paragraph(details, "govBodySecondary", "P"))
 
             if official_url:
-                label = official_button_label or "Official site"
+                story_parts.append(_paragraph("Official website", "govInlineLabel", "P"))
                 story_parts.append(
-                    _paragraph(f"{label} for {title}: {official_url}", "cmLink", "P")
+                    _paragraph(
+                        _display_url_label(official_button_label, official_url),
+                        "govLinkAction",
+                        "P",
+                    )
                 )
+                story_parts.append(
+                    _paragraph(
+                        f"URL: {_display_url_value(official_url)}",
+                        "govUrlLine",
+                        "P",
+                    )
+                )
+
+            if action_statuses:
+                story_parts.append(_paragraph("Current status", "govInlineLabel", "P"))
+                for status in action_statuses:
+                    clean_status = _markdown_links_to_plain_text(status)
+                    if clean_status:
+                        story_parts.append(
+                            _paragraph(
+                                clean_status,
+                                _status_style(clean_status),
+                                "P",
+                            )
+                        )
+            else:
+                story_parts.append(
+                    _paragraph(
+                        "No current program status was provided.",
+                        "govNeutralLine",
+                        "P",
+                    )
+                )
+
+            story_parts.append(_spacer(12))
     else:
         story_parts.append(
             _paragraph(
-                "No matched benefits were found based on the submitted profile.",
-                "cmBody",
+                "No matched programs were found based on the submitted profile information.",
+                "govBody",
                 "P",
             )
         )
 
-    story_parts.append(_heading("Application Checklist", "cmSection", "H2"))
+    story_parts.append(_spacer(8))
+    story_parts.append(_heading("Application Checklist by Program", "govSection", "H2"))
+
     if matches:
         for match in matches:
             benefit_id = match["id"]
@@ -432,18 +545,18 @@ def _build_accessible_rml(
             completed = sum(1 for item in progress if item)
             total = len(checklist)
 
-            story_parts.append(_heading(title, "cmSubsection", "H3"))
+            story_parts.append(_heading(title, "govProgramTitle", "H3"))
             story_parts.append(
                 _paragraph(
-                    f"Completed {completed} of {total} checklist items.",
-                    "cmProgress",
+                    f"Completed items: {completed} of {total}",
+                    "govProgressLine",
                     "P",
                 )
             )
 
             if checklist:
                 for item_text, checked in _get_ordered_checklist_items(checklist, progress):
-                    prefix = "Completed" if checked else "To do"
+                    prefix = "Completed" if checked else "Action needed"
                     story_parts.append(
                         _paragraph(
                             f"{prefix}: {item_text}",
@@ -452,144 +565,286 @@ def _build_accessible_rml(
                         )
                     )
             else:
-                story_parts.append(_paragraph("No checklist items available.", "cmBody", "P"))
+                story_parts.append(
+                    _paragraph(
+                        "No checklist items are available for this program.",
+                        "govNeutralLine",
+                        "P",
+                    )
+                )
+
+            story_parts.append(_spacer(12))
     else:
-        story_parts.append(_paragraph("No checklist items available.", "cmBody", "P"))
+        story_parts.append(
+            _paragraph(
+                "No checklist items are available because no programs were matched.",
+                "govBody",
+                "P",
+            )
+        )
 
-    story_xml = "\n    ".join(story_parts)
+    story_parts.append(_spacer(10))
+    story_parts.append(
+        _paragraph(
+            "Important notice: Use this packet as a preparation aid only. Confirm deadlines, forms, identity requirements, residency requirements, and submission instructions on the official program website before applying.",
+            "govFinalNotice",
+            "P",
+        )
+    )
 
-    return f"""
-<!DOCTYPE document SYSTEM "rml.dtd">
-<document filename="CommonMASS-Packet.pdf" tagged="1">
-  <template
-      title="CommonMASS Application Preparation Packet"
-      author="CommonMASS"
-      subject="Application preparation checklist packet"
-      lang="en-US"
-      pageSize="(612.0,792.0)"
-      leftMargin="54"
-      rightMargin="54"
-      topMargin="54"
-      bottomMargin="54">
-    <pageTemplate id="main">
-      <frame id="mainFrame" x1="54" y1="54" width="504" height="684"/>
-    </pageTemplate>
-  </template>
+    story_xml = "\n        ".join(story_parts)
 
-  <stylesheet>
-    <paraStyle
-        name="cmTitle"
-        fontName="Helvetica-Bold"
-        fontSize="22"
-        leading="27"
-        textColor="#1e3a5f"
-        spaceAfter="6"/>
-    <paraStyle
-        name="cmLead"
-        fontName="Helvetica"
-        fontSize="11"
-        leading="16"
-        textColor="#475569"
-        spaceAfter="10"/>
-    <paraStyle
-        name="cmMeta"
-        fontName="Helvetica"
-        fontSize="9"
-        leading="12"
-        textColor="#64748b"
-        spaceAfter="12"/>
-    <paraStyle
-        name="cmSummary"
-        fontName="Helvetica-Bold"
-        fontSize="10"
-        leading="14"
-        textColor="#1e3a5f"
-        spaceAfter="14"/>
-    <paraStyle
-        name="cmSection"
-        fontName="Helvetica-Bold"
-        fontSize="15"
-        leading="19"
-        textColor="#1e3a5f"
-        spaceBefore="16"
-        spaceAfter="8"/>
-    <paraStyle
-        name="cmSubsection"
-        fontName="Helvetica-Bold"
-        fontSize="12"
-        leading="16"
-        textColor="#0f172a"
-        spaceBefore="10"
-        spaceAfter="4"/>
-    <paraStyle
-        name="cmLabel"
-        fontName="Helvetica-Bold"
-        fontSize="10"
-        leading="13"
-        textColor="#334155"
-        spaceBefore="4"
-        spaceAfter="1"/>
-    <paraStyle
-        name="cmBody"
-        fontName="Helvetica"
-        fontSize="10"
-        leading="15"
-        textColor="#111827"
-        spaceAfter="4"/>
-    <paraStyle
-        name="cmMuted"
-        fontName="Helvetica"
-        fontSize="10"
-        leading="14"
-        textColor="#475569"
-        spaceAfter="6"/>
-    <paraStyle
-        name="cmProgress"
-        fontName="Helvetica"
-        fontSize="10"
-        leading="14"
-        textColor="#475569"
-        spaceAfter="6"/>
-    <paraStyle
-        name="cmLink"
-        fontName="Helvetica"
-        fontSize="10"
-        leading="15"
-        textColor="#1e3a5f"
-        spaceAfter="6"/>
-    <paraStyle
-        name="cmStatusDone"
-        fontName="Helvetica-Bold"
-        fontSize="10"
-        leading="14"
-        textColor="#166534"
-        spaceAfter="4"/>
-    <paraStyle
-        name="cmStatusTodo"
-        fontName="Helvetica-Bold"
-        fontSize="10"
-        leading="14"
-        textColor="#9a3412"
-        spaceAfter="4"/>
-    <paraStyle
-        name="cmChecklistDone"
-        fontName="Helvetica"
-        fontSize="10"
-        leading="15"
-        textColor="#334155"
-        spaceAfter="4"/>
-    <paraStyle
-        name="cmChecklistTodo"
-        fontName="Helvetica"
-        fontSize="10"
-        leading="15"
-        textColor="#0f172a"
-        spaceAfter="4"/>
-  </stylesheet>
+    return f"""<!DOCTYPE document SYSTEM "rml.dtd">
+<document filename="{PDF_FILENAME}" tagged="1">
+    <template
+        title="CommonMASS Application Preparation Packet"
+        author="CommonMASS"
+        subject="Massachusetts benefits summary and application preparation packet"
+        lang="en-US"
+        pageSize="(612.0,792.0)"
+        leftMargin="62"
+        rightMargin="62"
+        topMargin="56"
+        bottomMargin="96"
+    >
+        <pageTemplate id="main">
+            <frame id="mainFrame" x1="62" y1="96" width="488" height="640"/>
+        </pageTemplate>
+    </template>
 
-  <story>
-    {story_xml}
-  </story>
+    <stylesheet>
+        <paraStyle
+            name="govKicker"
+            fontName="Helvetica-Bold"
+            fontSize="8.2"
+            leading="10.6"
+            textColor="#143B63"
+            backColor="#F3F6F9"
+            borderWidth="0.35"
+            borderColor="#CBD5E1"
+            borderPadding="4"
+            spaceAfter="8"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govTitle"
+            fontName="Helvetica-Bold"
+            fontSize="17.6"
+            leading="21.8"
+            textColor="#102A43"
+            spaceAfter="6"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govSubtitle"
+            fontName="Helvetica"
+            fontSize="9.6"
+            leading="13.6"
+            textColor="#334E68"
+            spaceAfter="2"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govSection"
+            fontName="Helvetica-Bold"
+            fontSize="11.6"
+            leading="14.6"
+            textColor="#102A43"
+            backColor="#EAF0F5"
+            borderWidth="0.35"
+            borderColor="#CBD5E1"
+            borderPadding="5"
+            spaceBefore="2"
+            spaceAfter="6"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govDataLine"
+            fontName="Helvetica"
+            fontSize="9.0"
+            leading="12.6"
+            textColor="#1F2933"
+            spaceBefore="0"
+            spaceAfter="2"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govSummaryLine"
+            fontName="Helvetica-Bold"
+            fontSize="9.1"
+            leading="12.8"
+            textColor="#102A43"
+            spaceBefore="0"
+            spaceAfter="2"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govCallout"
+            fontName="Helvetica"
+            fontSize="9.0"
+            leading="13.0"
+            textColor="#243B53"
+            backColor="#FFF8E8"
+            borderWidth="0.35"
+            borderColor="#D9C27A"
+            borderPadding="5"
+            spaceBefore="2"
+            spaceAfter="4"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govProgramTitle"
+            fontName="Helvetica-Bold"
+            fontSize="10.5"
+            leading="13.5"
+            textColor="#FFFFFF"
+            backColor="#173F6D"
+            borderWidth="0.35"
+            borderColor="#173F6D"
+            borderPadding="5"
+            spaceBefore="2"
+            spaceAfter="5"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govBody"
+            fontName="Helvetica"
+            fontSize="8.95"
+            leading="12.9"
+            textColor="#1F2933"
+            spaceBefore="0"
+            spaceAfter="3"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govBodySecondary"
+            fontName="Helvetica"
+            fontSize="8.85"
+            leading="12.9"
+            textColor="#486581"
+            spaceBefore="0"
+            spaceAfter="3"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govInlineLabel"
+            fontName="Helvetica-Bold"
+            fontSize="8.85"
+            leading="11.6"
+            textColor="#243B53"
+            spaceBefore="2"
+            spaceAfter="1"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govLinkAction"
+            fontName="Helvetica-Bold"
+            fontSize="8.8"
+            leading="11.8"
+            textColor="#102A43"
+            spaceBefore="0"
+            spaceAfter="1"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govUrlLine"
+            fontName="Helvetica"
+            fontSize="8.2"
+            leading="11.2"
+            textColor="#486581"
+            spaceBefore="0"
+            spaceAfter="3"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govNeutralLine"
+            fontName="Helvetica"
+            fontSize="8.8"
+            leading="12.4"
+            textColor="#486581"
+            spaceBefore="1"
+            spaceAfter="3"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govStatusDone"
+            fontName="Helvetica-Bold"
+            fontSize="8.9"
+            leading="12.6"
+            textColor="#1E5F3A"
+            backColor="#EEF8F1"
+            borderWidth="0.35"
+            borderColor="#98C4A5"
+            borderPadding="4"
+            spaceBefore="1"
+            spaceAfter="2"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govStatusAction"
+            fontName="Helvetica-Bold"
+            fontSize="8.9"
+            leading="12.6"
+            textColor="#8A3D12"
+            backColor="#FFF3E8"
+            borderWidth="0.35"
+            borderColor="#D9A37B"
+            borderPadding="4"
+            spaceBefore="1"
+            spaceAfter="2"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govProgressLine"
+            fontName="Helvetica-Bold"
+            fontSize="8.95"
+            leading="12.6"
+            textColor="#102A43"
+            spaceBefore="0"
+            spaceAfter="2"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govChecklistAction"
+            fontName="Helvetica"
+            fontSize="8.75"
+            leading="12.4"
+            textColor="#1F2933"
+            leftIndent="12"
+            spaceBefore="0"
+            spaceAfter="1"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govChecklistDone"
+            fontName="Helvetica"
+            fontSize="8.75"
+            leading="12.4"
+            textColor="#486581"
+            leftIndent="12"
+            spaceBefore="0"
+            spaceAfter="1"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govFinalNotice"
+            fontName="Helvetica"
+            fontSize="8.95"
+            leading="13.0"
+            textColor="#243B53"
+            backColor="#FFF8E8"
+            borderWidth="0.35"
+            borderColor="#D9C27A"
+            borderPadding="5"
+            spaceBefore="3"
+            spaceAfter="2"
+            wordWrap="CJK"
+        />
+    </stylesheet>
+
+    <story>
+        {story_xml}
+    </story>
 </document>
 """
 
@@ -606,7 +861,6 @@ def _build_pdf_bytes(
         matches=matches,
         checklist_progress=checklist_progress,
     )
-
     output = BytesIO()
     rml2pdf.go(rml.encode("utf-8"), outputFileName=output)
     return output.getvalue()
@@ -691,9 +945,9 @@ def lambda_handler(event, context):
         catalog=catalog,
         selected_benefit_ids=safe_selected,
     )
-
     matches = _strip_state_aid_statuses_for_not_enrolling(safe_profile, matches)
     matches = _sort_matches_for_display(safe_profile, matches)
+
     normalized_progress = _normalize_checklist_progress(checklist_progress, matches)
 
     run_id = str(uuid.uuid4())
@@ -728,7 +982,7 @@ def lambda_handler(event, context):
                 "bucket_region_used": region,
                 "matched_benefits": matches,
                 "packet_data": packet_data,
-                "filename": "CommonMASS-Packet.pdf",
+                "filename": PDF_FILENAME,
                 "pdf_base64": base64.b64encode(pdf_bytes).decode("ascii"),
             },
             event=event,
@@ -775,7 +1029,7 @@ def lambda_handler(event, context):
                 "Bucket": PACKETS_BUCKET,
                 "Key": key,
                 "ResponseContentType": "application/pdf",
-                "ResponseContentDisposition": f'{disposition}; filename="CommonMASS-Packet.pdf"',
+                "ResponseContentDisposition": f'{disposition}; filename="{PDF_FILENAME}"',
             },
             ExpiresIn=URL_EXPIRES_SECONDS,
         )
@@ -796,7 +1050,7 @@ def lambda_handler(event, context):
             "bucket_region_used": region,
             "matched_benefits": matches,
             "packet_data": packet_data,
-            "filename": "CommonMASS-Packet.pdf",
+            "filename": PDF_FILENAME,
             "download_url": presigned_url,
             "url": presigned_url,
             "presigned_url": presigned_url,
