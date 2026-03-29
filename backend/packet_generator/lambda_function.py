@@ -1,4 +1,4 @@
-import base64
+﻿import base64
 import os
 import re
 import uuid
@@ -12,7 +12,6 @@ from botocore.exceptions import ClientError
 from rlextra.rml2pdf import rml2pdf
 
 from commonmass_backend import (
-    PROFILE_LABELS,
     build_response,
     detect_bucket_region,
     friendly_profile_value,
@@ -26,23 +25,26 @@ from commonmass_backend import (
     validate_json_request,
 )
 
-PACKETS_BUCKET = os.environ.get("PACKETS_BUCKET", "")
-PACKETS_PREFIX = os.environ.get("PACKETS_PREFIX", "packets/")
+PACKETS_BUCKET = os.environ.get("PACKETS_BUCKET", "").strip()
+PACKETS_PREFIX = os.environ.get("PACKETS_PREFIX", "packets/").strip()
 URL_EXPIRES_SECONDS = int(os.environ.get("URL_EXPIRES_SECONDS", "300"))
 PACKETS_KMS_KEY_ID = os.environ.get("PACKETS_KMS_KEY_ID", "").strip()
 PDF_CONTENT_DISPOSITION = os.environ.get("PDF_CONTENT_DISPOSITION", "inline").strip().lower()
 MAX_BODY_BYTES = int(os.environ.get("MAX_BODY_BYTES", "65536"))
 
-RULES_BUCKET = os.environ.get("RULES_BUCKET", "")
-BENEFITS_CATALOG_KEY = os.environ.get("BENEFITS_CATALOG_KEY", "benefits/catalog.json")
+RULES_BUCKET = os.environ.get("RULES_BUCKET", "").strip()
+BENEFITS_CATALOG_KEY = os.environ.get("BENEFITS_CATALOG_KEY", "benefits/catalog.json").strip()
 
 REQUIRE_SHARED_SECRET = os.environ.get("REQUIRE_SHARED_SECRET", "false").strip().lower() == "true"
 SHARED_SECRET_HEADER = os.environ.get("SHARED_SECRET_HEADER", "x-commonmass-secret").strip()
 SHARED_SECRET_VALUE = os.environ.get("SHARED_SECRET_VALUE", "").strip()
 
+NOT_ENROLLED_NEXT_YEAR_VALUE = "not_enrolled_next_year"
+MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM = "Attend a participating MASSGrant Plus school"
+
 PROFILE_LABELS = {
     "student_status": "Student status",
-    "citizen_status": "Citizen / eligible non-citizen",
+    "citizen_status": "Citizen or eligible non-citizen status",
     "residency_length": "Massachusetts residency status",
     "fafsa_completed": "FAFSA completed",
     "masfa_completed": "MASFA completed",
@@ -52,78 +54,12 @@ PROFILE_LABELS = {
     "prior_bachelors_degree": "Already has bachelor's degree",
     "massgrant_plus_income_band": "MASSGrant Plus family income",
     "work_study": "Federal work-study",
-    "household_sizes": "Household size",
+    "household_sizes": "Household size range",
     "household_size_exact": "Exact household size",
     "masshealth_income_under_limit": "Below MassHealth yearly threshold",
     "snap_income_under_limit": "Below SNAP monthly threshold",
     "school_name": "College or university",
 }
-
-PROFILE_VALUE_LABELS = {
-    "student_status": {
-        "full_time": "Yes, full-time",
-        "part_time": "Yes, part-time",
-        "future_full_time": "Will enroll full-time within the next year",
-        "future_part_time": "Will enroll part-time within the next year",
-        "no": "No",
-    },
-    "citizen_status": {
-        "yes": "Yes",
-        "no": "No",
-    },
-    "residency_length": {
-        "not_ma_resident": "Not a Massachusetts resident",
-        "under_12_months": "Less than 12 months",
-        "one_to_five_years": "12 months or more",
-        "over_five_years": "12 months or more",
-    },
-    "fafsa_completed": {
-        "yes": "Yes",
-        "no": "No",
-        "not_enrolled_next_year": "Not enrolling next academic year",
-    },
-    "masfa_completed": {
-        "yes": "Yes",
-        "no": "No",
-        "not_enrolled_next_year": "Not enrolling next academic year",
-    },
-    "masfa_high_school_completer": {
-        "yes": "Yes",
-        "no": "No",
-    },
-    "masfa_documentation_ready": {
-        "yes": "Yes",
-        "no": "No",
-    },
-    "dhe_affidavit_completed": {
-        "yes": "Yes",
-        "no": "No",
-    },
-    "prior_bachelors_degree": {
-        "yes": "Yes",
-        "no": "No",
-    },
-    "massgrant_plus_income_band": {
-        "under_85k": "Less than $85,000 per year before taxes",
-        "85k_to_100k": "$85,000 to $100,000 per year before taxes",
-        "over_100k": "More than $100,000 per year before taxes",
-    },
-    "work_study": {
-        "yes": "Yes",
-        "no": "No",
-    },
-    "masshealth_income_under_limit": {
-        "yes": "Yes",
-        "no": "No",
-    },
-    "snap_income_under_limit": {
-        "yes": "Yes",
-        "no": "No",
-    },
-}
-
-NOT_ENROLLED_NEXT_YEAR_VALUE = "not_enrolled_next_year"
-MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM = "Attend a participating MASSGrant Plus school"
 
 
 def _benefit_application_type(profile: dict, benefit_id: str) -> str | None:
@@ -292,6 +228,28 @@ def _get_ordered_checklist_items(
     return [(item["item"], bool(item["checked"])) for item in ordered_items]
 
 
+def _is_positive_status(status: str) -> bool:
+    normalized = (status or "").strip().lower()
+
+    positive_markers = (
+        "no action needed",
+        "already completed",
+        "already applied",
+        "already submitted",
+        "already enrolled",
+        "already has",
+    )
+    return any(marker in normalized for marker in positive_markers)
+
+
+def _status_style(status: str) -> str:
+    return "cmStatusDone" if _is_positive_status(status) else "cmStatusTodo"
+
+
+def _checklist_item_style(checked: bool) -> str:
+    return "cmChecklistDone" if checked else "cmChecklistTodo"
+
+
 def _build_accessible_packet_data(
     run_id: str,
     profile: dict,
@@ -332,16 +290,30 @@ def _build_accessible_packet_data(
             {
                 "id": match["id"],
                 "title": match.get("title", match["id"]),
-                "description": match.get("description", ""),
-                "actionStatuses": match.get("actionStatuses") or [],
+                "description": _markdown_links_to_plain_text(match.get("description", "")),
+                "details": _markdown_links_to_plain_text(match.get("details", "")),
+                "actionStatuses": [
+                    _markdown_links_to_plain_text(status)
+                    for status in (match.get("actionStatuses") or [])
+                ],
                 "officialUrl": match.get("officialUrl", ""),
                 "officialButtonLabel": match.get("officialButtonLabel", ""),
             }
         )
 
+    total_checklist_items = sum(len(section["items"]) for section in checklist_sections)
+    completed_checklist_items = sum(
+        section["completedCount"] for section in checklist_sections
+    )
+
     return {
         "runId": run_id,
         "generatedAtUtc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "summary": {
+            "matchedBenefitCount": len(matches),
+            "completedChecklistItems": completed_checklist_items,
+            "totalChecklistItems": total_checklist_items,
+        },
         "profileSummary": profile_summary,
         "matchedBenefits": matched_benefits,
         "checklists": checklist_sections,
@@ -362,26 +334,55 @@ def _build_accessible_rml(
     matches: list[dict],
     checklist_progress: dict[str, list[bool]],
 ) -> str:
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+    profile_items = _profile_summary_items(profile)
+    total_checklist_items = sum(len(match.get("checklist") or []) for match in matches)
+    completed_checklist_items = 0
+
+    for match in matches:
+        benefit_id = match["id"]
+        checklist = match.get("checklist") or []
+        progress = checklist_progress.get(benefit_id, [False] * len(checklist))
+        completed_checklist_items += sum(1 for item in progress if item)
+
     story_parts: list[str] = []
 
-    story_parts.append(_heading("CommonMASS Application Preparation Packet", "cmTitle", "H1"))
+    story_parts.append(
+        _heading("CommonMASS Application Preparation Packet", "cmTitle", "H1")
+    )
     story_parts.append(
         _paragraph(
-            f"Run ID: {run_id} | Generated at UTC: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}",
+            "A personalized summary of your current CommonMASS matches and next steps.",
+            "cmLead",
+            "P",
+        )
+    )
+    story_parts.append(
+        _paragraph(
+            f"Run ID: {run_id} | Generated at UTC: {generated_at}",
             "cmMeta",
+            "P",
+        )
+    )
+    story_parts.append(
+        _paragraph(
+            f"Matched benefits: {len(matches)} | Completed checklist items: "
+            f"{completed_checklist_items} of {total_checklist_items}",
+            "cmSummary",
             "P",
         )
     )
 
     story_parts.append(_heading("Profile Summary", "cmSection", "H2"))
-    profile_items = _profile_summary_items(profile)
     if profile_items:
         for label, value in profile_items:
-            story_parts.append(_paragraph(f"{label}: {value}", "cmBody", "P"))
+            story_parts.append(_paragraph(label, "cmLabel", "P"))
+            story_parts.append(_paragraph(value, "cmBody", "P"))
     else:
         story_parts.append(_paragraph("No profile data was provided.", "cmBody", "P"))
 
-    story_parts.append(_heading("Matched Benefits", "cmSection", "H2"))
+    story_parts.append(_heading("Matched Benefits Overview", "cmSection", "H2"))
     if matches:
         for match in matches:
             title = match.get("title", match.get("id", "Benefit"))
@@ -397,36 +398,31 @@ def _build_accessible_rml(
                 story_parts.append(_paragraph(description, "cmBody", "P"))
 
             if details and details != description:
-                story_parts.append(_paragraph(details, "cmBody", "P"))
+                story_parts.append(_paragraph(details, "cmMuted", "P"))
 
             if action_statuses:
                 story_parts.append(_paragraph("Current status", "cmLabel", "P"))
                 for status in action_statuses:
+                    clean_status = _markdown_links_to_plain_text(status)
                     story_parts.append(
-                        _paragraph(f"• {_markdown_links_to_plain_text(status)}", "cmBody", "P")
+                        _paragraph(clean_status, _status_style(clean_status), "P")
                     )
 
             if official_url:
-                if official_button_label:
-                    story_parts.append(
-                        _paragraph(
-                            f"{official_button_label}: {official_url}",
-                            "cmLink",
-                            "P",
-                        )
-                    )
-                else:
-                    story_parts.append(_paragraph(f"Official site: {official_url}", "cmLink", "P"))
+                label = official_button_label or "Official site"
+                story_parts.append(
+                    _paragraph(f"{label} for {title}: {official_url}", "cmLink", "P")
+                )
     else:
         story_parts.append(
             _paragraph(
-                "No matched benefits based on the submitted profile.",
+                "No matched benefits were found based on the submitted profile.",
                 "cmBody",
                 "P",
             )
         )
 
-    story_parts.append(_heading("Application Checklists", "cmSection", "H2"))
+    story_parts.append(_heading("Application Checklist", "cmSection", "H2"))
     if matches:
         for match in matches:
             benefit_id = match["id"]
@@ -438,16 +434,20 @@ def _build_accessible_rml(
 
             story_parts.append(_heading(title, "cmSubsection", "H3"))
             story_parts.append(
-                _paragraph(f"Completed {completed} of {total} checklist items.", "cmBody", "P")
+                _paragraph(
+                    f"Completed {completed} of {total} checklist items.",
+                    "cmProgress",
+                    "P",
+                )
             )
 
             if checklist:
                 for item_text, checked in _get_ordered_checklist_items(checklist, progress):
-                    mark = "Completed" if checked else "Not completed"
+                    prefix = "Completed" if checked else "To do"
                     story_parts.append(
                         _paragraph(
-                            f"• {item_text} — {mark}",
-                            "cmBody",
+                            f"{prefix}: {item_text}",
+                            _checklist_item_style(checked),
                             "P",
                         )
                     )
@@ -480,50 +480,111 @@ def _build_accessible_rml(
     <paraStyle
         name="cmTitle"
         fontName="Helvetica-Bold"
-        fontSize="20"
-        leading="24"
-        spaceAfter="12"/>
-    <paraStyle
-        name="cmSection"
-        fontName="Helvetica-Bold"
-        fontSize="15"
-        leading="18"
-        spaceBefore="14"
-        spaceAfter="8"/>
-    <paraStyle
-        name="cmSubsection"
-        fontName="Helvetica-Bold"
-        fontSize="12"
-        leading="15"
-        spaceBefore="10"
+        fontSize="22"
+        leading="27"
+        textColor="#1e3a5f"
         spaceAfter="6"/>
     <paraStyle
-        name="cmLabel"
-        fontName="Helvetica-Bold"
-        fontSize="10"
-        leading="13"
-        spaceBefore="4"
-        spaceAfter="2"/>
+        name="cmLead"
+        fontName="Helvetica"
+        fontSize="11"
+        leading="16"
+        textColor="#475569"
+        spaceAfter="10"/>
     <paraStyle
         name="cmMeta"
         fontName="Helvetica"
         fontSize="9"
         leading="12"
-        textColor="#555555"
-        spaceAfter="10"/>
+        textColor="#64748b"
+        spaceAfter="12"/>
+    <paraStyle
+        name="cmSummary"
+        fontName="Helvetica-Bold"
+        fontSize="10"
+        leading="14"
+        textColor="#1e3a5f"
+        spaceAfter="14"/>
+    <paraStyle
+        name="cmSection"
+        fontName="Helvetica-Bold"
+        fontSize="15"
+        leading="19"
+        textColor="#1e3a5f"
+        spaceBefore="16"
+        spaceAfter="8"/>
+    <paraStyle
+        name="cmSubsection"
+        fontName="Helvetica-Bold"
+        fontSize="12"
+        leading="16"
+        textColor="#0f172a"
+        spaceBefore="10"
+        spaceAfter="4"/>
+    <paraStyle
+        name="cmLabel"
+        fontName="Helvetica-Bold"
+        fontSize="10"
+        leading="13"
+        textColor="#334155"
+        spaceBefore="4"
+        spaceAfter="1"/>
     <paraStyle
         name="cmBody"
         fontName="Helvetica"
         fontSize="10"
+        leading="15"
+        textColor="#111827"
+        spaceAfter="4"/>
+    <paraStyle
+        name="cmMuted"
+        fontName="Helvetica"
+        fontSize="10"
         leading="14"
-        spaceAfter="5"/>
+        textColor="#475569"
+        spaceAfter="6"/>
+    <paraStyle
+        name="cmProgress"
+        fontName="Helvetica"
+        fontSize="10"
+        leading="14"
+        textColor="#475569"
+        spaceAfter="6"/>
     <paraStyle
         name="cmLink"
         fontName="Helvetica"
         fontSize="10"
-        leading="14"
+        leading="15"
         textColor="#1e3a5f"
-        spaceAfter="5"/>
+        spaceAfter="6"/>
+    <paraStyle
+        name="cmStatusDone"
+        fontName="Helvetica-Bold"
+        fontSize="10"
+        leading="14"
+        textColor="#166534"
+        spaceAfter="4"/>
+    <paraStyle
+        name="cmStatusTodo"
+        fontName="Helvetica-Bold"
+        fontSize="10"
+        leading="14"
+        textColor="#9a3412"
+        spaceAfter="4"/>
+    <paraStyle
+        name="cmChecklistDone"
+        fontName="Helvetica"
+        fontSize="10"
+        leading="15"
+        textColor="#334155"
+        spaceAfter="4"/>
+    <paraStyle
+        name="cmChecklistTodo"
+        fontName="Helvetica"
+        fontSize="10"
+        leading="15"
+        textColor="#0f172a"
+        spaceAfter="4"/>
   </stylesheet>
 
   <story>
@@ -550,11 +611,17 @@ def _build_pdf_bytes(
     rml2pdf.go(rml.encode("utf-8"), outputFileName=output)
     return output.getvalue()
 
+
 def lambda_handler(event, context):
     method = get_http_method(event or {})
 
     if method == "OPTIONS":
-        return build_response(200, "", event=event, content_type="text/plain; charset=utf-8")
+        return build_response(
+            200,
+            "",
+            event=event,
+            content_type="text/plain; charset=utf-8",
+        )
 
     if method != "POST":
         return build_response(405, {"error": "Method not allowed"}, event=event)
@@ -585,10 +652,18 @@ def lambda_handler(event, context):
         return build_response(400, {"error": "profile must be an object"}, event=event)
 
     if selected is not None and not isinstance(selected, list):
-        return build_response(400, {"error": "selectedBenefits must be a list if provided"}, event=event)
+        return build_response(
+            400,
+            {"error": "selectedBenefits must be a list if provided"},
+            event=event,
+        )
 
     if checklist_progress is not None and not isinstance(checklist_progress, dict):
-        return build_response(400, {"error": "checklistProgress must be an object if provided"}, event=event)
+        return build_response(
+            400,
+            {"error": "checklistProgress must be an object if provided"},
+            event=event,
+        )
 
     safe_profile = sanitize_profile(profile)
 
@@ -617,7 +692,7 @@ def lambda_handler(event, context):
         selected_benefit_ids=safe_selected,
     )
 
-    matches = _strip_state_aid_statuses_for_not_enrolling(profile, matches)
+    matches = _strip_state_aid_statuses_for_not_enrolling(safe_profile, matches)
     matches = _sort_matches_for_display(safe_profile, matches)
     normalized_progress = _normalize_checklist_progress(checklist_progress, matches)
 
