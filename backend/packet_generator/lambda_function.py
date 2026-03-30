@@ -165,7 +165,7 @@ def _xml_text(value: str | None) -> str:
 
 
 def _xml_attr(value: str | None) -> str:
-    return escape((value or "").strip(), {'"': "&quot;", "'": "&apos;"})
+    return _xml_text(value)
 
 
 def _spacer(length: int | str = 8) -> str:
