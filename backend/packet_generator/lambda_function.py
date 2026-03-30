@@ -383,6 +383,13 @@ def _data_line(label: str, value: str, style: str = "govDataLine") -> str:
     return _paragraph(f"{label}: {value}", style, "P")
 
 
+def _status_line_text(status: str) -> str:
+    clean_status = _markdown_links_to_plain_text(status)
+    if not clean_status:
+        return ""
+    return f"Status: {clean_status}"
+
+
 def _build_accessible_rml(
     run_id: str,
     profile: dict,
@@ -419,13 +426,13 @@ def _build_accessible_rml(
         )
     )
 
-    story_parts.append(_spacer(14))
+    story_parts.append(_spacer(16))
 
     story_parts.append(_heading("Document Information", "govSection", "H2"))
     story_parts.append(_data_line("Reference ID", run_id))
     story_parts.append(_data_line("Generated", generated_at))
 
-    story_parts.append(_spacer(10))
+    story_parts.append(_spacer(12))
 
     story_parts.append(_heading("Summary of Results", "govSection", "H2"))
     story_parts.append(
@@ -450,7 +457,7 @@ def _build_accessible_rml(
         )
     )
 
-    story_parts.append(_spacer(10))
+    story_parts.append(_spacer(12))
 
     story_parts.append(_heading("Submitted Profile", "govSection", "H2"))
     if profile_items:
@@ -465,7 +472,7 @@ def _build_accessible_rml(
             )
         )
 
-    story_parts.append(_spacer(12))
+    story_parts.append(_spacer(14))
     story_parts.append(_heading("Matched Programs and Recommended Actions", "govSection", "H2"))
 
     if matches:
@@ -480,7 +487,7 @@ def _build_accessible_rml(
             story_parts.append(_heading(title, "govProgramTitle", "H3"))
 
             if description:
-                story_parts.append(_paragraph(description, "govBody", "P"))
+                story_parts.append(_paragraph(description, "govLead", "P"))
 
             if details and details != description:
                 story_parts.append(_paragraph(details, "govBodySecondary", "P"))
@@ -503,9 +510,8 @@ def _build_accessible_rml(
                 )
 
             if action_statuses:
-                story_parts.append(_paragraph("Current status", "govInlineLabel", "P"))
                 for status in action_statuses:
-                    clean_status = _markdown_links_to_plain_text(status)
+                    clean_status = _status_line_text(status)
                     if clean_status:
                         story_parts.append(
                             _paragraph(
@@ -517,13 +523,13 @@ def _build_accessible_rml(
             else:
                 story_parts.append(
                     _paragraph(
-                        "No current program status was provided.",
+                        "Status: No current program status was provided.",
                         "govNeutralLine",
                         "P",
                     )
                 )
 
-            story_parts.append(_spacer(12))
+            story_parts.append(_spacer(14))
     else:
         story_parts.append(
             _paragraph(
@@ -533,7 +539,7 @@ def _build_accessible_rml(
             )
         )
 
-    story_parts.append(_spacer(8))
+    story_parts.append(_spacer(10))
     story_parts.append(_heading("Application Checklist by Program", "govSection", "H2"))
 
     if matches:
@@ -602,13 +608,13 @@ def _build_accessible_rml(
         subject="Massachusetts benefits summary and application preparation packet"
         lang="en-US"
         pageSize="(612.0,792.0)"
-        leftMargin="62"
-        rightMargin="62"
-        topMargin="56"
-        bottomMargin="96"
+        leftMargin="54"
+        rightMargin="54"
+        topMargin="50"
+        bottomMargin="110"
     >
         <pageTemplate id="main">
-            <frame id="mainFrame" x1="62" y1="96" width="488" height="640"/>
+            <frame id="mainFrame" x1="54" y1="110" width="504" height="632"/>
         </pageTemplate>
     </template>
 
@@ -616,21 +622,21 @@ def _build_accessible_rml(
         <paraStyle
             name="govKicker"
             fontName="Helvetica-Bold"
-            fontSize="8.2"
-            leading="10.6"
-            textColor="#143B63"
-            backColor="#F3F6F9"
-            borderWidth="0.35"
-            borderColor="#CBD5E1"
-            borderPadding="4"
-            spaceAfter="8"
+            fontSize="8.6"
+            leading="11.2"
+            textColor="#163A63"
+            backColor="#F3F6FA"
+            borderWidth="0.4"
+            borderColor="#D5DEE8"
+            borderPadding="5"
+            spaceAfter="10"
             wordWrap="CJK"
         />
         <paraStyle
             name="govTitle"
             fontName="Helvetica-Bold"
-            fontSize="17.6"
-            leading="21.8"
+            fontSize="21.0"
+            leading="26.0"
             textColor="#102A43"
             spaceAfter="6"
             wordWrap="CJK"
@@ -638,8 +644,8 @@ def _build_accessible_rml(
         <paraStyle
             name="govSubtitle"
             fontName="Helvetica"
-            fontSize="9.6"
-            leading="13.6"
+            fontSize="10.4"
+            leading="15.2"
             textColor="#334E68"
             spaceAfter="2"
             wordWrap="CJK"
@@ -647,90 +653,100 @@ def _build_accessible_rml(
         <paraStyle
             name="govSection"
             fontName="Helvetica-Bold"
-            fontSize="11.6"
-            leading="14.6"
+            fontSize="13.0"
+            leading="16.4"
             textColor="#102A43"
             backColor="#EAF0F5"
-            borderWidth="0.35"
-            borderColor="#CBD5E1"
-            borderPadding="5"
+            borderWidth="0.4"
+            borderColor="#D5DEE8"
+            borderPadding="6"
             spaceBefore="2"
-            spaceAfter="6"
+            spaceAfter="7"
             wordWrap="CJK"
         />
         <paraStyle
             name="govDataLine"
             fontName="Helvetica"
-            fontSize="9.0"
-            leading="12.6"
+            fontSize="10.0"
+            leading="14.1"
             textColor="#1F2933"
             spaceBefore="0"
-            spaceAfter="2"
+            spaceAfter="3"
             wordWrap="CJK"
         />
         <paraStyle
             name="govSummaryLine"
             fontName="Helvetica-Bold"
-            fontSize="9.1"
-            leading="12.8"
+            fontSize="10.1"
+            leading="14.2"
             textColor="#102A43"
             spaceBefore="0"
-            spaceAfter="2"
+            spaceAfter="3"
             wordWrap="CJK"
         />
         <paraStyle
             name="govCallout"
             fontName="Helvetica"
-            fontSize="9.0"
-            leading="13.0"
+            fontSize="9.8"
+            leading="14.2"
             textColor="#243B53"
             backColor="#FFF8E8"
-            borderWidth="0.35"
+            borderWidth="0.4"
             borderColor="#D9C27A"
-            borderPadding="5"
-            spaceBefore="2"
-            spaceAfter="4"
-            wordWrap="CJK"
-        />
-        <paraStyle
-            name="govProgramTitle"
-            fontName="Helvetica-Bold"
-            fontSize="10.5"
-            leading="13.5"
-            textColor="#FFFFFF"
-            backColor="#173F6D"
-            borderWidth="0.35"
-            borderColor="#173F6D"
-            borderPadding="5"
+            borderPadding="6"
             spaceBefore="2"
             spaceAfter="5"
             wordWrap="CJK"
         />
         <paraStyle
-            name="govBody"
-            fontName="Helvetica"
-            fontSize="8.95"
-            leading="12.9"
+            name="govProgramTitle"
+            fontName="Helvetica-Bold"
+            fontSize="11.7"
+            leading="15.2"
+            textColor="#FFFFFF"
+            backColor="#173F6D"
+            borderWidth="0.4"
+            borderColor="#173F6D"
+            borderPadding="6"
+            spaceBefore="2"
+            spaceAfter="6"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govLead"
+            fontName="Helvetica-Bold"
+            fontSize="10.2"
+            leading="14.4"
             textColor="#1F2933"
             spaceBefore="0"
-            spaceAfter="3"
+            spaceAfter="4"
+            wordWrap="CJK"
+        />
+        <paraStyle
+            name="govBody"
+            fontName="Helvetica"
+            fontSize="9.8"
+            leading="14.2"
+            textColor="#1F2933"
+            spaceBefore="0"
+            spaceAfter="4"
             wordWrap="CJK"
         />
         <paraStyle
             name="govBodySecondary"
             fontName="Helvetica"
-            fontSize="8.85"
-            leading="12.9"
+            fontSize="9.6"
+            leading="14.2"
             textColor="#486581"
             spaceBefore="0"
-            spaceAfter="3"
+            spaceAfter="4"
             wordWrap="CJK"
         />
         <paraStyle
             name="govInlineLabel"
             fontName="Helvetica-Bold"
-            fontSize="8.85"
-            leading="11.6"
+            fontSize="9.2"
+            leading="12.4"
             textColor="#243B53"
             spaceBefore="2"
             spaceAfter="1"
@@ -739,8 +755,8 @@ def _build_accessible_rml(
         <paraStyle
             name="govLinkAction"
             fontName="Helvetica-Bold"
-            fontSize="8.8"
-            leading="11.8"
+            fontSize="9.8"
+            leading="13.6"
             textColor="#102A43"
             spaceBefore="0"
             spaceAfter="1"
@@ -749,94 +765,98 @@ def _build_accessible_rml(
         <paraStyle
             name="govUrlLine"
             fontName="Helvetica"
-            fontSize="8.2"
-            leading="11.2"
+            fontSize="8.8"
+            leading="12.2"
             textColor="#486581"
             spaceBefore="0"
-            spaceAfter="3"
+            spaceAfter="5"
             wordWrap="CJK"
         />
         <paraStyle
             name="govNeutralLine"
             fontName="Helvetica"
-            fontSize="8.8"
-            leading="12.4"
+            fontSize="9.3"
+            leading="13.2"
             textColor="#486581"
-            spaceBefore="1"
-            spaceAfter="3"
+            backColor="#F8FAFC"
+            borderWidth="0.35"
+            borderColor="#D7E2EA"
+            borderPadding="5"
+            spaceBefore="2"
+            spaceAfter="5"
             wordWrap="CJK"
         />
         <paraStyle
             name="govStatusDone"
             fontName="Helvetica-Bold"
-            fontSize="8.9"
-            leading="12.6"
+            fontSize="9.6"
+            leading="13.8"
             textColor="#1E5F3A"
             backColor="#EEF8F1"
-            borderWidth="0.35"
-            borderColor="#98C4A5"
-            borderPadding="4"
-            spaceBefore="1"
-            spaceAfter="2"
+            borderWidth="0.4"
+            borderColor="#9EC8AA"
+            borderPadding="6"
+            spaceBefore="2"
+            spaceAfter="5"
             wordWrap="CJK"
         />
         <paraStyle
             name="govStatusAction"
             fontName="Helvetica-Bold"
-            fontSize="8.9"
-            leading="12.6"
+            fontSize="9.6"
+            leading="13.8"
             textColor="#8A3D12"
             backColor="#FFF3E8"
-            borderWidth="0.35"
+            borderWidth="0.4"
             borderColor="#D9A37B"
-            borderPadding="4"
-            spaceBefore="1"
-            spaceAfter="2"
+            borderPadding="6"
+            spaceBefore="2"
+            spaceAfter="5"
             wordWrap="CJK"
         />
         <paraStyle
             name="govProgressLine"
             fontName="Helvetica-Bold"
-            fontSize="8.95"
-            leading="12.6"
+            fontSize="9.9"
+            leading="13.8"
             textColor="#102A43"
             spaceBefore="0"
-            spaceAfter="2"
+            spaceAfter="3"
             wordWrap="CJK"
         />
         <paraStyle
             name="govChecklistAction"
             fontName="Helvetica"
-            fontSize="8.75"
-            leading="12.4"
+            fontSize="9.4"
+            leading="13.6"
             textColor="#1F2933"
-            leftIndent="12"
+            leftIndent="13"
             spaceBefore="0"
-            spaceAfter="1"
+            spaceAfter="2"
             wordWrap="CJK"
         />
         <paraStyle
             name="govChecklistDone"
             fontName="Helvetica"
-            fontSize="8.75"
-            leading="12.4"
+            fontSize="9.4"
+            leading="13.6"
             textColor="#486581"
-            leftIndent="12"
+            leftIndent="13"
             spaceBefore="0"
-            spaceAfter="1"
+            spaceAfter="2"
             wordWrap="CJK"
         />
         <paraStyle
             name="govFinalNotice"
             fontName="Helvetica"
-            fontSize="8.95"
-            leading="13.0"
+            fontSize="9.7"
+            leading="14.2"
             textColor="#243B53"
             backColor="#FFF8E8"
-            borderWidth="0.35"
+            borderWidth="0.4"
             borderColor="#D9C27A"
-            borderPadding="5"
-            spaceBefore="3"
+            borderPadding="6"
+            spaceBefore="4"
             spaceAfter="2"
             wordWrap="CJK"
         />
