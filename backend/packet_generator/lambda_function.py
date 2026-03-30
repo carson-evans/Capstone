@@ -4,6 +4,7 @@ import re
 import uuid
 from datetime import datetime, timezone
 from io import BytesIO
+from pathlib import Path
 from urllib.parse import urlsplit
 from xml.sax.saxutils import escape
 
@@ -43,6 +44,12 @@ SHARED_SECRET_VALUE = os.environ.get("SHARED_SECRET_VALUE", "").strip()
 PDF_FILENAME = "CommonMASS-Application-Preparation-Packet.pdf"
 NOT_ENROLLED_NEXT_YEAR_VALUE = "not_enrolled_next_year"
 MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM = "Attend a participating MASSGrant Plus school"
+
+PDF_FONT_DIR = os.environ.get("PDF_FONT_DIR", "").strip()
+REQUIRE_EMBEDDED_FONTS = os.environ.get("REQUIRE_EMBEDDED_FONTS", "true").strip().lower() == "true"
+
+FONT_REGULAR_FACE = "CommonMASSDejaVu-Regular"
+FONT_BOLD_FACE = "CommonMASSDejaVu-Bold"
 
 PROFILE_LABELS = {
     "student_status": "Student status",
@@ -148,8 +155,25 @@ def _xml_text(value: str | None) -> str:
     return escape((value or "").strip(), {'"': "&quot;", "'": "&apos;"})
 
 
+def _xml_attr(value: str | None) -> str:
+    return escape((value or "").strip(), {'"': "&quot;", "'": "&apos;"})
+
+
 def _spacer(length: int | str = 8) -> str:
     return f'<spacer length="{length}"/>'
+
+
+def _outline(text: str, level: int = 0, closed: bool | None = None) -> str:
+    attrs: list[str] = []
+
+    if level > 0:
+        attrs.append(f'level="{level}"')
+
+    if closed is not None:
+        attrs.append(f'closed="{"1" if closed else "0"}"')
+
+    attr_text = f" {' '.join(attrs)}" if attrs else ""
+    return f"<outlineAdd{attr_text}>{_xml_text(text)}</outlineAdd>"
 
 
 def _display_url_value(url: str) -> str:
@@ -286,6 +310,7 @@ def _is_positive_status(status: str) -> bool:
         "already submitted",
         "already enrolled",
         "already has",
+        "already reviewed",
     )
     return any(marker in normalized for marker in positive_markers)
 
@@ -296,6 +321,13 @@ def _status_style(status: str) -> str:
 
 def _checklist_item_style(checked: bool) -> str:
     return "govChecklistDone" if checked else "govChecklistAction"
+
+
+def _status_line_text(status: str) -> str:
+    clean_status = _markdown_links_to_plain_text(status)
+    if not clean_status:
+        return ""
+    return f"Status: {clean_status}"
 
 
 def _build_accessible_packet_data(
@@ -383,11 +415,72 @@ def _data_line(label: str, value: str, style: str = "govDataLine") -> str:
     return _paragraph(f"{label}: {value}", style, "P")
 
 
-def _status_line_text(status: str) -> str:
-    clean_status = _markdown_links_to_plain_text(status)
-    if not clean_status:
-        return ""
-    return f"Status: {clean_status}"
+def _candidate_font_directories() -> list[Path]:
+    candidates: list[Path] = []
+
+    if PDF_FONT_DIR:
+        candidates.append(Path(PDF_FONT_DIR))
+
+    here = Path(__file__).resolve().parent
+    candidates.extend(
+        [
+            here / "fonts",
+            Path("/var/task/fonts"),
+            Path("/opt/fonts"),
+            Path("/usr/share/fonts/truetype/dejavu"),
+        ]
+    )
+
+    unique: list[Path] = []
+    seen: set[str] = set()
+
+    for candidate in candidates:
+        resolved = str(candidate)
+        if resolved not in seen:
+            seen.add(resolved)
+            unique.append(candidate)
+
+    return unique
+
+
+def _find_font_file(possible_names: list[str]) -> str | None:
+    for directory in _candidate_font_directories():
+        for name in possible_names:
+            candidate = directory / name
+            if candidate.exists() and candidate.is_file():
+                return candidate.as_posix()
+    return None
+
+
+def _resolve_embedded_font_paths() -> tuple[str | None, str | None]:
+    regular = _find_font_file(
+        [
+            "DejaVuSans.ttf",
+            "NotoSans-Regular.ttf",
+            "Inter-Regular.ttf",
+            "Arial-Regular.ttf",
+        ]
+    )
+    bold = _find_font_file(
+        [
+            "DejaVuSans-Bold.ttf",
+            "NotoSans-Bold.ttf",
+            "Inter-Bold.ttf",
+            "Arial-Bold.ttf",
+        ]
+    )
+
+    if regular and bold:
+        return regular, bold
+
+    if REQUIRE_EMBEDDED_FONTS:
+        raise RuntimeError(
+            "Embedded PDF font files were not found. Add DejaVuSans.ttf and DejaVuSans-Bold.ttf "
+            "to a fonts/ folder next to lambda_function.py, or set PDF_FONT_DIR to a directory "
+            "containing those files."
+        )
+
+    return None, None
 
 
 def _build_accessible_rml(
@@ -398,6 +491,20 @@ def _build_accessible_rml(
 ) -> str:
     generated_at = datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC")
     profile_items = _profile_summary_items(profile)
+
+    regular_font_path, bold_font_path = _resolve_embedded_font_paths()
+    regular_font_name = FONT_REGULAR_FACE if regular_font_path and bold_font_path else "Helvetica"
+    bold_font_name = FONT_BOLD_FACE if regular_font_path and bold_font_path else "Helvetica-Bold"
+
+    docinit_xml = "<docinit pageMode=\"UseOutlines\" pageLayout=\"OneColumn\"/>"
+    if regular_font_path and bold_font_path:
+        docinit_xml = f"""
+    <docinit pageMode="UseOutlines" pageLayout="OneColumn">
+        <registerTTFont faceName="{FONT_REGULAR_FACE}" fileName="{_xml_attr(regular_font_path)}"/>
+        <registerTTFont faceName="{FONT_BOLD_FACE}" fileName="{_xml_attr(bold_font_path)}"/>
+        <registerFontFamily normal="{FONT_REGULAR_FACE}" bold="{FONT_BOLD_FACE}"/>
+    </docinit>
+"""
 
     total_checklist_items = sum(len(match.get("checklist") or []) for match in matches)
     completed_checklist_items = 0
@@ -410,6 +517,7 @@ def _build_accessible_rml(
 
     story_parts: list[str] = []
 
+    story_parts.append(_outline("Application Preparation Packet"))
     story_parts.append(
         _paragraph(
             "CommonMASS | Massachusetts Benefits Screening and Application Preparation",
@@ -428,12 +536,14 @@ def _build_accessible_rml(
 
     story_parts.append(_spacer(16))
 
+    story_parts.append(_outline("Document Information", 1))
     story_parts.append(_heading("Document Information", "govSection", "H2"))
     story_parts.append(_data_line("Reference ID", run_id))
     story_parts.append(_data_line("Generated", generated_at))
 
     story_parts.append(_spacer(12))
 
+    story_parts.append(_outline("Summary of Results", 1))
     story_parts.append(_heading("Summary of Results", "govSection", "H2"))
     story_parts.append(
         _paragraph(
@@ -459,6 +569,7 @@ def _build_accessible_rml(
 
     story_parts.append(_spacer(12))
 
+    story_parts.append(_outline("Submitted Profile", 1))
     story_parts.append(_heading("Submitted Profile", "govSection", "H2"))
     if profile_items:
         for label, value in profile_items:
@@ -473,6 +584,8 @@ def _build_accessible_rml(
         )
 
     story_parts.append(_spacer(14))
+
+    story_parts.append(_outline("Matched Programs and Recommended Actions", 1))
     story_parts.append(_heading("Matched Programs and Recommended Actions", "govSection", "H2"))
 
     if matches:
@@ -484,6 +597,7 @@ def _build_accessible_rml(
             official_url = match.get("officialUrl", "")
             official_button_label = match.get("officialButtonLabel", "")
 
+            story_parts.append(_outline(title, 2))
             story_parts.append(_heading(title, "govProgramTitle", "H3"))
 
             if description:
@@ -511,12 +625,12 @@ def _build_accessible_rml(
 
             if action_statuses:
                 for status in action_statuses:
-                    clean_status = _status_line_text(status)
-                    if clean_status:
+                    status_line = _status_line_text(status)
+                    if status_line:
                         story_parts.append(
                             _paragraph(
-                                clean_status,
-                                _status_style(clean_status),
+                                status_line,
+                                _status_style(status_line),
                                 "P",
                             )
                         )
@@ -540,6 +654,8 @@ def _build_accessible_rml(
         )
 
     story_parts.append(_spacer(10))
+
+    story_parts.append(_outline("Application Checklist by Program", 1))
     story_parts.append(_heading("Application Checklist by Program", "govSection", "H2"))
 
     if matches:
@@ -551,6 +667,7 @@ def _build_accessible_rml(
             completed = sum(1 for item in progress if item)
             total = len(checklist)
 
+            story_parts.append(_outline(f"{title} Checklist", 2))
             story_parts.append(_heading(title, "govProgramTitle", "H3"))
             story_parts.append(
                 _paragraph(
@@ -602,6 +719,7 @@ def _build_accessible_rml(
 
     return f"""<!DOCTYPE document SYSTEM "rml.dtd">
 <document filename="{PDF_FILENAME}" tagged="1">
+    {docinit_xml}
     <template
         title="CommonMASS Application Preparation Packet"
         author="CommonMASS"
@@ -614,6 +732,10 @@ def _build_accessible_rml(
         bottomMargin="110"
     >
         <pageTemplate id="main">
+            <pageGraphics>
+                <setFont name="{regular_font_name}" size="8.5"/>
+                <drawRightString x="552" y="30">Page <pageNumber/></drawRightString>
+            </pageGraphics>
             <frame id="mainFrame" x1="54" y1="110" width="504" height="632"/>
         </pageTemplate>
     </template>
@@ -621,9 +743,9 @@ def _build_accessible_rml(
     <stylesheet>
         <paraStyle
             name="govKicker"
-            fontName="Helvetica-Bold"
+            fontName="{bold_font_name}"
             fontSize="8.6"
-            leading="11.2"
+            leading="11.4"
             textColor="#163A63"
             backColor="#F3F6FA"
             borderWidth="0.4"
@@ -634,7 +756,7 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govTitle"
-            fontName="Helvetica-Bold"
+            fontName="{bold_font_name}"
             fontSize="21.0"
             leading="26.0"
             textColor="#102A43"
@@ -643,7 +765,7 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govSubtitle"
-            fontName="Helvetica"
+            fontName="{regular_font_name}"
             fontSize="10.4"
             leading="15.2"
             textColor="#334E68"
@@ -652,9 +774,9 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govSection"
-            fontName="Helvetica-Bold"
+            fontName="{bold_font_name}"
             fontSize="13.0"
-            leading="16.4"
+            leading="16.6"
             textColor="#102A43"
             backColor="#EAF0F5"
             borderWidth="0.4"
@@ -666,9 +788,9 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govDataLine"
-            fontName="Helvetica"
+            fontName="{regular_font_name}"
             fontSize="10.0"
-            leading="14.1"
+            leading="14.2"
             textColor="#1F2933"
             spaceBefore="0"
             spaceAfter="3"
@@ -676,7 +798,7 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govSummaryLine"
-            fontName="Helvetica-Bold"
+            fontName="{bold_font_name}"
             fontSize="10.1"
             leading="14.2"
             textColor="#102A43"
@@ -686,7 +808,7 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govCallout"
-            fontName="Helvetica"
+            fontName="{regular_font_name}"
             fontSize="9.8"
             leading="14.2"
             textColor="#243B53"
@@ -700,7 +822,7 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govProgramTitle"
-            fontName="Helvetica-Bold"
+            fontName="{bold_font_name}"
             fontSize="11.7"
             leading="15.2"
             textColor="#FFFFFF"
@@ -714,7 +836,7 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govLead"
-            fontName="Helvetica-Bold"
+            fontName="{bold_font_name}"
             fontSize="10.2"
             leading="14.4"
             textColor="#1F2933"
@@ -724,7 +846,7 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govBody"
-            fontName="Helvetica"
+            fontName="{regular_font_name}"
             fontSize="9.8"
             leading="14.2"
             textColor="#1F2933"
@@ -734,7 +856,7 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govBodySecondary"
-            fontName="Helvetica"
+            fontName="{regular_font_name}"
             fontSize="9.6"
             leading="14.2"
             textColor="#486581"
@@ -744,7 +866,7 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govInlineLabel"
-            fontName="Helvetica-Bold"
+            fontName="{bold_font_name}"
             fontSize="9.2"
             leading="12.4"
             textColor="#243B53"
@@ -754,7 +876,7 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govLinkAction"
-            fontName="Helvetica-Bold"
+            fontName="{bold_font_name}"
             fontSize="9.8"
             leading="13.6"
             textColor="#102A43"
@@ -764,7 +886,7 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govUrlLine"
-            fontName="Helvetica"
+            fontName="{regular_font_name}"
             fontSize="8.8"
             leading="12.2"
             textColor="#486581"
@@ -774,9 +896,9 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govNeutralLine"
-            fontName="Helvetica"
+            fontName="{regular_font_name}"
             fontSize="9.3"
-            leading="13.2"
+            leading="13.4"
             textColor="#486581"
             backColor="#F8FAFC"
             borderWidth="0.35"
@@ -788,7 +910,7 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govStatusDone"
-            fontName="Helvetica-Bold"
+            fontName="{bold_font_name}"
             fontSize="9.6"
             leading="13.8"
             textColor="#1E5F3A"
@@ -802,7 +924,7 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govStatusAction"
-            fontName="Helvetica-Bold"
+            fontName="{bold_font_name}"
             fontSize="9.6"
             leading="13.8"
             textColor="#8A3D12"
@@ -816,7 +938,7 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govProgressLine"
-            fontName="Helvetica-Bold"
+            fontName="{bold_font_name}"
             fontSize="9.9"
             leading="13.8"
             textColor="#102A43"
@@ -826,7 +948,7 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govChecklistAction"
-            fontName="Helvetica"
+            fontName="{regular_font_name}"
             fontSize="9.4"
             leading="13.6"
             textColor="#1F2933"
@@ -837,7 +959,7 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govChecklistDone"
-            fontName="Helvetica"
+            fontName="{regular_font_name}"
             fontSize="9.4"
             leading="13.6"
             textColor="#486581"
@@ -848,7 +970,7 @@ def _build_accessible_rml(
         />
         <paraStyle
             name="govFinalNotice"
-            fontName="Helvetica"
+            fontName="{regular_font_name}"
             fontSize="9.7"
             leading="14.2"
             textColor="#243B53"
@@ -974,12 +1096,19 @@ def lambda_handler(event, context):
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     key = f"{PACKETS_PREFIX}{timestamp}-{run_id}.pdf"
 
-    pdf_bytes = _build_pdf_bytes(
-        run_id=run_id,
-        profile=safe_profile,
-        matches=matches,
-        checklist_progress=normalized_progress,
-    )
+    try:
+        pdf_bytes = _build_pdf_bytes(
+            run_id=run_id,
+            profile=safe_profile,
+            matches=matches,
+            checklist_progress=normalized_progress,
+        )
+    except RuntimeError as error:
+        return build_response(
+            500,
+            {"error": str(error)},
+            event=event,
+        )
 
     packet_data = _build_accessible_packet_data(
         run_id=run_id,
