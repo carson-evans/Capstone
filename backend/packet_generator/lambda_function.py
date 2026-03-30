@@ -3,6 +3,7 @@ import os
 import re
 import uuid
 from datetime import datetime, timezone
+from functools import lru_cache
 from io import BytesIO
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -26,6 +27,14 @@ from commonmass_backend import (
     secret_is_valid,
     validate_json_request,
 )
+
+class PdfGenerationError(RuntimeError):
+    pass
+
+
+class PdfFontConfigurationError(PdfGenerationError):
+    pass
+
 
 PACKETS_BUCKET = os.environ.get("PACKETS_BUCKET", "").strip()
 PACKETS_PREFIX = os.environ.get("PACKETS_PREFIX", "packets/").strip()
@@ -452,6 +461,7 @@ def _find_font_file(possible_names: list[str]) -> str | None:
     return None
 
 
+@lru_cache(maxsize=1)
 def _resolve_embedded_font_paths() -> tuple[str | None, str | None]:
     regular = _find_font_file(
         [
@@ -474,8 +484,8 @@ def _resolve_embedded_font_paths() -> tuple[str | None, str | None]:
         return regular, bold
 
     if REQUIRE_EMBEDDED_FONTS:
-        raise RuntimeError(
-            "Embedded PDF font files were not found. Add DejaVuSans.ttf and DejaVuSans-Bold.ttf "
+        raise PdfFontConfigurationError(
+            "Embedded PDF font files were not found. Add a matching regular and bold TrueType font pair "
             "to a fonts/ folder next to lambda_function.py, or set PDF_FONT_DIR to a directory "
             "containing those files."
         )
@@ -997,15 +1007,21 @@ def _build_pdf_bytes(
     matches: list[dict],
     checklist_progress: dict[str, list[bool]],
 ) -> bytes:
-    rml = _build_accessible_rml(
-        run_id=run_id,
-        profile=profile,
-        matches=matches,
-        checklist_progress=checklist_progress,
-    )
-    output = BytesIO()
-    rml2pdf.go(rml.encode("utf-8"), outputFileName=output)
-    return output.getvalue()
+    try:
+        rml = _build_accessible_rml(
+            run_id=run_id,
+            profile=profile,
+            matches=matches,
+            checklist_progress=checklist_progress,
+        )
+        output = BytesIO()
+        rml2pdf.go(rml.encode("utf-8"), outputFileName=output)
+        return output.getvalue()
+    except PdfGenerationError:
+        raise
+    except Exception as error:
+        print(f"PDF rendering failure: {type(error).__name__}: {error}", flush=True)
+        raise PdfGenerationError("PDF rendering failed.") from error
 
 
 def lambda_handler(event, context):
@@ -1096,6 +1112,10 @@ def lambda_handler(event, context):
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     key = f"{PACKETS_PREFIX}{timestamp}-{run_id}.pdf"
 
+    extra_headers = {}
+    if context and getattr(context, "aws_request_id", None):
+        extra_headers["X-Request-Id"] = context.aws_request_id
+
     try:
         pdf_bytes = _build_pdf_bytes(
             run_id=run_id,
@@ -1103,11 +1123,21 @@ def lambda_handler(event, context):
             matches=matches,
             checklist_progress=normalized_progress,
         )
-    except RuntimeError as error:
+    except PdfFontConfigurationError as error:
+        print(f"PDF font configuration failure: {error}", flush=True)
         return build_response(
             500,
-            {"error": str(error)},
+            {"error": "PDF generation is temporarily unavailable."},
             event=event,
+            extra_headers=extra_headers,
+        )
+    except PdfGenerationError as error:
+        print(f"PDF generation failure: {error}", flush=True)
+        return build_response(
+            500,
+            {"error": "Failed to generate PDF response."},
+            event=event,
+            extra_headers=extra_headers,
         )
 
     packet_data = _build_accessible_packet_data(
@@ -1116,10 +1146,6 @@ def lambda_handler(event, context):
         matches=matches,
         checklist_progress=normalized_progress,
     )
-
-    extra_headers = {}
-    if context and getattr(context, "aws_request_id", None):
-        extra_headers["X-Request-Id"] = context.aws_request_id
 
     if not PACKETS_BUCKET:
         return build_response(
