@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'framer-motion';
 import { ChevronDown, ExternalLink, CheckSquare } from 'lucide-react';
@@ -19,6 +19,7 @@ import {
 } from '@/app/components/ui/card';
 import { Navbar } from '@/app/components/layout/Navbar';
 import { PageBackdrop } from '@/app/components/layout/PageBackdrop';
+import { PageHeroCard } from '@/app/components/layout/PageHeroCard';
 import { SiteFooter } from '@/app/components/layout/SiteFooter';
 import { renderLinkedText } from '@/app/components/ui/render-linked-text';
 import { InlineTooltipText } from '@/app/components/ui/inline-tooltip-text';
@@ -26,8 +27,11 @@ import { useBenefits } from '@/app/context/BenefitsContext';
 import {
   DHE_AFFIDAVIT_ACTION_STATUS,
   benefits,
+  getBenefitIneligibilityReasons,
   getBenefitRichTextSegments,
+  getDisplayActionStatus,
   isPositiveActionStatus,
+  type Benefit,
 } from '@/app/data/benefitsData';
 import { useIsMobile } from '@/app/components/ui/use-mobile';
 
@@ -44,6 +48,31 @@ const MOBILE_DETAILS_REVEAL = {
 const FEEDBACK_SURVEY_URL = 'https://forms.gle/x6J4fDrvWmUz6vFu9';
 const DHE_AFFIDAVIT_FORM_URL =
   'https://www.mass.edu/tuitionequity/documents/2025-09-10%20Tuition%20Equity%20Form%20and%20Affidavit_Fillable.pdf';
+
+const OFFICIAL_REQUIREMENTS_URLS: Record<Benefit['id'], string> = {
+  'pell-grant': 'https://studentaid.gov/articles/dont-miss-out-on-pell-grants/',
+  massgrant: 'https://www.mass.edu/osfa/programs/massgrant.asp',
+  'massgrant-plus': 'https://www.mass.edu/osfa/programs/massgrantplus.asp',
+  masshealth:
+    'https://www.mass.gov/info-details/eligibility-for-health-care-benefits-for-masshealth-the-health-safety-net-and-childrens-medical-security-plan',
+  'mbta-pass': 'https://www.mbta.com/fares/college-student-semester-passes',
+  snap: 'https://www.mass.gov/how-to/apply-for-snap-benefits-food-stamps',
+};
+
+const benefitCatalogById = new Map(benefits.map((benefit) => [benefit.id, benefit]));
+
+const MATCHED_MOBILE_CARD_CLASSNAME =
+  'rounded-[1.5rem] border border-emerald-100/90 ring-1 ring-emerald-200/70 bg-white/86 shadow-[0_24px_52px_-24px_rgba(15,23,42,0.24),0_0_42px_-30px_rgba(34,197,94,0.36)] dark:border-emerald-300/18 dark:ring-emerald-300/24 dark:bg-slate-900/80 dark:shadow-[0_24px_52px_-24px_rgba(2,6,23,0.78),0_0_42px_-28px_rgba(52,211,153,0.28)]';
+const MATCHED_DESKTOP_CARD_CLASSNAME =
+  'gap-5 overflow-hidden border border-emerald-100/90 ring-1 ring-emerald-200/70 bg-white/86 shadow-[0_24px_52px_-24px_rgba(15,23,42,0.24),0_0_42px_-30px_rgba(34,197,94,0.36)] backdrop-blur-none transition-all duration-125 hover:-translate-y-1.5 hover:scale-[1.01] hover:shadow-[0_30px_70px_-38px_rgba(22,163,74,0.28)] sm:gap-6 md:shadow-[0_20px_55px_-38px_rgba(15,23,42,0.3),0_0_44px_-32px_rgba(34,197,94,0.3)] sm:backdrop-blur-sm dark:border-emerald-300/18 dark:ring-emerald-300/24 dark:bg-slate-900/80 dark:shadow-[0_24px_52px_-24px_rgba(2,6,23,0.78),0_0_42px_-28px_rgba(52,211,153,0.24)] md:dark:shadow-[0_24px_60px_-38px_rgba(2,6,23,0.95),0_0_42px_-28px_rgba(52,211,153,0.22)] dark:hover:shadow-[0_30px_70px_-38px_rgba(16,185,129,0.22)]';
+const NOT_MATCHED_MOBILE_CARD_CLASSNAME =
+  'rounded-[1.5rem] border border-rose-100/95 ring-1 ring-rose-200/80 bg-white/86 shadow-[0_24px_52px_-24px_rgba(15,23,42,0.24),0_0_42px_-30px_rgba(248,113,113,0.42)] dark:border-rose-300/18 dark:ring-rose-300/24 dark:bg-slate-900/80 dark:shadow-[0_24px_52px_-24px_rgba(2,6,23,0.78),0_0_42px_-28px_rgba(251,113,133,0.3)]';
+const NOT_MATCHED_DESKTOP_CARD_CLASSNAME =
+  'gap-5 overflow-hidden border border-rose-100/95 ring-1 ring-rose-200/80 bg-white/86 shadow-[0_24px_52px_-24px_rgba(15,23,42,0.24),0_0_42px_-30px_rgba(248,113,113,0.42)] backdrop-blur-none transition-all duration-125 hover:-translate-y-1.5 hover:scale-[1.01] hover:shadow-[0_30px_70px_-38px_rgba(239,68,68,0.26)] sm:gap-6 md:shadow-[0_20px_55px_-38px_rgba(15,23,42,0.3),0_0_44px_-32px_rgba(248,113,113,0.34)] sm:backdrop-blur-sm dark:border-rose-300/18 dark:ring-rose-300/24 dark:bg-slate-900/80 dark:shadow-[0_24px_52px_-24px_rgba(2,6,23,0.78),0_0_42px_-28px_rgba(251,113,133,0.26)] md:dark:shadow-[0_24px_60px_-38px_rgba(2,6,23,0.95),0_0_42px_-28px_rgba(251,113,133,0.24)] dark:hover:shadow-[0_30px_70px_-38px_rgba(244,63,94,0.22)]';
+
+type NotMatchedBenefit = Benefit & {
+  ineligibilityReasons: string[];
+};
 
 function getSingleBenefitPhrase(
   benefitId: string,
@@ -67,14 +96,56 @@ function getSingleBenefitPhrase(
   }
 }
 
+function getSingleBenefitNoMatchSummary(benefit: Benefit): string {
+  switch (benefit.id) {
+    case 'mbta-pass':
+      return 'The MBTA Student Pass is generally only available through participating colleges for students who are enrolled now or will enroll within the next year.';
+    case 'pell-grant':
+      return 'The Pell Grant is generally only available to students who meet federal aid rules, including enrollment and citizenship or eligible non-citizen status.';
+    case 'massgrant':
+      return 'MASSGrant is generally only available to eligible Massachusetts residents who meet enrollment and FAFSA or MASFA requirements.';
+    case 'massgrant-plus':
+      return 'MASSGrant Plus is generally only available to eligible Massachusetts residents at participating schools who meet enrollment, income, and FAFSA or MASFA requirements.';
+    case 'masshealth':
+      return 'MassHealth is generally only available to eligible Massachusetts residents who meet citizenship and household income requirements.';
+    case 'snap':
+      return 'SNAP is generally only available to eligible Massachusetts residents who meet household income and student eligibility requirements.';
+    default:
+      return 'This result is based on the answers you gave in the screener.';
+  }
+}
+
 export default function ResultsPage() {
-  const { matchedBenefits, screeningBenefitFilters } = useBenefits();
+  const { answers, matchedBenefits, screeningBenefitFilters } = useBenefits();
   const isMobile = useIsMobile();
   const [mobileOpenDetails, setMobileOpenDetails] = useState<Record<string, boolean>>(
     {}
   );
 
   const hasMatches = matchedBenefits.length > 0;
+  const screenedBenefits = useMemo(() => {
+    const screenedBenefitIds =
+      screeningBenefitFilters.length > 0
+        ? screeningBenefitFilters
+        : benefits.map((benefit) => benefit.id);
+
+    return screenedBenefitIds
+      .map((benefitId) => benefitCatalogById.get(benefitId))
+      .filter((benefit): benefit is Benefit => Boolean(benefit));
+  }, [screeningBenefitFilters]);
+
+  const notMatchedBenefits = useMemo<NotMatchedBenefit[]>(() => {
+    const matchedBenefitIds = new Set(matchedBenefits.map((benefit) => benefit.id));
+
+    return screenedBenefits
+      .filter((benefit) => !matchedBenefitIds.has(benefit.id))
+      .map((benefit) => ({
+        ...benefit,
+        ineligibilityReasons: getBenefitIneligibilityReasons(benefit.id, answers),
+      }));
+  }, [answers, matchedBenefits, screenedBenefits]);
+
+  const hasNotMatchedBenefits = notMatchedBenefits.length > 0;
   const singleScreenedBenefitId =
     screeningBenefitFilters.length === 1 ? screeningBenefitFilters[0] : null;
   const singleScreenedBenefitTitle = singleScreenedBenefitId
@@ -82,6 +153,35 @@ export default function ResultsPage() {
     : null;
   const singleScreenedBenefitPhrase = singleScreenedBenefitId
     ? getSingleBenefitPhrase(singleScreenedBenefitId, singleScreenedBenefitTitle)
+    : null;
+  const singleNotMatchedBenefit =
+    !hasMatches && singleScreenedBenefitId && notMatchedBenefits.length === 1
+      ? notMatchedBenefits[0]
+      : null;
+  const isSingleBenefitNoMatch = Boolean(singleNotMatchedBenefit);
+  const singleNoMatchHeading = singleNotMatchedBenefit
+    ? `Why ${singleNotMatchedBenefit.title} Did Not Match`
+    : null;
+  const singleNoMatchIntro = singleNotMatchedBenefit
+    ? `${getSingleBenefitNoMatchSummary(singleNotMatchedBenefit)} ${
+        singleNotMatchedBenefit.ineligibilityReasons.length === 1
+          ? 'The main requirement that blocked this match is below.'
+          : 'The main requirements that blocked this match are below.'
+      }`
+    : null;
+  const singleNoMatchReasonLeadIn = singleNotMatchedBenefit
+    ? singleNotMatchedBenefit.ineligibilityReasons.length === 1
+      ? 'The main requirement that blocked this match is:'
+      : 'These are the main requirements that blocked this match:'
+    : null;
+  const singleNoMatchDetailsOpen = singleNotMatchedBenefit
+    ? Boolean(mobileOpenDetails[singleNotMatchedBenefit.id])
+    : false;
+  const singleNoMatchCardTitleId = singleNotMatchedBenefit
+    ? `${singleNotMatchedBenefit.id}-single-no-match-title`
+    : null;
+  const singleNoMatchDetailsRegionId = singleNotMatchedBenefit
+    ? `${singleNotMatchedBenefit.id}-single-no-match-details`
     : null;
 
   const heroDescription = useMemo(() => {
@@ -117,7 +217,7 @@ export default function ResultsPage() {
     }));
   };
 
-  const renderStatusText = (status: string) => {
+  const renderStatusText = (status: string, benefitId: string) => {
     if (status === DHE_AFFIDAVIT_ACTION_STATUS) {
       return (
         <>
@@ -136,9 +236,13 @@ export default function ResultsPage() {
       );
     }
 
-    const richTextSegments = getBenefitRichTextSegments(status);
-    return richTextSegments ? <InlineTooltipText segments={richTextSegments} /> : status;
+    const displayStatus = getDisplayActionStatus(status, benefitId, answers);
+    const richTextSegments = getBenefitRichTextSegments(displayStatus);
+    return richTextSegments ? <InlineTooltipText segments={richTextSegments} /> : displayStatus;
   };
+
+  const getOfficialRequirementsUrl = (benefitId: Benefit['id']) =>
+    OFFICIAL_REQUIREMENTS_URLS[benefitId] ?? benefitCatalogById.get(benefitId)?.officialUrl ?? '/';
 
   const renderOfficialLinkButton = (benefitTitle: string, href: string, label?: string) => (
     <Button
@@ -162,8 +266,13 @@ export default function ResultsPage() {
     </Button>
   );
 
-  const renderDetailsContent = (details: string) => (
+  const renderDetailsContent = (details: string, description?: string) => (
     <div className="space-y-3 text-sm leading-relaxed text-gray-700 dark:text-slate-200">
+      {description && (
+        <p className="text-sm leading-relaxed text-gray-700 dark:text-slate-200">
+          {description}
+        </p>
+      )}
       {renderLinkedText(details, {
         paragraphClassName: 'text-sm leading-relaxed text-gray-700 dark:text-slate-200',
         linkClassName:
@@ -171,6 +280,37 @@ export default function ResultsPage() {
       })}
     </div>
   );
+
+  const renderIneligibilityReasons = (
+    benefitTitle: string,
+    reasons: string[],
+    introText?: string
+  ) => (
+    <div className="space-y-3">
+      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[#b91c1c] dark:text-rose-200/85">
+        Why It Did Not Match
+      </p>
+      <p className="text-sm font-medium leading-relaxed text-gray-700 dark:text-slate-200">
+        {introText ?? `To qualify for ${benefitTitle}, you:`}
+      </p>
+      <ul className="space-y-2.5">
+        {reasons.map((reason) => (
+          <li
+            key={reason}
+            className="flex gap-3 text-sm leading-relaxed text-gray-700 dark:text-slate-300"
+          >
+            <span
+              className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[#f87171] dark:bg-rose-300"
+              aria-hidden="true"
+            />
+            <span>{reason}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+
+  const shouldShowEmptyState = !hasMatches && !hasNotMatchedBenefits;
 
   return (
     <div className="relative isolate min-h-screen overflow-x-hidden bg-[#f8fafc] font-sans text-black dark:bg-slate-950 dark:text-slate-100">
@@ -185,42 +325,40 @@ export default function ResultsPage() {
             transition={heroEnterTransition()}
             className="relative"
           >
-            <div className="relative overflow-hidden rounded-t-[2rem] border-x border-t border-white/70 bg-white/72 p-8 pb-20 shadow-[0_34px_80px_-60px_rgba(15,23,42,0.42)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/58 md:p-10 md:pb-24">
-              <div className="relative z-10">
-                <h1
-                  id="results-heading"
-                  className="mb-4 text-[2.6rem] font-bold tracking-tight md:text-[2.85rem]"
+            <PageHeroCard className="md:p-10 md:pb-24">
+              <h1
+                id="results-heading"
+                className="mb-4 text-[2.6rem] font-bold tracking-tight md:text-[2.85rem]"
+              >
+                Your Results
+              </h1>
+
+              <p className="max-w-2xl text-lg text-gray-600 dark:text-slate-300">
+                {heroDescription}
+              </p>
+
+              {hasMatches && (
+                <motion.div
+                  initial={heroEnterInitial}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={heroEnterTransition(0.1)}
+                  className="mt-6 flex justify-center"
                 >
-                  Your Results
-                </h1>
-
-                <p className="max-w-2xl text-lg text-gray-600 dark:text-slate-300">
-                  {heroDescription}
-                </p>
-
-                {hasMatches && (
-                  <motion.div
-                    initial={heroEnterInitial}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={heroEnterTransition(0.1)}
-                    className="mt-6 flex justify-center"
-                  >
-                    <Link to="/checklist">
-                      <Button
-                        size="lg"
-                        className="group cursor-pointer rounded-full bg-[#f97316] px-8 py-6 text-lg text-white shadow-[0_4px_14px_0_rgba(249,115,22,0.3)] transition-all duration-200 hover:-translate-y-1 hover:scale-[1.02] hover:bg-[#ea580c] hover:shadow-[0_20px_25px_-5px_rgba(249,115,22,0.4)] dark:shadow-[0_10px_28px_-14px_rgba(251,146,60,0.56)] dark:hover:shadow-[0_20px_40px_-16px_rgba(251,146,60,0.76)]"
-                      >
-                        <CheckSquare
-                          className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:scale-110"
-                          aria-hidden="true"
-                        />
-                        Get Personalized Checklist
-                      </Button>
-                    </Link>
-                  </motion.div>
-                )}
-              </div>
-            </div>
+                  <Link to="/checklist">
+                    <Button
+                      size="lg"
+                      className="group cursor-pointer rounded-full bg-[#f97316] px-8 py-6 text-lg text-white shadow-[0_4px_14px_0_rgba(249,115,22,0.3)] transition-all duration-200 hover:-translate-y-1 hover:scale-[1.02] hover:bg-[#ea580c] hover:shadow-[0_20px_25px_-5px_rgba(249,115,22,0.4)] dark:shadow-[0_10px_28px_-14px_rgba(251,146,60,0.56)] dark:hover:shadow-[0_20px_40px_-16px_rgba(251,146,60,0.76)]"
+                    >
+                      <CheckSquare
+                        className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:scale-110"
+                        aria-hidden="true"
+                      />
+                      Get Personalized Checklist
+                    </Button>
+                  </Link>
+                </motion.div>
+              )}
+            </PageHeroCard>
           </motion.div>
         </div>
 
@@ -235,10 +373,7 @@ export default function ResultsPage() {
                 const regionId = `${benefit.id}-details`;
 
                 return (
-                  <div
-                    key={benefit.id}
-                    className="rounded-[1.5rem] border border-white/75 bg-white/86 shadow-[0_24px_52px_-24px_rgba(15,23,42,0.24)] dark:border-white/10 dark:bg-slate-900/80 dark:shadow-[0_24px_52px_-24px_rgba(2,6,23,0.78)]"
-                  >
+                  <div key={benefit.id} className={MATCHED_MOBILE_CARD_CLASSNAME}>
                     <div className="px-5 pt-5">
                       <div className="flex flex-col gap-3">
                         <div className="min-w-0">
@@ -261,7 +396,7 @@ export default function ResultsPage() {
                                       : 'bg-red-100 text-red-700 dark:bg-[#ff0000]/22 dark:text-[#fff3f3] dark:ring-1 dark:ring-inset dark:ring-[#ff4d4d]/55'
                                   }`}
                                 >
-                                  {renderStatusText(status)}
+                                  {renderStatusText(status, benefit.id)}
                                 </div>
                               ))}
                             </div>
@@ -330,7 +465,7 @@ export default function ResultsPage() {
                       transition={benefitCardTransition(index)}
                     >
                       <AccordionItem value={benefit.id} className="rounded-[1.5rem] border-none">
-                        <Card className="gap-5 overflow-hidden border border-white/75 bg-white/86 shadow-[0_24px_52px_-24px_rgba(15,23,42,0.24)] backdrop-blur-none transition-all duration-125 hover:-translate-y-1.5 hover:scale-[1.01] hover:shadow-xl hover:shadow-slate-200/70 sm:gap-6 md:shadow-[0_20px_55px_-38px_rgba(15,23,42,0.3)] sm:backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/80 dark:shadow-[0_24px_52px_-24px_rgba(2,6,23,0.78)] md:dark:shadow-[0_24px_60px_-38px_rgba(2,6,23,0.95)] dark:hover:shadow-[0_30px_70px_-38px_rgba(2,6,23,1)]">
+                        <Card className={MATCHED_DESKTOP_CARD_CLASSNAME}>
                           <CardHeader className="gap-3 px-5 pt-5 sm:gap-4 sm:px-6 sm:pt-6">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                               <div className="min-w-0">
@@ -353,7 +488,7 @@ export default function ResultsPage() {
                                             : 'bg-red-100 text-red-700 dark:bg-[#ff0000]/22 dark:text-[#fff3f3] dark:ring-1 dark:ring-inset dark:ring-[#ff4d4d]/55'
                                         }`}
                                       >
-                                        {renderStatusText(status)}
+                                        {renderStatusText(status, benefit.id)}
                                       </div>
                                     ))}
                                   </div>
@@ -390,7 +525,7 @@ export default function ResultsPage() {
               </Accordion>
             </section>
           )
-        ) : (
+        ) : shouldShowEmptyState ? (
           <div className="rounded-[1.75rem] border border-dashed border-gray-300 bg-white/72 py-20 text-center shadow-[0_24px_60px_-42px_rgba(15,23,42,0.28)] backdrop-blur-none dark:border-slate-700 dark:bg-slate-900/70 md:backdrop-blur-sm">
             <p className="mb-4 text-gray-500 dark:text-slate-400">
               We could not find any specific benefits matching your profile at this time.
@@ -399,6 +534,304 @@ export default function ResultsPage() {
               <Link to="/">Start Over</Link>
             </Button>
           </div>
+        ) : null}
+
+        {isSingleBenefitNoMatch && singleNotMatchedBenefit &&
+          (isMobile ? (
+            <section aria-labelledby="single-no-match-heading" className="mt-10 space-y-6">
+              <div className="space-y-2 px-1">
+                <h2 id="single-no-match-heading" className="text-2xl font-bold tracking-tight">
+                  {singleNoMatchHeading}
+                </h2>
+                {singleNoMatchIntro && (
+                  <p className="text-sm leading-relaxed text-gray-600 dark:text-slate-300">
+                    {singleNoMatchIntro}
+                  </p>
+                )}
+              </div>
+
+              <div className={NOT_MATCHED_MOBILE_CARD_CLASSNAME}>
+                <div className="px-5 pt-5">
+                  <div className="flex flex-col gap-3">
+                    <div className="min-w-0">
+                      <span className="mb-1.5 inline-block rounded bg-gray-100 px-2 py-1 text-xs font-bold uppercase tracking-wide text-gray-500 dark:bg-slate-800 dark:text-slate-300">
+                        {singleNotMatchedBenefit.category}
+                      </span>
+
+                      <h3 id={singleNoMatchCardTitleId ?? undefined} className="text-xl font-bold">
+                        {singleNotMatchedBenefit.title}
+                      </h3>
+                    </div>
+
+                    {renderOfficialLinkButton(
+                      singleNotMatchedBenefit.title,
+                      getOfficialRequirementsUrl(singleNotMatchedBenefit.id),
+                      'View Official Requirements'
+                    )}
+                  </div>
+                </div>
+
+                <div className="px-5 pb-5 pt-4">
+                  {renderIneligibilityReasons(
+                    singleNotMatchedBenefit.title,
+                    singleNotMatchedBenefit.ineligibilityReasons,
+                    singleNoMatchReasonLeadIn ?? undefined
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  aria-expanded={singleNoMatchDetailsOpen ? 'true' : 'false'}
+                  aria-controls={singleNoMatchDetailsRegionId ?? undefined}
+                  onClick={() => toggleMobileDetails(singleNotMatchedBenefit.id)}
+                  className="flex w-full items-start justify-between gap-4 border-t border-gray-100 px-5 py-3.5 text-left text-sm font-semibold text-[#355b8a] transition-colors dark:border-white/10 dark:text-sky-200"
+                >
+                  <span>More Details</span>
+                  <ChevronDown
+                    className={`h-4 w-4 shrink-0 text-[#355b8a] transition-transform duration-200 dark:text-sky-200 ${
+                      singleNoMatchDetailsOpen ? 'rotate-180' : ''
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
+
+                {singleNoMatchDetailsOpen && (
+                  <motion.div
+                    id={singleNoMatchDetailsRegionId ?? undefined}
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={MOBILE_DETAILS_REVEAL}
+                    role="region"
+                    aria-labelledby={singleNoMatchCardTitleId ?? undefined}
+                    className="px-5 pb-5 pt-1"
+                  >
+                    {renderDetailsContent(
+                      singleNotMatchedBenefit.details,
+                      singleNotMatchedBenefit.description
+                    )}
+                  </motion.div>
+                )}
+              </div>
+            </section>
+          ) : (
+            <section aria-labelledby="single-no-match-heading" className="mt-10">
+              <div className="mb-6 space-y-2">
+                <h2 id="single-no-match-heading" className="text-3xl font-bold tracking-tight">
+                  {singleNoMatchHeading}
+                </h2>
+                {singleNoMatchIntro && (
+                  <p className="max-w-2xl text-base leading-relaxed text-gray-600 dark:text-slate-300">
+                    {singleNoMatchIntro}
+                  </p>
+                )}
+              </div>
+
+              <Accordion type="multiple" className="space-y-6">
+                <AccordionItem
+                  value={`single-no-match-${singleNotMatchedBenefit.id}`}
+                  className="rounded-[1.5rem] border-none"
+                >
+                  <Card className={NOT_MATCHED_DESKTOP_CARD_CLASSNAME}>
+                    <CardHeader className="gap-3 px-5 pt-5 sm:gap-4 sm:px-6 sm:pt-6">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                        <div className="min-w-0">
+                          <span className="mb-1.5 inline-block rounded bg-gray-100 px-2 py-1 text-xs font-bold uppercase tracking-wide text-gray-500 sm:mb-2 dark:bg-slate-800 dark:text-slate-300">
+                            {singleNotMatchedBenefit.category}
+                          </span>
+
+                          <CardTitle className="text-xl font-bold sm:text-2xl">
+                            {singleNotMatchedBenefit.title}
+                          </CardTitle>
+                        </div>
+
+                        {renderOfficialLinkButton(
+                          singleNotMatchedBenefit.title,
+                          getOfficialRequirementsUrl(singleNotMatchedBenefit.id),
+                          'View Official Requirements'
+                        )}
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="px-5 pb-5 sm:px-6 sm:pb-6">
+                      {renderIneligibilityReasons(
+                        singleNotMatchedBenefit.title,
+                        singleNotMatchedBenefit.ineligibilityReasons,
+                        singleNoMatchReasonLeadIn ?? undefined
+                      )}
+                    </CardContent>
+
+                    <div className="border-t border-gray-100 bg-gray-50/60 dark:border-white/10 dark:bg-slate-950/60">
+                      <AccordionTrigger className="px-5 py-3.5 text-left text-sm font-semibold text-[#355b8a] transition-colors hover:no-underline sm:px-6 sm:py-4 dark:text-sky-200 [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-[#355b8a] dark:[&>svg]:text-sky-200">
+                        <span>More Details</span>
+                      </AccordionTrigger>
+                      <AccordionContent className="border-t border-gray-100 px-5 py-4 dark:border-white/10 sm:px-6 sm:py-5">
+                        {renderDetailsContent(
+                          singleNotMatchedBenefit.details,
+                          singleNotMatchedBenefit.description
+                        )}
+                      </AccordionContent>
+                    </div>
+                  </Card>
+                </AccordionItem>
+              </Accordion>
+            </section>
+          ))}
+
+        {!isSingleBenefitNoMatch && hasNotMatchedBenefits &&
+          (isMobile ? (
+            <section aria-labelledby="not-matched-heading" className="mt-12 space-y-6">
+              <div className="space-y-2 px-1">
+                <h2 id="not-matched-heading" className="text-2xl font-bold tracking-tight">
+                  Not Matched
+                </h2>
+                <p className="text-sm leading-relaxed text-gray-600 dark:text-slate-300">
+                  These are the programs you chose to screen for that did not match based on your current answers. Each card explains which requirement was not met or could not be confirmed.
+                </p>
+              </div>
+
+              {notMatchedBenefits.map((benefit) => {
+                const isDetailsOpen = Boolean(mobileOpenDetails[benefit.id]);
+                const titleId = `${benefit.id}-not-matched-title`;
+                const regionId = `${benefit.id}-not-matched-details`;
+
+                return (
+                  <div key={`${benefit.id}-not-matched`} className={NOT_MATCHED_MOBILE_CARD_CLASSNAME}>
+                    <div className="px-5 pt-5">
+                      <div className="flex flex-col gap-3">
+                        <div className="min-w-0">
+                          <span className="mb-1.5 inline-block rounded bg-gray-100 px-2 py-1 text-xs font-bold uppercase tracking-wide text-gray-500 dark:bg-slate-800 dark:text-slate-300">
+                            {benefit.category}
+                          </span>
+
+                          <h2 id={titleId} className="text-xl font-bold">
+                            {benefit.title}
+                          </h2>
+                        </div>
+
+                        {renderOfficialLinkButton(
+                          benefit.title,
+                          getOfficialRequirementsUrl(benefit.id),
+                          'View Official Requirements'
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="px-5 pb-5 pt-4">
+                      {renderIneligibilityReasons(benefit.title, benefit.ineligibilityReasons)}
+                    </div>
+
+                    <button
+                      type="button"
+                      aria-expanded={isDetailsOpen ? 'true' : 'false'}
+                      aria-controls={regionId}
+                      onClick={() => toggleMobileDetails(benefit.id)}
+                      className="flex w-full items-start justify-between gap-4 border-t border-gray-100 px-5 py-3.5 text-left text-sm font-semibold text-[#355b8a] transition-colors dark:border-white/10 dark:text-sky-200"
+                    >
+                      <span>More Details</span>
+                      <ChevronDown
+                        className={`h-4 w-4 shrink-0 text-[#355b8a] transition-transform duration-200 dark:text-sky-200 ${
+                          isDetailsOpen ? 'rotate-180' : ''
+                        }`}
+                        aria-hidden="true"
+                      />
+                    </button>
+
+                    {isDetailsOpen && (
+                      <motion.div
+                        id={regionId}
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={MOBILE_DETAILS_REVEAL}
+                        role="region"
+                        aria-labelledby={titleId}
+                        className="px-5 pb-5 pt-1"
+                      >
+                        {renderDetailsContent(benefit.details, benefit.description)}
+                      </motion.div>
+                    )}
+                  </div>
+                );
+              })}
+            </section>
+          ) : (
+            <section aria-labelledby="not-matched-heading" className="mt-14">
+              <div className="mb-6 space-y-2">
+                <h2 id="not-matched-heading" className="text-3xl font-bold tracking-tight">
+                  Not Matched
+                </h2>
+                <p className="max-w-2xl text-base leading-relaxed text-gray-600 dark:text-slate-300">
+                  These are the programs you chose to screen for that did not match based on your current answers. Each card explains which requirement was not met or could not be confirmed.
+                </p>
+              </div>
+
+              <Accordion type="multiple" className="space-y-6">
+                {notMatchedBenefits.map((benefit, index) => (
+                  <motion.div
+                    key={`${benefit.id}-not-matched`}
+                    initial={heroEnterInitial}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={benefitCardTransition(index)}
+                  >
+                    <AccordionItem
+                      value={`not-matched-${benefit.id}`}
+                      className="rounded-[1.5rem] border-none"
+                    >
+                      <Card className={NOT_MATCHED_DESKTOP_CARD_CLASSNAME}>
+                        <CardHeader className="gap-3 px-5 pt-5 sm:gap-4 sm:px-6 sm:pt-6">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                            <div className="min-w-0">
+                              <span className="mb-1.5 inline-block rounded bg-gray-100 px-2 py-1 text-xs font-bold uppercase tracking-wide text-gray-500 sm:mb-2 dark:bg-slate-800 dark:text-slate-300">
+                                {benefit.category}
+                              </span>
+
+                              <CardTitle className="text-xl font-bold sm:text-2xl">
+                                {benefit.title}
+                              </CardTitle>
+                            </div>
+
+                            {renderOfficialLinkButton(
+                              benefit.title,
+                              getOfficialRequirementsUrl(benefit.id),
+                              'View Official Requirements'
+                            )}
+                          </div>
+                        </CardHeader>
+
+                        <CardContent className="px-5 pb-5 sm:px-6 sm:pb-6">
+                          {renderIneligibilityReasons(benefit.title, benefit.ineligibilityReasons)}
+                        </CardContent>
+
+                        <div className="border-t border-gray-100 bg-gray-50/60 dark:border-white/10 dark:bg-slate-950/60">
+                          <AccordionTrigger className="px-5 py-3.5 text-left text-sm font-semibold text-[#355b8a] transition-colors hover:no-underline sm:px-6 sm:py-4 dark:text-sky-200 [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-[#355b8a] dark:[&>svg]:text-sky-200">
+                            <span>More Details</span>
+                          </AccordionTrigger>
+                          <AccordionContent className="border-t border-gray-100 px-5 py-4 dark:border-white/10 sm:px-6 sm:py-5">
+                            {renderDetailsContent(benefit.details, benefit.description)}
+                          </AccordionContent>
+                        </div>
+                      </Card>
+                    </AccordionItem>
+                  </motion.div>
+                ))}
+              </Accordion>
+            </section>
+          ))}
+
+        {!hasMatches && hasNotMatchedBenefits && (
+          <motion.div
+            initial={heroEnterInitial}
+            animate={{ opacity: 1, y: 0 }}
+            transition={heroEnterTransition(0.06)}
+            className="mt-8 flex justify-center"
+          >
+            <Button
+              asChild
+              variant="outline"
+              className="border-[#355b8a] bg-white/92 px-6 text-[#1e3a5f] shadow-sm transition-all duration-300 hover:border-[#1e3a5f] hover:bg-white dark:border-sky-200/55 dark:bg-slate-900/82 dark:text-sky-100 dark:hover:border-sky-200 dark:hover:bg-slate-900"
+            >
+              <Link to="/">Start Over</Link>
+            </Button>
+          </motion.div>
         )}
 
         <motion.div
@@ -432,3 +865,11 @@ export default function ResultsPage() {
     </div>
   );
 }
+
+
+
+
+
+
+
+

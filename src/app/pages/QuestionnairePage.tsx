@@ -46,6 +46,18 @@ const MOBILE_PAGE_TRANSITION = {
   ease: [0.22, 1, 0.36, 1] as const,
 };
 
+const SCHOOL_LISTBOX_HEIGHT_CLASSES = 'max-h-56 md:max-h-[22rem]';
+const SCHOOL_LISTBOX_MEASUREMENT_HEIGHT_CLASSES =
+  'max-h-56 min-h-56 md:max-h-[22rem] md:min-h-[22rem]';
+const DEFAULT_QUESTION_MEASUREMENT_ANSWERS: Record<string, string> = {
+  student_status: 'future_part_time',
+  citizen_status: 'yes',
+  residency_length: 'one_to_five_years',
+  household_sizes: '9_plus',
+  household_size_exact: '9',
+  masshealth_income_under_limit: 'no',
+};
+
 export default function QuestionnairePage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -296,28 +308,50 @@ export default function QuestionnairePage() {
 
   useLayoutEffect(() => {
     let frameId = 0;
+    let resizeObserver: ResizeObserver | null = null;
 
-    const measureContentHeight = () => {
+    const updateContentHeight = () => {
+      const tallestHeight = questions.reduce((maxHeight, question) => {
+        const element = measurementRefs.current[question.id];
+        return element ? Math.max(maxHeight, element.offsetHeight) : maxHeight;
+      }, 0);
+
+      if (tallestHeight > 0) {
+        setContentHeight((currentHeight) =>
+          currentHeight === tallestHeight ? currentHeight : tallestHeight
+        );
+      }
+    };
+
+    const scheduleContentHeightUpdate = () => {
+      window.cancelAnimationFrame(frameId);
       frameId = window.requestAnimationFrame(() => {
-        const tallestHeight = visibleQuestions.reduce((maxHeight, question) => {
-          const element = measurementRefs.current[question.id];
-          return element ? Math.max(maxHeight, element.offsetHeight) : maxHeight;
-        }, 0);
-
-        if (tallestHeight > 0) {
-          setContentHeight(tallestHeight);
-        }
+        updateContentHeight();
       });
     };
 
-    measureContentHeight();
-    window.addEventListener('resize', measureContentHeight);
+    updateContentHeight();
+    window.addEventListener('resize', scheduleContentHeightUpdate);
+
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        scheduleContentHeightUpdate();
+      });
+
+      questions.forEach((question) => {
+        const element = measurementRefs.current[question.id];
+        if (element) {
+          resizeObserver.observe(element);
+        }
+      });
+    }
 
     return () => {
       window.cancelAnimationFrame(frameId);
-      window.removeEventListener('resize', measureContentHeight);
+      window.removeEventListener('resize', scheduleContentHeightUpdate);
+      resizeObserver?.disconnect();
     };
-  }, [visibleQuestions, answers]);
+  }, [isMobile]);
 
   useEffect(() => {
     if (!currentQuestion) return;
@@ -429,14 +463,19 @@ export default function QuestionnairePage() {
   };
 
   const renderMeasurementInput = (question: Question) => {
-    const questionOptions = getQuestionOptions(question, answers);
+    const questionOptions = getQuestionOptions(question, DEFAULT_QUESTION_MEASUREMENT_ANSWERS);
 
     if (question.control === 'select' && question.id === 'school_name') {
       return (
         <div className="space-y-3">
           <div className="h-14 rounded-lg border border-gray-200 bg-white px-4" />
+          <div className="h-5 text-sm leading-5 text-transparent">
+            Showing available schools.
+          </div>
           <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-            <div className="max-h-64 min-h-64 overflow-y-scroll p-2 md:max-h-[22rem] md:min-h-[22rem]">
+            <div
+              className={`${SCHOOL_LISTBOX_MEASUREMENT_HEIGHT_CLASSES} overflow-y-scroll p-2`}
+            >
               {questionOptions.slice(0, 6).map((option) => (
                 <div
                   key={option.value}
@@ -650,7 +689,7 @@ export default function QuestionnairePage() {
                   id={schoolListboxId}
                   role="listbox"
                   aria-label="Matching schools"
-                  className="max-h-64 overflow-y-scroll p-2 md:max-h-[22rem]"
+                  className={`${SCHOOL_LISTBOX_HEIGHT_CLASSES} overflow-y-scroll p-2`}
                 >
                   {filteredOptions.length > 0 ? (
                     filteredOptions.map((option, index) => {
@@ -826,7 +865,7 @@ export default function QuestionnairePage() {
           className="container mx-auto max-w-3xl px-6 py-12"
         >
           <p className="text-base text-slate-600 dark:text-slate-300">
-            Loading questionnaireÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦
+            Loading questionnaire...
           </p>
         </main>
       </div>
@@ -952,9 +991,9 @@ export default function QuestionnairePage() {
         className="pointer-events-none invisible fixed inset-x-0 top-0 -z-10"
       >
         <div className="container mx-auto max-w-3xl px-5 py-4 sm:px-6 md:py-14">
-          {visibleQuestions.map((question) => {
-            const questionTextSegments = getQuestionTextSegments(question, answers);
-            const questionHelperText = getQuestionHelperText(question, answers);
+          {questions.map((question) => {
+            const questionTextSegments = getQuestionTextSegments(question, DEFAULT_QUESTION_MEASUREMENT_ANSWERS);
+            const questionHelperText = getQuestionHelperText(question, DEFAULT_QUESTION_MEASUREMENT_ANSWERS);
 
             return (
               <div
@@ -991,3 +1030,5 @@ export default function QuestionnairePage() {
     </div>
   );
 }
+
+
