@@ -53,6 +53,10 @@ export interface QuestionOption {
   value: string;
 }
 
+interface QuestionVisibilityContext {
+  questionIdsInScope: ReadonlySet<string>;
+}
+
 export interface Question {
   id: string;
   text: string;
@@ -68,7 +72,7 @@ export interface Question {
     questionId: string;
     values: string[];
   }[];
-  isVisible?: (answers: BenefitProfile) => boolean;
+  isVisible?: (answers: BenefitProfile, context: QuestionVisibilityContext) => boolean;
   benefitIds?: string[];
 }
 
@@ -374,7 +378,7 @@ export const questions: Question[] = [
     id: 'student_status',
     text: 'Are you currently enrolled in a college or university?',
     category: 'General',
-    benefitIds: ['pell-grant', 'massgrant', 'massgrant-plus', 'snap', 'mbta-pass'],
+    benefitIds: ['pell-grant', 'massgrant', 'massgrant-plus', 'mbta-pass'],
     options: [
       { label: 'Yes, full-time', value: 'full_time' },
       { label: 'Yes, part-time', value: 'part_time' },
@@ -535,7 +539,7 @@ export const questions: Question[] = [
     id: 'masshealth_income_under_limit',
     text: 'MassHealth income threshold question',
     category: 'Financial',
-    benefitIds: ['snap', 'masshealth'],
+    benefitIds: ['masshealth'],
     conditions: [
       {
         questionId: 'citizen_status',
@@ -558,11 +562,13 @@ export const questions: Question[] = [
         values: ['yes'],
       },
     ],
-    isVisible: (answers) =>
+    isVisible: (answers, context) =>
       hasMassachusettsResidency(answers) &&
       hasResolvedHouseholdSize(answers) &&
-      answers['masshealth_income_under_limit'] === 'no' &&
-      answers['work_study'] !== 'yes',
+      (
+        !context.questionIdsInScope.has('masshealth_income_under_limit') ||
+        answers['masshealth_income_under_limit'] === 'no'
+      ),
     getText: (answers) => getIncomeQuestionText('snap', answers),
     getHelperText: (answers) => getIncomeQuestionHelperText('snap', answers),
     options: yesNoOptions,
@@ -795,9 +801,20 @@ function getSelectedSchoolName(answers: BenefitProfile): string | null {
   return normalizedSchoolName;
 }
 
-function wasQuestionShown(questionId: string, answers: BenefitProfile): boolean {
-  const question = questions.find((entry) => entry.id === questionId);
-  return question ? shouldShowQuestion(question, answers) : false;
+function wasQuestionShown(
+  questionId: string,
+  answers: BenefitProfile,
+  selectedBenefitIds: string[] = []
+): boolean {
+  const relevantQuestions = getQuestionsForBenefitFilters(questions, selectedBenefitIds);
+  const question = relevantQuestions.find((entry) => entry.id === questionId);
+
+  if (!question) {
+    return false;
+  }
+
+  const visibilityContext = createQuestionVisibilityContext(relevantQuestions);
+  return shouldShowQuestionWithContext(question, answers, visibilityContext);
 }
 
 function getStudentStatusIneligibilityReason(
@@ -1032,23 +1049,23 @@ function getMassHealthIncomeIneligibilityReason(answers: BenefitProfile): string
   return getHouseholdSizeRequirementReason('MassHealth', answers);
 }
 
-function getSnapIncomeIneligibilityReason(answers: BenefitProfile): string | null {
-  if (
-    answers['masshealth_income_under_limit'] === 'no' &&
-    answers['snap_income_under_limit'] === 'no'
-  ) {
+function getSnapIncomeIneligibilityReason(
+  answers: BenefitProfile,
+  selectedBenefitIds: string[] = []
+): string | null {
+  if (answers['masshealth_income_under_limit'] === 'yes') {
+    return null;
+  }
+
+  if (answers['snap_income_under_limit'] === 'no') {
     return getIncomeThresholdIneligibilityReason('snap', answers);
   }
 
-  if (wasQuestionShown('snap_income_under_limit', answers) && !answers['snap_income_under_limit']) {
-    return 'must have household income below the SNAP limit for your household size. Your SNAP income-limit answer was not provided.';
-  }
-
   if (
-    wasQuestionShown('masshealth_income_under_limit', answers) &&
-    !answers['masshealth_income_under_limit']
+    wasQuestionShown('snap_income_under_limit', answers, selectedBenefitIds) &&
+    !answers['snap_income_under_limit']
   ) {
-    return 'must complete the earlier household-income step before the SNAP income limit can be checked. That earlier income answer was not provided.';
+    return 'must have household income below the SNAP limit for your household size. Your SNAP income-limit answer was not provided.';
   }
 
   return getHouseholdSizeRequirementReason('SNAP', answers);
@@ -1079,7 +1096,8 @@ function getMassGrantPlusIncomeIneligibilityReason(
 
 export function getBenefitIneligibilityReasons(
   benefitId: string,
-  answers: BenefitProfile
+  answers: BenefitProfile,
+  selectedBenefitIds: string[] = []
 ): string[] {
   const reasons: string[] = [];
   const benefitTitle = benefits.find((benefit) => benefit.id === benefitId)?.title ?? 'this program';
@@ -1145,7 +1163,7 @@ export function getBenefitIneligibilityReasons(
     case 'snap':
       pushReason(getMassachusettsResidencyIneligibilityReason('SNAP', answers));
       pushReason(getCitizenshipIneligibilityReason('SNAP', answers));
-      pushReason(getSnapIncomeIneligibilityReason(answers));
+      pushReason(getSnapIncomeIneligibilityReason(answers, selectedBenefitIds));
       break;
 
     case 'mbta-pass':
@@ -1266,7 +1284,17 @@ export function getQuestionsForBenefitFilters(
   );
 }
 
-export function shouldShowQuestion(question: Question, answers: BenefitProfile): boolean {
+function createQuestionVisibilityContext(allQuestions: Question[]): QuestionVisibilityContext {
+  return {
+    questionIdsInScope: new Set(allQuestions.map((question) => question.id)),
+  };
+}
+
+function shouldShowQuestionWithContext(
+  question: Question,
+  answers: BenefitProfile,
+  context: QuestionVisibilityContext
+): boolean {
   const conditionsMatch = !question.conditions || question.conditions.every((condition) => {
     const answerValue = answers[condition.questionId];
     return Boolean(answerValue) && condition.values.includes(answerValue);
@@ -1276,11 +1304,26 @@ export function shouldShowQuestion(question: Question, answers: BenefitProfile):
     return false;
   }
 
-  return question.isVisible ? question.isVisible(answers) : true;
+  return question.isVisible ? question.isVisible(answers, context) : true;
+}
+
+export function shouldShowQuestion(
+  question: Question,
+  answers: BenefitProfile,
+  allQuestions: Question[] = questions
+): boolean {
+  return shouldShowQuestionWithContext(
+    question,
+    answers,
+    createQuestionVisibilityContext(allQuestions)
+  );
 }
 
 export function getVisibleQuestions(allQuestions: Question[], answers: BenefitProfile): Question[] {
-  return allQuestions.filter((question) => shouldShowQuestion(question, answers));
+  const visibilityContext = createQuestionVisibilityContext(allQuestions);
+  return allQuestions.filter((question) =>
+    shouldShowQuestionWithContext(question, answers, visibilityContext)
+  );
 }
 
 export function pruneHiddenAnswers(
@@ -1306,6 +1349,12 @@ export function pruneHiddenAnswers(
 
   return nextAnswers;
 }
+
+
+
+
+
+
 
 
 

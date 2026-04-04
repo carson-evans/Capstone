@@ -109,7 +109,7 @@ function getSingleBenefitNoMatchSummary(benefit: Benefit): string {
     case 'masshealth':
       return 'MassHealth is generally only available to eligible Massachusetts residents who meet citizenship and household income requirements.';
     case 'snap':
-      return 'SNAP is generally only available to eligible Massachusetts residents who meet household income and student eligibility requirements.';
+      return 'SNAP is generally only available to eligible Massachusetts residents who meet household income and other program requirements.';
     default:
       return 'This result is based on the answers you gave in the screener.';
   }
@@ -141,7 +141,11 @@ export default function ResultsPage() {
       .filter((benefit) => !matchedBenefitIds.has(benefit.id))
       .map((benefit) => ({
         ...benefit,
-        ineligibilityReasons: getBenefitIneligibilityReasons(benefit.id, answers),
+        ineligibilityReasons: getBenefitIneligibilityReasons(
+          benefit.id,
+          answers,
+          screeningBenefitFilters
+        ),
       }));
   }, [answers, matchedBenefits, screenedBenefits]);
 
@@ -865,6 +869,8 @@ export default function ResultsPage() {
     </div>
   );
 }
+
+
 
 
 
