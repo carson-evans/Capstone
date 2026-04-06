@@ -5,11 +5,18 @@ import { Download, ExternalLink } from 'lucide-react';
 
 import { Navbar } from '../components/layout/Navbar';
 import { PageBackdrop } from '../components/layout/PageBackdrop';
+import { PageHeroCard } from '../components/layout/PageHeroCard';
 import { Button } from '../components/ui/button';
 import { Checkbox } from '../components/ui/checkbox';
 import { InlineTooltipText } from '../components/ui/inline-tooltip-text';
 import { useBenefits } from '../context/BenefitsContext';
-import { getBenefitRichTextSegments } from '../data/benefitsData';
+import {
+  getBenefitRichTextSegments,
+  getDisplayActionStatus,
+  isBenefitApplicationCompleted,
+  isPositiveActionStatus,
+  MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM,
+} from '../data/benefitsData';
 import { useIsMobile } from '../components/ui/use-mobile';
 import { generatePacketRequest } from '../../lib/api';
 import { SiteFooter } from '../components/layout/SiteFooter';
@@ -131,9 +138,37 @@ export default function ChecklistPage() {
         (a, b) => Number(a.checked) - Number(b.checked) || a.originalIndex - b.originalIndex
       );
 
-  const renderChecklistItemText = (item: string) => {
-    const richTextSegments = getBenefitRichTextSegments(item);
+  const getMassGrantPlusSchoolNote = () => {
+    const selectedSchoolName = answers['school_name']?.trim();
+
+    return selectedSchoolName
+      ? `You selected ${selectedSchoolName}, which is a participating MASSGrant Plus school.`
+      : 'You selected a participating MASSGrant Plus school.';
+  };
+
+  const renderChecklistItemText = (
+    item: string,
+    options?: { massGrantPlusSchoolNote?: string }
+  ) => {
+    const richTextSegments = getBenefitRichTextSegments(item, options);
     return richTextSegments ? <InlineTooltipText segments={richTextSegments} /> : item;
+  };
+
+  const renderPositiveStatusText = (status: string, benefitId: string) => {
+    const displayStatus = getDisplayActionStatus(status, benefitId, answers);
+    const richTextSegments = getBenefitRichTextSegments(displayStatus);
+    return richTextSegments ? <InlineTooltipText segments={richTextSegments} /> : displayStatus;
+  };
+
+  const getPositiveCompletionStatuses = (benefit: (typeof checklistBenefits)[number]) => {
+    const statuses =
+      benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
+
+    if (!isBenefitApplicationCompleted(benefit.id, answers)) {
+      return [];
+    }
+
+    return statuses.filter((status) => isPositiveActionStatus(status));
   };
 
   const getOfficialButtonLabel = (benefitId: string, fallbackLabel?: string) => {
@@ -163,10 +198,10 @@ export default function ChecklistPage() {
       if (pendingWindow) {
         try {
           pendingWindow.opener = null;
-          pendingWindow.document.title = 'Preparing your PDF packet…';
+          pendingWindow.document.title = 'Preparing your PDF packet...';
           pendingWindow.document.body.innerHTML = `
             <main style="font-family: Arial, sans-serif; padding: 24px; line-height: 1.5;">
-              <h1 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Preparing your PDF packet…</h1>
+              <h1 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Preparing your PDF packet...</h1>
               <p>You can return to CommonMASS while the packet finishes loading.</p>
             </main>
           `;
@@ -178,7 +213,7 @@ export default function ChecklistPage() {
 
     setGenerationError(null);
     setReadyDownloadUrl(null);
-    setGenerationStatus('Preparing your PDF packet…');
+    setGenerationStatus('Preparing your PDF packet...');
     setIsGenerating(true);
 
     try {
@@ -205,7 +240,7 @@ export default function ChecklistPage() {
       setReadyDownloadUrl(resolvedUrl);
       setGenerationStatus(
         isMobile
-          ? 'Opening your PDF packet…'
+          ? 'Opening your PDF packet...'
           : 'Your PDF packet is ready. If it did not open automatically, use the direct link below.'
       );
 
@@ -248,15 +283,7 @@ export default function ChecklistPage() {
         className="container mx-auto max-w-3xl px-6 py-12 print:max-w-none print:py-0"
       >
         <div className="relative mb-12 print:mb-8">
-          <div
-            className="relative overflow-hidden rounded-t-[2rem] border-x border-t border-white/70 bg-white/72 p-8 pb-20 shadow-[0_34px_80px_-60px_rgba(15,23,42,0.42)] backdrop-blur-sm print:border-none print:bg-transparent print:p-0 print:pb-0 print:shadow-none dark:border-white/10 dark:bg-slate-900/58"
-            style={{
-              WebkitMaskImage:
-                'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)',
-              maskImage: 'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)',
-            }}
-          >
-            <div className="relative z-10">
+          <PageHeroCard className="print:border-none print:bg-transparent print:p-0 print:pb-0 print:shadow-none">
               <Button
                 asChild
                 variant="ghost"
@@ -327,7 +354,7 @@ export default function ChecklistPage() {
               )}
 
               {checklistBenefits.length > 0 && (
-                <div className="mt-6 flex justify-center print:hidden">
+                <div className="mt-6 flex flex-col items-center gap-2 text-center print:hidden">
                   <Button
                     type="button"
                     size="lg"
@@ -337,12 +364,14 @@ export default function ChecklistPage() {
                     className="cursor-pointer bg-[#1e3a5f] text-white hover:bg-[#152a45] dark:bg-sky-300 dark:text-slate-950 dark:hover:bg-sky-200 dark:shadow-[0_18px_36px_-24px_rgba(125,211,252,0.55)]"
                   >
                     <Download className="h-5 w-5" aria-hidden="true" />
-                    {isGenerating ? 'Generating PDF…' : 'Download PDF'}
+                    {isGenerating ? 'Generating PDF...' : 'Download PDF'}
                   </Button>
+                  <p className="max-w-sm text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                    PDF link expires 5 minutes after you click Download. Please save it to your device.
+                  </p>
                 </div>
               )}
-            </div>
-          </div>
+          </PageHeroCard>
         </div>
 
         {checklistBenefits.length > 0 ? (
@@ -350,6 +379,7 @@ export default function ChecklistPage() {
             {checklistBenefits.map((benefit, index) => {
               const completedSteps =
                 checklistProgress[benefit.id]?.filter((checked) => checked).length ?? 0;
+              const positiveCompletionStatuses = getPositiveCompletionStatuses(benefit);
 
               return (
                 <motion.section
@@ -369,6 +399,18 @@ export default function ChecklistPage() {
                         <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
                           {benefit.title}
                         </h2>
+                        {positiveCompletionStatuses.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {positiveCompletionStatuses.map((status) => (
+                              <div
+                                key={`${benefit.id}-${status}`}
+                                className="inline-block rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800 dark:bg-emerald-400/18 dark:text-emerald-200 dark:ring-1 dark:ring-inset dark:ring-emerald-300/30"
+                              >
+                                {renderPositiveStatusText(status, benefit.id)}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
                           {completedSteps} of {benefit.checklist.length} steps completed
                         </p>
@@ -426,13 +468,31 @@ export default function ChecklistPage() {
 
                           <label
                             htmlFor={`${benefit.id}-${originalIndex}`}
-                            className={`flex-1 cursor-pointer text-base font-medium leading-relaxed transition-colors ${
-                              checked
-                                ? 'text-slate-600 line-through decoration-2 decoration-slate-500 dark:text-slate-300 dark:decoration-slate-400'
-                                : 'text-slate-900 dark:text-slate-100'
-                            }`}
+                            className="flex-1 cursor-pointer transition-colors"
                           >
-                            {renderChecklistItemText(item)}
+                            <div
+                              className={`text-base font-medium leading-relaxed transition-colors ${
+                                checked
+                                  ? 'text-slate-600 line-through decoration-2 decoration-slate-500 dark:text-slate-300 dark:decoration-slate-400'
+                                  : 'text-slate-900 dark:text-slate-100'
+                              }`}
+                            >
+                              {renderChecklistItemText(
+                                item,
+                                benefit.id === 'massgrant-plus' &&
+                                  item === MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM &&
+                                  checked
+                                  ? { massGrantPlusSchoolNote: getMassGrantPlusSchoolNote() }
+                                  : undefined
+                              )}
+                            </div>
+                            {benefit.id === 'massgrant-plus' &&
+                            item === MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM &&
+                            checked ? (
+                              <p className="mt-1 text-sm font-normal leading-relaxed text-slate-500 dark:text-slate-400">
+                                {getMassGrantPlusSchoolNote()}
+                              </p>
+                            ) : null}
                           </label>
                         </motion.div>
                       )
@@ -479,3 +539,4 @@ export default function ChecklistPage() {
     </div>
   );
 }
+

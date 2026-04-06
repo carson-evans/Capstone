@@ -29,6 +29,8 @@ import {
 import {
   allMassachusettsSchoolOptions,
   isMassGrantPlusEligibleSchool,
+  isMbtaEligibleSchool,
+  normalizeMassachusettsSchoolName,
 } from './massachusettsSchools';
 
 export interface Benefit {
@@ -51,6 +53,10 @@ export interface QuestionOption {
   value: string;
 }
 
+interface QuestionVisibilityContext {
+  questionIdsInScope: ReadonlySet<string>;
+}
+
 export interface Question {
   id: string;
   text: string;
@@ -66,7 +72,7 @@ export interface Question {
     questionId: string;
     values: string[];
   }[];
-  isVisible?: (answers: BenefitProfile) => boolean;
+  isVisible?: (answers: BenefitProfile, context: QuestionVisibilityContext) => boolean;
   benefitIds?: string[];
 }
 
@@ -158,6 +164,84 @@ function shouldAskPriorBachelorsDegree(answers: BenefitProfile): boolean {
   );
 }
 
+function isStudentOrFuture(answers: BenefitProfile): boolean {
+  const studentStatus = answers['student_status'];
+  return Boolean(studentStatus) && studentOrFutureValues.includes(studentStatus);
+}
+
+function isMassGrantEnrollmentEligible(answers: BenefitProfile): boolean {
+  return answers['student_status'] === 'full_time' || answers['student_status'] === 'future_full_time';
+}
+
+function getMassGrantPlusEnrollmentStatus(
+  answers: BenefitProfile
+): 'full_time' | 'part_time' | null {
+  if (answers['student_status'] === 'full_time' || answers['student_status'] === 'future_full_time') {
+    return 'full_time';
+  }
+
+  if (answers['student_status'] === 'part_time' || answers['student_status'] === 'future_part_time') {
+    return 'part_time';
+  }
+
+  return null;
+}
+
+function isMassGrantPlusEnrollmentEligible(answers: BenefitProfile): boolean {
+  const enrollmentStatus = getMassGrantPlusEnrollmentStatus(answers);
+  const incomeBand = getEffectiveMassGrantPlusIncomeBand(answers);
+
+  if (!incomeBand || incomeBand === 'over_100k') {
+    return false;
+  }
+
+  if (incomeBand === '85k_to_100k') {
+    return enrollmentStatus === 'full_time';
+  }
+
+  if (enrollmentStatus === 'full_time') {
+    return true;
+  }
+
+  return enrollmentStatus === 'part_time';
+}
+
+function usesMasfaRoute(answers: BenefitProfile): boolean {
+  return answers['citizen_status'] === 'no';
+}
+
+function hasMasfaDocumentPath(answers: BenefitProfile): boolean {
+  const documentationReady = answers['masfa_documentation_ready'];
+
+  if (documentationReady === 'yes') {
+    return true;
+  }
+
+  if (documentationReady === 'no') {
+    const dheAffidavitStatus = answers['dhe_affidavit_completed'];
+    return dheAffidavitStatus === 'yes' || dheAffidavitStatus === 'no';
+  }
+
+  return false;
+}
+
+function qualifiesUnderTuitionEquity(answers: BenefitProfile): boolean {
+  return (
+    usesMasfaRoute(answers) &&
+    hasQualifyingGrantResidency(answers) &&
+    answers['masfa_high_school_completer'] === 'yes' &&
+    hasMasfaDocumentPath(answers)
+  );
+}
+
+function hasStateAidPath(answers: BenefitProfile): boolean {
+  if (answers['citizen_status'] === 'yes') {
+    return true;
+  }
+
+  return qualifiesUnderTuitionEquity(answers);
+}
+
 function isFutureStudent(answers: BenefitProfile): boolean {
   return answers['student_status'] === 'future_full_time' || answers['student_status'] === 'future_part_time';
 }
@@ -225,7 +309,7 @@ export const benefits: Benefit[] = [
     title: 'MASSGrant Plus',
     description: 'State grant that can reduce tuition and fees for eligible Massachusetts residents at participating public institutions.',
     details:
-      'This screener treats MASSGrant Plus as requiring Massachusetts residency for at least 12 months for reasons other than education before the academic year, attendance at a participating MASSGrant Plus school, at least 6 credits when family income is below $85,000, at least 12 credits when family income is $85,000 to $100,000, no prior bachelor\'s degree, and the correct state-aid application path through FAFSA or MASFA.',
+      'MASSGrant Plus eligibility here is based on Massachusetts residency for at least 12 months for reasons other than education before the academic year, attendance at a participating MASSGrant Plus school, at least 6 credits when family income is below $85,000, at least 12 credits when family income is $85,000 to $100,000, no prior bachelor\'s degree, and the correct state-aid application path through FAFSA or MASFA.',
     category: 'Education',
     officialUrl: 'https://studentaid.gov/h/apply-for-aid/fafsa',
     officialButtonLabel: 'Start Official Application',
@@ -257,7 +341,7 @@ export const benefits: Benefit[] = [
   {
     id: 'mbta-pass',
     title: 'MBTA Student Pass',
-    description: 'Discounted monthly passes for full-time students using MBTA services in the Greater Boston area.',
+    description: 'Discounted passes offered through participating schools in the Greater Boston area. Eligibility depends on whether your school makes the program available to full-time students only or to both part-time and full-time students.',
     details:
       'The MBTA student pass is usually coordinated through participating colleges, not just through an individual checkout page. Start with your school\'s transportation page or transportation office instructions, then check the [official MBTA student pass page](https://www.mbta.com/fares/college-student-semester-passes) to confirm the steps your campus requires.',
     category: 'Transport',
@@ -265,7 +349,7 @@ export const benefits: Benefit[] = [
     officialButtonLabel: 'Visit Official Site',
     checklist: [
       'Get current student ID',
-      'Verify full-time enrollment status',
+      'Verify enrollment status',
       'Visit school\'s transportation office or MBTA.com',
       'Purchase discounted semester or monthly pass',
       'Carry student ID when using pass',
@@ -294,7 +378,7 @@ export const questions: Question[] = [
     id: 'student_status',
     text: 'Are you currently enrolled in a college or university?',
     category: 'General',
-    benefitIds: ['pell-grant', 'massgrant', 'massgrant-plus', 'snap', 'mbta-pass'],
+    benefitIds: ['pell-grant', 'massgrant', 'massgrant-plus', 'mbta-pass'],
     options: [
       { label: 'Yes, full-time', value: 'full_time' },
       { label: 'Yes, part-time', value: 'part_time' },
@@ -455,7 +539,7 @@ export const questions: Question[] = [
     id: 'masshealth_income_under_limit',
     text: 'MassHealth income threshold question',
     category: 'Financial',
-    benefitIds: ['snap', 'masshealth'],
+    benefitIds: ['masshealth'],
     conditions: [
       {
         questionId: 'citizen_status',
@@ -478,11 +562,13 @@ export const questions: Question[] = [
         values: ['yes'],
       },
     ],
-    isVisible: (answers) =>
+    isVisible: (answers, context) =>
       hasMassachusettsResidency(answers) &&
       hasResolvedHouseholdSize(answers) &&
-      answers['masshealth_income_under_limit'] === 'no' &&
-      answers['work_study'] !== 'yes',
+      (
+        !context.questionIdsInScope.has('masshealth_income_under_limit') ||
+        answers['masshealth_income_under_limit'] === 'no'
+      ),
     getText: (answers) => getIncomeQuestionText('snap', answers),
     getHelperText: (answers) => getIncomeQuestionHelperText('snap', answers),
     options: yesNoOptions,
@@ -679,6 +765,429 @@ export function isPositiveActionStatus(actionStatus?: string): boolean {
   return normalizedStatus.includes('no action needed') || normalizedStatus.includes('already completed');
 }
 
+export function getDisplayActionStatus(
+  actionStatus: string,
+  benefitId: string,
+  answers: BenefitProfile
+): string {
+  if (!isPositiveActionStatus(actionStatus) || !isBenefitApplicationCompleted(benefitId, answers)) {
+    return actionStatus;
+  }
+
+  const applicationType = getBenefitApplicationType(benefitId, answers);
+
+  if (applicationType === 'fafsa') {
+    return 'No action needed: already completed FAFSA';
+  }
+
+  if (applicationType === 'masfa') {
+    return 'No action needed: already completed MASFA';
+  }
+
+  return actionStatus;
+}
+
+function getSelectedSchoolName(answers: BenefitProfile): string | null {
+  const normalizedSchoolName = normalizeMassachusettsSchoolName(answers['school_name']);
+
+  if (
+    !normalizedSchoolName ||
+    normalizedSchoolName === 'other' ||
+    normalizedSchoolName === 'undecided'
+  ) {
+    return null;
+  }
+
+  return normalizedSchoolName;
+}
+
+function wasQuestionShown(
+  questionId: string,
+  answers: BenefitProfile,
+  selectedBenefitIds: string[] = []
+): boolean {
+  const relevantQuestions = getQuestionsForBenefitFilters(questions, selectedBenefitIds);
+  const question = relevantQuestions.find((entry) => entry.id === questionId);
+
+  if (!question) {
+    return false;
+  }
+
+  const visibilityContext = createQuestionVisibilityContext(relevantQuestions);
+  return shouldShowQuestionWithContext(question, answers, visibilityContext);
+}
+
+function getStudentStatusIneligibilityReason(
+  benefitTitle: string,
+  answers: BenefitProfile,
+  options?: { requireFullTime?: boolean }
+): string | null {
+  const studentStatus = answers['student_status'];
+  const enrollmentRequirement = 'must be enrolled in college now or plan to enroll within the next year';
+
+  if (!studentStatus) {
+    return wasQuestionShown('student_status', answers)
+      ? `${enrollmentRequirement}. Your enrollment answer was not provided.`
+      : null;
+  }
+
+  if (studentStatus === 'no') {
+    return `${enrollmentRequirement}. You answered that you are not currently enrolled and are not planning to enroll within the next year.`;
+  }
+
+  if (options?.requireFullTime) {
+    if (studentStatus === 'part_time') {
+      return 'must be enrolled full-time. You selected part-time enrollment.';
+    }
+
+    if (studentStatus === 'future_part_time') {
+      return 'must be enrolled full-time. You selected planned part-time enrollment for the next academic year.';
+    }
+  }
+
+  return null;
+}
+
+function getMassachusettsResidencyIneligibilityReason(
+  benefitTitle: string,
+  answers: BenefitProfile,
+  options?: { requireTwelveMonths?: boolean }
+): string | null {
+  const residencyLength = answers['residency_length'];
+  const residencyRequirement = options?.requireTwelveMonths
+    ? 'must have been a Massachusetts resident for at least 12 months'
+    : 'must be a Massachusetts resident';
+
+  if (!residencyLength) {
+    return wasQuestionShown('residency_length', answers)
+      ? `${residencyRequirement}. Your residency answer was not provided.`
+      : null;
+  }
+
+  if (residencyLength === 'not_ma_resident') {
+    return `${residencyRequirement}. You answered that you are not currently a Massachusetts resident.`;
+  }
+
+  if (options?.requireTwelveMonths && residencyLength === 'under_12_months') {
+    return `${residencyRequirement}. You selected less than 12 months of Massachusetts residency.`;
+  }
+
+  return null;
+}
+
+function getCitizenshipIneligibilityReason(
+  benefitTitle: string,
+  answers: BenefitProfile
+): string | null {
+  const citizenStatus = answers['citizen_status'];
+  const citizenshipRequirement = 'must be a U.S. citizen or eligible non-citizen';
+
+  if (citizenStatus === 'no') {
+    return `${citizenshipRequirement}. You answered that you are not.`;
+  }
+
+  if (!citizenStatus) {
+    return wasQuestionShown('citizen_status', answers)
+      ? `${citizenshipRequirement}. Your citizenship answer was not provided.`
+      : null;
+  }
+
+  return null;
+}
+
+function getSchoolParticipationIneligibilityReason(
+  benefitTitle: string,
+  answers: BenefitProfile,
+  options: {
+    isEligible: boolean;
+    programLabel: string;
+    requirementText: string;
+  }
+): string | null {
+  if (options.isEligible) {
+    return null;
+  }
+
+  const schoolAnswer = answers['school_name'];
+  const selectedSchoolName = getSelectedSchoolName(answers);
+  const schoolRequirement = `must ${options.requirementText}`;
+
+  if (!schoolAnswer) {
+    return wasQuestionShown('school_name', answers)
+      ? `${schoolRequirement}. Your school selection was not provided.`
+      : null;
+  }
+
+  if (schoolAnswer === 'undecided') {
+    return `${schoolRequirement}. You marked your school as undecided, so we could not verify whether it participates.`;
+  }
+
+  if (schoolAnswer === 'other') {
+    return `${schoolRequirement}. You selected Other, so we could not verify whether your school participates.`;
+  }
+
+  if (selectedSchoolName) {
+    return `${schoolRequirement}. You selected ${selectedSchoolName}, which is not currently on the participating ${options.programLabel} school list.`;
+  }
+
+  return `${schoolRequirement}. We could not verify whether your school participates.`;
+}
+
+function getPriorBachelorsIneligibilityReason(
+  benefitTitle: string,
+  answers: BenefitProfile
+): string | null {
+  const degreeRequirement = "cannot already have a bachelor's degree or equivalent";
+
+  if (answers['prior_bachelors_degree'] === 'yes') {
+    return `${degreeRequirement}. You answered that you already have a bachelor's degree or equivalent.`;
+  }
+
+  if (!answers['prior_bachelors_degree']) {
+    return wasQuestionShown('prior_bachelors_degree', answers)
+      ? `${degreeRequirement}. Your degree answer was not provided.`
+      : null;
+  }
+
+  return null;
+}
+
+function getStateAidPathIneligibilityReason(
+  benefitTitle: string,
+  answers: BenefitProfile
+): string | null {
+  if (!usesMasfaRoute(answers)) {
+    return null;
+  }
+
+  if (!hasQualifyingGrantResidency(answers)) {
+    return null;
+  }
+
+  const highSchoolRequirement =
+    'must have attended high school in Massachusetts for at least 3 academic years and earned a Massachusetts diploma or equivalent to use the MASFA/Tuition Equity route';
+
+  if (answers['masfa_high_school_completer'] === 'no') {
+    return `${highSchoolRequirement}. You answered that this requirement is not met.`;
+  }
+
+  if (!answers['masfa_high_school_completer']) {
+    return wasQuestionShown('masfa_high_school_completer', answers)
+      ? `${highSchoolRequirement}. Your Massachusetts high school completion answer was not provided.`
+      : null;
+  }
+
+  const documentationRequirement =
+    'must have a confirmed MASFA documentation path, such as standard MASFA documentation or the DHE Tuition Equity Form and Affidavit path when needed';
+
+  if (answers['masfa_documentation_ready'] === 'yes') {
+    return null;
+  }
+
+  if (answers['masfa_documentation_ready'] === 'no') {
+    if (
+      answers['dhe_affidavit_completed'] === 'yes' ||
+      answers['dhe_affidavit_completed'] === 'no'
+    ) {
+      return null;
+    }
+
+    return wasQuestionShown('dhe_affidavit_completed', answers)
+      ? `${documentationRequirement}. You indicated that the standard MASFA documentation path does not apply, but your DHE Tuition Equity Form and Affidavit answer was not provided.`
+      : null;
+  }
+
+  return wasQuestionShown('masfa_documentation_ready', answers)
+    ? `${documentationRequirement}. Your documentation-path answer was not provided.`
+    : null;
+}
+
+function getIncomeThresholdIneligibilityReason(
+  program: 'masshealth' | 'snap',
+  answers: BenefitProfile
+): string {
+  const householdSize = getExactHouseholdSize(answers);
+  const threshold = getIncomeThreshold(program, answers);
+
+  if (householdSize && threshold !== null) {
+    if (program === 'masshealth') {
+      return `must have yearly household gross income below the MassHealth limit for your household size. For a household of ${householdSize}, the limit used here is ${formatCurrency(threshold)}. You answered that your income is not below that amount, so your income appears above the eligible limit for this program.`;
+    }
+
+    return `must have monthly household gross income below the SNAP limit for your household size. For a household of ${householdSize}, the limit used here is ${formatCurrency(threshold)}. You answered that your income is not below that amount, so your income appears above the eligible limit for this program.`;
+  }
+
+  return program === 'masshealth'
+    ? 'must have household income below the MassHealth limit for your household size. You answered that your income is not below that limit, so your income appears above the eligible limit for this program.'
+    : 'must have household income below the SNAP limit for your household size. You answered that your income is not below that limit, so your income appears above the eligible limit for this program.';
+}
+
+function getHouseholdSizeRequirementReason(
+  programTitle: 'MassHealth' | 'SNAP',
+  answers: BenefitProfile
+): string | null {
+  if (wasQuestionShown('household_size_exact', answers) && !answers['household_size_exact']) {
+    return `must provide your exact household size so the ${programTitle} income limit can be checked. You selected 9 or more people but did not provide the exact number.`;
+  }
+
+  if (wasQuestionShown('household_sizes', answers) && !hasResolvedHouseholdSize(answers)) {
+    return `must provide your household size so the ${programTitle} income limit can be checked. Your household-size answer was not provided.`;
+  }
+
+  return null;
+}
+
+function getMassHealthIncomeIneligibilityReason(answers: BenefitProfile): string | null {
+  if (answers['masshealth_income_under_limit'] === 'no') {
+    return getIncomeThresholdIneligibilityReason('masshealth', answers);
+  }
+
+  if (wasQuestionShown('masshealth_income_under_limit', answers) && !answers['masshealth_income_under_limit']) {
+    return 'must have household income below the MassHealth limit for your household size. Your MassHealth income-limit answer was not provided.';
+  }
+
+  return getHouseholdSizeRequirementReason('MassHealth', answers);
+}
+
+function getSnapIncomeIneligibilityReason(
+  answers: BenefitProfile,
+  selectedBenefitIds: string[] = []
+): string | null {
+  if (answers['masshealth_income_under_limit'] === 'yes') {
+    return null;
+  }
+
+  if (answers['snap_income_under_limit'] === 'no') {
+    return getIncomeThresholdIneligibilityReason('snap', answers);
+  }
+
+  if (
+    wasQuestionShown('snap_income_under_limit', answers, selectedBenefitIds) &&
+    !answers['snap_income_under_limit']
+  ) {
+    return 'must have household income below the SNAP limit for your household size. Your SNAP income-limit answer was not provided.';
+  }
+
+  return getHouseholdSizeRequirementReason('SNAP', answers);
+}
+
+function getMassGrantPlusIncomeIneligibilityReason(
+  answers: BenefitProfile
+): string | null {
+  const incomeBand = getEffectiveMassGrantPlusIncomeBand(answers);
+  const enrollmentStatus = getMassGrantPlusEnrollmentStatus(answers);
+
+  if (!incomeBand) {
+    return wasQuestionShown('massgrant_plus_income_band', answers)
+      ? 'must fall within an eligible family income range. Your family-income-range answer was not provided.'
+      : null;
+  }
+
+  if (incomeBand === 'over_100k') {
+    return 'must have family income within the MASSGrant Plus range used here. Based on your answers, it appears above $100,000, which is outside that range.';
+  }
+
+  if (incomeBand === '85k_to_100k' && enrollmentStatus === 'part_time') {
+    return 'must be enrolled full-time if family income is between $85,000 and $100,000. You selected part-time enrollment.';
+  }
+
+  return null;
+}
+
+export function getBenefitIneligibilityReasons(
+  benefitId: string,
+  answers: BenefitProfile,
+  selectedBenefitIds: string[] = []
+): string[] {
+  const reasons: string[] = [];
+  const benefitTitle = benefits.find((benefit) => benefit.id === benefitId)?.title ?? 'this program';
+
+  const pushReason = (reason: string | null) => {
+    if (reason) {
+      reasons.push(reason);
+    }
+  };
+
+  switch (benefitId) {
+    case 'pell-grant':
+      pushReason(getStudentStatusIneligibilityReason('the Pell Grant', answers));
+      pushReason(getCitizenshipIneligibilityReason('the Pell Grant', answers));
+      break;
+
+    case 'massgrant':
+      pushReason(getStudentStatusIneligibilityReason('MASSGrant', answers, { requireFullTime: true }));
+      pushReason(
+        getMassachusettsResidencyIneligibilityReason('MASSGrant', answers, {
+          requireTwelveMonths: true,
+        })
+      );
+      pushReason(getStateAidPathIneligibilityReason('MASSGrant', answers));
+
+      if (wasQuestionShown('prior_bachelors_degree', answers)) {
+        pushReason(getPriorBachelorsIneligibilityReason('MASSGrant', answers));
+      }
+      break;
+
+    case 'massgrant-plus':
+      pushReason(getStudentStatusIneligibilityReason('MASSGrant Plus', answers));
+      pushReason(
+        getMassachusettsResidencyIneligibilityReason('MASSGrant Plus', answers, {
+          requireTwelveMonths: true,
+        })
+      );
+      pushReason(getStateAidPathIneligibilityReason('MASSGrant Plus', answers));
+
+      if (wasQuestionShown('school_name', answers)) {
+        pushReason(
+          getSchoolParticipationIneligibilityReason('MASSGrant Plus', answers, {
+            isEligible: isMassGrantPlusEligibleSchool(answers['school_name']),
+            programLabel: 'MASSGrant Plus',
+            requirementText: 'attend a participating MASSGrant Plus school',
+          })
+        );
+      }
+
+      if (wasQuestionShown('prior_bachelors_degree', answers)) {
+        pushReason(getPriorBachelorsIneligibilityReason('MASSGrant Plus', answers));
+      }
+
+      pushReason(getMassGrantPlusIncomeIneligibilityReason(answers));
+      break;
+
+    case 'masshealth':
+      pushReason(getMassachusettsResidencyIneligibilityReason('MassHealth', answers));
+      pushReason(getCitizenshipIneligibilityReason('MassHealth', answers));
+      pushReason(getMassHealthIncomeIneligibilityReason(answers));
+      break;
+
+    case 'snap':
+      pushReason(getMassachusettsResidencyIneligibilityReason('SNAP', answers));
+      pushReason(getCitizenshipIneligibilityReason('SNAP', answers));
+      pushReason(getSnapIncomeIneligibilityReason(answers, selectedBenefitIds));
+      break;
+
+    case 'mbta-pass':
+      pushReason(getStudentStatusIneligibilityReason('the MBTA Student Pass', answers));
+
+      if (wasQuestionShown('school_name', answers)) {
+        pushReason(
+          getSchoolParticipationIneligibilityReason('the MBTA Student Pass', answers, {
+            isEligible: isMbtaEligibleSchool(answers['school_name']),
+            programLabel: 'the MBTA Student Pass',
+            requirementText: 'attend a school that participates in the MBTA Student Pass program',
+          })
+        );
+      }
+      break;
+
+    default:
+      break;
+  }
+
+  return reasons.length > 0
+    ? Array.from(new Set(reasons))
+    : [`We could not determine which requirement blocked ${benefitTitle} from the answers currently on file.`];
+}
 export function shouldShowDheAffidavitActionStatus(
   benefitId: string,
   answers: BenefitProfile
@@ -692,7 +1201,10 @@ export function shouldShowDheAffidavitActionStatus(
   );
 }
 
-export function getBenefitRichTextSegments(text: string): InlineTextSegment[] | null {
+export function getBenefitRichTextSegments(
+  text: string,
+  options?: { massGrantPlusSchoolNote?: string }
+): InlineTextSegment[] | null {
   switch (text) {
     case GATHER_TAX_DOCUMENTS_CHECKLIST_ITEM:
       return [
@@ -723,7 +1235,12 @@ export function getBenefitRichTextSegments(text: string): InlineTextSegment[] | 
         {
           type: 'tooltip',
           text: MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM,
-          tooltip: massGrantPlusSchoolsTooltip,
+          tooltip: options?.massGrantPlusSchoolNote
+            ? {
+                ...massGrantPlusSchoolsTooltip,
+                note: options.massGrantPlusSchoolNote,
+              }
+            : massGrantPlusSchoolsTooltip,
         },
       ];
     case DHE_AFFIDAVIT_ACTION_STATUS:
@@ -767,7 +1284,17 @@ export function getQuestionsForBenefitFilters(
   );
 }
 
-export function shouldShowQuestion(question: Question, answers: BenefitProfile): boolean {
+function createQuestionVisibilityContext(allQuestions: Question[]): QuestionVisibilityContext {
+  return {
+    questionIdsInScope: new Set(allQuestions.map((question) => question.id)),
+  };
+}
+
+function shouldShowQuestionWithContext(
+  question: Question,
+  answers: BenefitProfile,
+  context: QuestionVisibilityContext
+): boolean {
   const conditionsMatch = !question.conditions || question.conditions.every((condition) => {
     const answerValue = answers[condition.questionId];
     return Boolean(answerValue) && condition.values.includes(answerValue);
@@ -777,11 +1304,26 @@ export function shouldShowQuestion(question: Question, answers: BenefitProfile):
     return false;
   }
 
-  return question.isVisible ? question.isVisible(answers) : true;
+  return question.isVisible ? question.isVisible(answers, context) : true;
+}
+
+export function shouldShowQuestion(
+  question: Question,
+  answers: BenefitProfile,
+  allQuestions: Question[] = questions
+): boolean {
+  return shouldShowQuestionWithContext(
+    question,
+    answers,
+    createQuestionVisibilityContext(allQuestions)
+  );
 }
 
 export function getVisibleQuestions(allQuestions: Question[], answers: BenefitProfile): Question[] {
-  return allQuestions.filter((question) => shouldShowQuestion(question, answers));
+  const visibilityContext = createQuestionVisibilityContext(allQuestions);
+  return allQuestions.filter((question) =>
+    shouldShowQuestionWithContext(question, answers, visibilityContext)
+  );
 }
 
 export function pruneHiddenAnswers(
@@ -807,4 +1349,19 @@ export function pruneHiddenAnswers(
 
   return nextAnswers;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

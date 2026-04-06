@@ -6,7 +6,7 @@ import { Popover, PopoverAnchor, PopoverContent } from './popover';
 import { cn } from './utils';
 
 const TOOLTIP_TRIGGER_CLASS_NAME =
-  'inline cursor-help rounded-sm bg-transparent p-0 text-left text-[#1e3a5f] underline decoration-[#1e3a5f] underline-offset-4 transition-colors hover:text-[#16304f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/25 [font:inherit] dark:text-sky-300 dark:decoration-sky-300 dark:hover:text-sky-100 dark:focus-visible:ring-sky-300/35';
+  'inline cursor-help rounded-sm bg-transparent p-0 text-left text-[#355b8a] underline decoration-[#355b8a] decoration-2 underline-offset-4 transition-colors hover:text-[#1e3a5f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#355b8a]/25 [font:inherit] dark:text-sky-300 dark:decoration-sky-300 dark:hover:text-sky-100 dark:focus-visible:ring-sky-300/35';
 
 function isGroup(item: string | TooltipItemGroup): item is TooltipItemGroup {
   return typeof item === 'object' && 'groupLabel' in item;
@@ -27,7 +27,7 @@ function ExpandableGroup({ group }: { group: TooltipItemGroup }) {
         aria-expanded={expanded}
         aria-controls={sublistId}
         onClick={() => setExpanded((v) => !v)}
-        className="flex items-center gap-1 text-left text-[#1e3a5f] underline decoration-[#1e3a5f] underline-offset-2 hover:text-[#16304f] dark:text-sky-300 dark:decoration-sky-300 dark:hover:text-sky-100"
+        className="flex items-center gap-1 text-left text-[#355b8a] underline decoration-[#355b8a] decoration-2 underline-offset-2 hover:text-[#1e3a5f] dark:text-sky-300 dark:decoration-sky-300 dark:hover:text-sky-100"
       >
         {group.groupLabel}
         <span className="text-xs" aria-hidden="true">
@@ -227,3 +227,5 @@ export function InlineTooltipText({
     </span>
   );
 }
+
+
