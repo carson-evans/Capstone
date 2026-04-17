@@ -291,7 +291,7 @@ export default function ResultsPage() {
     introText?: string
   ) => (
     <div className="space-y-3">
-      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[#b91c1c] dark:text-rose-200/85">
+      <p className="inline-flex rounded-full bg-red-100 px-3 py-1 text-[0.60rem] font-semibold uppercase tracking-[0.22em] text-red-800 dark:bg-[#ff0000]/22 dark:text-[#fff3f3] dark:ring-1 dark:ring-inset dark:ring-[#ff4d4d]/55">
         Why It Did Not Match
       </p>
       <p className="text-sm font-medium leading-relaxed text-gray-700 dark:text-slate-200">
