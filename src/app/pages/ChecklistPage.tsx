@@ -366,7 +366,7 @@ export default function ChecklistPage() {
                     <Download className="h-5 w-5" aria-hidden="true" />
                     {isGenerating ? 'Generating PDF...' : 'Download PDF'}
                   </Button>
-                  <p className="max-w-sm text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                  <p className="max-w-sm rounded-2xl bg-[#eff6ff] px-4 py-3 text-sm font-semibold leading-relaxed text-[#1e3a5f] shadow-sm dark:bg-slate-900/80 dark:text-sky-200">
                     PDF link expires 5 minutes after you click Download. Please save it to your device.
                   </p>
                 </div>
