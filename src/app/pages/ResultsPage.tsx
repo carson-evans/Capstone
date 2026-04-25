@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'framer-motion';
-import { ChevronDown, ExternalLink, CheckSquare } from 'lucide-react';
+import { ChevronDown, ExternalLink, CheckSquare, ArrowUp } from 'lucide-react';
 
 import { Button } from '@/app/components/ui/button';
 import {
@@ -118,6 +118,7 @@ function getSingleBenefitNoMatchSummary(benefit: Benefit): string {
 export default function ResultsPage() {
   const { answers, matchedBenefits, screeningBenefitFilters } = useBenefits();
   const isMobile = useIsMobile();
+  const [desktopLayoutMode, setDesktopLayoutMode] = useState<'single' | 'double'>('single');
   const [mobileOpenDetails, setMobileOpenDetails] = useState<Record<string, boolean>>(
     {}
   );
@@ -150,6 +151,13 @@ export default function ResultsPage() {
   }, [answers, matchedBenefits, screenedBenefits]);
 
   const hasNotMatchedBenefits = notMatchedBenefits.length > 0;
+  const totalResultCards = matchedBenefits.length + notMatchedBenefits.length;
+  const shouldShowBackToTop = isMobile || totalResultCards >= 3;
+  const shouldShowLayoutControl = !isMobile && totalResultCards >= 2;
+  const desktopResultsListClassName =
+    desktopLayoutMode === 'double'
+      ? 'grid gap-6 md:grid-cols-2'
+      : 'space-y-6';
   const singleScreenedBenefitId =
     screeningBenefitFilters.length === 1 ? screeningBenefitFilters[0] : null;
   const singleScreenedBenefitTitle = singleScreenedBenefitId
@@ -219,6 +227,13 @@ export default function ResultsPage() {
       ...current,
       [benefitId]: !current[benefitId],
     }));
+  };
+
+  const handleBackToTopClick = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
   };
 
   const renderStatusText = (status: string, benefitId: string) => {
@@ -321,15 +336,19 @@ export default function ResultsPage() {
       <PageBackdrop />
       <Navbar />
 
-      <main id="main-content" tabIndex={-1} className="container mx-auto max-w-4xl px-6 py-12">
-        <div className="relative mb-14">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="container mx-auto max-w-4xl px-6 py-8 sm:py-12"
+      >
+        <div className="relative mb-8 sm:mb-14">
           <motion.div
             initial={heroEnterInitial}
             animate={{ opacity: 1, y: 0 }}
             transition={heroEnterTransition()}
             className="relative"
           >
-            <PageHeroCard className="md:p-10 md:pb-24">
+            <PageHeroCard className="pb-10 md:p-10 md:pb-16">
               <h1
                 id="results-heading"
                 className="mb-4 text-[2.6rem] font-bold tracking-tight md:text-[2.85rem]"
@@ -346,7 +365,7 @@ export default function ResultsPage() {
                   initial={heroEnterInitial}
                   animate={{ opacity: 1, y: 0 }}
                   transition={heroEnterTransition(0.1)}
-                  className="mt-6 flex justify-center"
+                  className="mt-6 flex justify-center sm:mt-9"
                 >
                   <Link to="/checklist">
                     <Button
@@ -365,6 +384,50 @@ export default function ResultsPage() {
             </PageHeroCard>
           </motion.div>
         </div>
+
+        {shouldShowLayoutControl ? (
+          <div className="mb-6 flex justify-center md:justify-end">
+            <div className="inline-flex items-center gap-3 rounded-full border border-[#1e3a5f]/10 bg-white/85 px-4 py-2 shadow-sm dark:border-sky-200/12 dark:bg-slate-900/82">
+              <span className="text-sm font-semibold text-[#1e3a5f] dark:text-sky-100">
+                Layout
+              </span>
+              <div className="inline-flex items-center gap-1 rounded-full bg-[#f8fafc] p-1 dark:bg-slate-950/80">
+                <button
+                  type="button"
+                  onClick={() => setDesktopLayoutMode('single')}
+                  aria-pressed={desktopLayoutMode === 'single'}
+                  aria-label="Use one-column layout"
+                  className={`inline-flex h-9 w-10 cursor-pointer items-center justify-center rounded-full transition-colors ${
+                    desktopLayoutMode === 'single'
+                      ? 'bg-[#1e3a5f] text-white dark:bg-sky-200 dark:text-slate-950'
+                      : 'text-[#355b8a] hover:bg-[#e2e8f0] dark:text-sky-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <span className="flex flex-col gap-1" aria-hidden="true">
+                    <span className="h-2 w-4 rounded-sm border border-current" />
+                    <span className="h-2 w-4 rounded-sm border border-current" />
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDesktopLayoutMode('double')}
+                  aria-pressed={desktopLayoutMode === 'double'}
+                  aria-label="Use two-column layout"
+                  className={`inline-flex h-9 w-10 cursor-pointer items-center justify-center rounded-full transition-colors ${
+                    desktopLayoutMode === 'double'
+                      ? 'bg-[#1e3a5f] text-white dark:bg-sky-200 dark:text-slate-950'
+                      : 'text-[#355b8a] hover:bg-[#e2e8f0] dark:text-sky-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <span className="flex items-center gap-1" aria-hidden="true">
+                    <span className="h-4 w-[0.42rem] rounded-sm border border-current" />
+                    <span className="h-4 w-[0.42rem] rounded-sm border border-current" />
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {hasMatches ? (
           isMobile ? (
@@ -456,7 +519,7 @@ export default function ResultsPage() {
             </section>
           ) : (
             <section aria-labelledby="results-heading">
-              <Accordion type="multiple" className="space-y-6">
+              <Accordion type="multiple" className={desktopResultsListClassName}>
                 {matchedBenefits.map((benefit, index) => {
                   const statuses =
                     benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
@@ -467,9 +530,19 @@ export default function ResultsPage() {
                       initial={heroEnterInitial}
                       animate={{ opacity: 1, y: 0 }}
                       transition={benefitCardTransition(index)}
+                      className={desktopLayoutMode === 'double' ? 'h-full' : undefined}
                     >
-                      <AccordionItem value={benefit.id} className="rounded-[1.5rem] border-none">
-                        <Card className={MATCHED_DESKTOP_CARD_CLASSNAME}>
+                      <AccordionItem
+                        value={benefit.id}
+                        className={`rounded-[1.5rem] border-none ${
+                          desktopLayoutMode === 'double' ? 'h-full' : ''
+                        }`}
+                      >
+                        <Card
+                          className={`${MATCHED_DESKTOP_CARD_CLASSNAME} ${
+                            desktopLayoutMode === 'double' ? 'h-full' : ''
+                          }`}
+                        >
                           <CardHeader className="gap-3 px-5 pt-5 sm:gap-4 sm:px-6 sm:pt-6">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                               <div className="min-w-0">
@@ -689,7 +762,7 @@ export default function ResultsPage() {
                   Not Matched
                 </h2>
                 <p className="text-sm leading-relaxed text-gray-600 dark:text-slate-300">
-                  These are the programs you chose to screen for that did not match based on your current answers. Each card explains which requirement was not met or could not be confirmed.
+                  These are the programs you chose to screen for that did not match based on your current answers. Each card explains why the requirement was not met.
                 </p>
               </div>
 
@@ -764,23 +837,30 @@ export default function ResultsPage() {
                   Not Matched
                 </h2>
                 <p className="max-w-2xl text-base leading-relaxed text-gray-600 dark:text-slate-300">
-                  These are the programs you chose to screen for that did not match based on your current answers. Each card explains which requirement was not met or could not be confirmed.
+                  These are the programs you chose to screen for that did not match based on your current answers. Each card explains why the requirement was not met.
                 </p>
               </div>
 
-              <Accordion type="multiple" className="space-y-6">
+              <Accordion type="multiple" className={desktopResultsListClassName}>
                 {notMatchedBenefits.map((benefit, index) => (
                   <motion.div
                     key={`${benefit.id}-not-matched`}
                     initial={heroEnterInitial}
                     animate={{ opacity: 1, y: 0 }}
                     transition={benefitCardTransition(index)}
+                    className={desktopLayoutMode === 'double' ? 'h-full' : undefined}
                   >
                     <AccordionItem
                       value={`not-matched-${benefit.id}`}
-                      className="rounded-[1.5rem] border-none"
+                      className={`rounded-[1.5rem] border-none ${
+                        desktopLayoutMode === 'double' ? 'h-full' : ''
+                      }`}
                     >
-                      <Card className={NOT_MATCHED_DESKTOP_CARD_CLASSNAME}>
+                      <Card
+                        className={`${NOT_MATCHED_DESKTOP_CARD_CLASSNAME} ${
+                          desktopLayoutMode === 'double' ? 'h-full' : ''
+                        }`}
+                      >
                         <CardHeader className="gap-3 px-5 pt-5 sm:gap-4 sm:px-6 sm:pt-6">
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                             <div className="min-w-0">
@@ -864,6 +944,22 @@ export default function ResultsPage() {
           </Button>
         </motion.div>
       </main>
+
+      {shouldShowBackToTop ? (
+        <div className="bg-white px-6 pb-10 pt-2 text-center dark:bg-slate-950">
+          <button
+            type="button"
+            onClick={handleBackToTopClick}
+            className="group inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-[#1e3a5f] underline-offset-4 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1e3a5f]/20 focus-visible:ring-offset-4 focus-visible:ring-offset-white dark:text-sky-200 dark:focus-visible:ring-sky-200/25 dark:focus-visible:ring-offset-slate-950"
+          >
+            <ArrowUp
+              className="h-4 w-4 transition-transform duration-300 ease-out group-hover:-translate-y-1"
+              aria-hidden="true"
+            />
+            Back to top
+          </button>
+        </div>
+      ) : null}
 
       <SiteFooter />
     </div>

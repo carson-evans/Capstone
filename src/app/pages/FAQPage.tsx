@@ -281,7 +281,7 @@ export default function FAQPage() {
                     return (
                       <div
                         key={filter.id}
-                        className={`group inline-flex items-center overflow-hidden rounded-full border transition-all ${
+                        className={`group inline-flex cursor-pointer items-center overflow-hidden rounded-full border transition-all ${
                           isActive
                             ? 'border-[#1e3a5f] bg-[#1e3a5f] text-white shadow-sm dark:border-sky-200 dark:bg-sky-200 dark:text-slate-950'
                             : 'border-gray-200 bg-white text-gray-700 hover:border-[#1e3a5f] hover:text-[#1e3a5f] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-sky-200 dark:hover:text-sky-200'
@@ -291,7 +291,7 @@ export default function FAQPage() {
                           type="button"
                           onClick={() => setActiveFilterId(filter.id as FAQCategoryFilterId)}
                           aria-pressed={isActive}
-                          className={`px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/40 focus-visible:ring-inset dark:focus-visible:ring-sky-200/40 ${
+                          className={`cursor-pointer px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/40 focus-visible:ring-inset dark:focus-visible:ring-sky-200/40 ${
                             filter.helpDescription ? 'pr-2' : ''
                           }`}
                         >
@@ -328,7 +328,7 @@ export default function FAQPage() {
                 <button
                   type="button"
                   onClick={scrollToChatbot}
-                  className="group inline-flex self-start items-center justify-center gap-2 rounded-full border border-[#1e3a5f]/12 bg-[#f8fafc] px-4 py-2 text-sm font-semibold text-[#1e3a5f] transition-all hover:-translate-y-0.5 hover:border-[#1e3a5f]/25 hover:bg-white hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/35 focus-visible:ring-offset-2 dark:border-sky-200/20 dark:bg-slate-950 dark:text-sky-200 dark:hover:border-sky-200/35 dark:hover:bg-slate-900"
+                  className="group inline-flex cursor-pointer self-start items-center justify-center gap-2 rounded-full border border-[#1e3a5f]/12 bg-[#f8fafc] px-4 py-2 text-sm font-semibold text-[#1e3a5f] transition-all hover:-translate-y-0.5 hover:border-[#1e3a5f]/25 hover:bg-white hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/35 focus-visible:ring-offset-2 dark:border-sky-200/20 dark:bg-slate-950 dark:text-sky-200 dark:hover:border-sky-200/35 dark:hover:bg-slate-900"
                 >
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] text-white dark:bg-sky-200 dark:text-slate-950">
                     <Bot className="h-4 w-4" aria-hidden="true" />
