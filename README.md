@@ -4,7 +4,7 @@
 
 Developed as an **IT485 Capstone project at the University of Massachusetts Boston** in collaboration with the **Massachusetts Executive Office of Technology Services and Security (EOTSS)**.
 
-**Live Demo:** [commonmass.org](https://commonmass.org)
+**Live Production Site:** [commonmass.org](https://commonmass.org)
 
 ---
 
