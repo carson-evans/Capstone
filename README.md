@@ -2,7 +2,7 @@
 
 **CommonMASS** is a civic technology platform designed to help Massachusetts residents quickly identify public benefits they may qualify for, including student aid, food assistance, and transportation discounts.
 
-Developed as an **IT485 Capstone project at the University of Massachusetts Boston** in collaboration with the **Massachusetts Executive Office of Technology Services and Security (EOTSS)**.
+Developed as an **IT485 Capstone project at the University of Massachusetts Boston** with feedback from the **Massachusetts Executive Office of Technology Services and Security (EOTSS)**.
 
 **Live Production Site:** [commonmass.org](https://commonmass.org)
 
