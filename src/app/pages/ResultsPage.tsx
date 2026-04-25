@@ -164,10 +164,11 @@ export default function ResultsPage() {
   const totalResultCards = matchedBenefits.length + notMatchedBenefits.length;
   const canShowLayoutControl = viewportWidth >= 860;
   const shouldShowBackToTop = isMobile || totalResultCards >= 3;
-  const shouldShowLayoutControl = canShowLayoutControl && totalResultCards >= 2;
-  const isDesktopDoubleLayout = canShowLayoutControl && desktopLayoutMode === 'double';
+  const canUseMultiColumnLayout = canShowLayoutControl && matchedBenefits.length >= 2;
+  const shouldShowLayoutControl = canUseMultiColumnLayout;
+  const isDesktopDoubleLayout = canUseMultiColumnLayout && desktopLayoutMode === 'double';
   const desktopResultsListClassName =
-    desktopLayoutMode === 'double'
+    isDesktopDoubleLayout
       ? 'grid grid-cols-2 items-start gap-8 xl:gap-10'
       : 'space-y-6';
   const singleScreenedBenefitId =

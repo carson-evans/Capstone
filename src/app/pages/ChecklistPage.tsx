@@ -161,10 +161,11 @@ export default function ChecklistPage() {
   const checklistBenefits = matchedBenefits;
   const canShowLayoutControl = viewportWidth >= 860;
   const shouldShowBackToTop = isMobile || checklistBenefits.length >= 3;
-  const shouldShowLayoutControl = canShowLayoutControl && checklistBenefits.length >= 2;
-  const isDesktopDoubleLayout = canShowLayoutControl && desktopLayoutMode === 'double';
+  const canUseMultiColumnLayout = canShowLayoutControl && checklistBenefits.length >= 2;
+  const shouldShowLayoutControl = canUseMultiColumnLayout;
+  const isDesktopDoubleLayout = canUseMultiColumnLayout && desktopLayoutMode === 'double';
   const checklistListClassName =
-    desktopLayoutMode === 'double'
+    isDesktopDoubleLayout
       ? 'space-y-6 min-[860px]:grid min-[860px]:grid-cols-2 min-[860px]:items-start min-[860px]:gap-8 min-[860px]:space-y-0 min-[860px]:[grid-auto-rows:1fr] xl:gap-10 print:space-y-8'
       : 'space-y-6 sm:space-y-12 print:space-y-8';
 
@@ -485,8 +486,8 @@ export default function ChecklistPage() {
                   checklist below
                 </button>{' '}
                 to keep track of the next steps for your matched benefits. You can check
-                off anything you have already finished, and your downloaded PDF will show
-                those items as completed.
+                off anything you have already finished, and your downloaded PDF or copied
+                text will show those items as completed.
               </p>
 
               {checklistBenefits.length > 0 && (
