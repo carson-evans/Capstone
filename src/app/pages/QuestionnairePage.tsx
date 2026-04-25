@@ -828,13 +828,17 @@ export default function QuestionnairePage() {
               >
                 <Label
                   htmlFor={optionId}
-                  className={`flex w-full cursor-pointer items-start gap-3 rounded-lg border px-3 py-2 text-[0.98rem] font-medium leading-relaxed transition-colors md:p-4 md:text-lg ${
+                  className={`flex w-full cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 text-[0.98rem] font-medium leading-relaxed transition-colors md:p-4 md:text-lg ${
                     isSelected
                       ? 'border-[#355b8a] bg-[#eff6ff] dark:border-sky-300/50 dark:bg-slate-800/90'
-                      : 'border-transparent hover:border-gray-200 hover:bg-gray-50 dark:hover:border-slate-700 dark:hover:bg-slate-800/70'
+                        : 'border-transparent bg-gray-100/55 hover:border-gray-200 hover:bg-gray-100/80 dark:bg-slate-900/50 dark:hover:border-slate-700 dark:hover:bg-slate-800/70'
                   }`}
                 >
-                  <RadioGroupItem value={option.value} id={optionId} className="mt-1" />
+                  <RadioGroupItem
+                    value={option.value}
+                    id={optionId}
+                    className="size-3.5 border-gray-400 bg-gray-100 text-[#1e3a5f] dark:border-slate-500 dark:bg-slate-800 dark:text-sky-300"
+                  />
                   <span className="flex-1">{option.label}</span>
                 </Label>
               </motion.div>
@@ -955,9 +959,12 @@ export default function QuestionnairePage() {
                 variant="ghost"
                 onClick={handleBack}
                 disabled={isEvaluating}
-                className="text-gray-500 hover:bg-gray-100 hover:text-black dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 md:text-base"
+                className="group text-gray-500 hover:bg-gray-100 hover:text-black dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 md:text-base"
               >
-                <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+                <ArrowLeft
+                  className="mr-1.5 h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5"
+                  aria-hidden="true"
+                />
                 Back
               </Button>
 
@@ -968,7 +975,7 @@ export default function QuestionnairePage() {
                   Boolean(currentValidationError) ||
                   isEvaluating
                 }
-                className="rounded-md bg-[#1e3a5f] px-8 text-white transition-all hover:bg-[#f97316] dark:shadow-[0_18px_36px_-24px_rgba(15,23,42,0.95)] disabled:opacity-50 md:text-base"
+                className="group rounded-md bg-[#1e3a5f] px-8 text-white transition-all hover:bg-[#f97316] dark:shadow-[0_18px_36px_-24px_rgba(15,23,42,0.95)] disabled:opacity-50 md:text-base"
               >
                 {willSubmitCurrentStep
                   ? isEvaluating
@@ -976,7 +983,10 @@ export default function QuestionnairePage() {
                     : 'See Results'
                   : 'Next'}
                 {!willSubmitCurrentStep && (
-                  <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                  <ArrowRight
+                    className="ml-1.5 h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5"
+                    aria-hidden="true"
+                  />
                 )}
               </Button>
             </div>

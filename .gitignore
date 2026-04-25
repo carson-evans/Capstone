@@ -58,6 +58,8 @@ dist/
 downloads/
 lib/
 lib64/
+!src/app/lib/
+!src/app/lib/desktopLayoutPreference.ts
 parts/
 sdist/
 wheels/
