@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'framer-motion';
 import { ChevronDown, ExternalLink, CheckSquare, ArrowUp } from 'lucide-react';
@@ -24,6 +24,11 @@ import { SiteFooter } from '@/app/components/layout/SiteFooter';
 import { renderLinkedText } from '@/app/components/ui/render-linked-text';
 import { InlineTooltipText } from '@/app/components/ui/inline-tooltip-text';
 import { useBenefits } from '@/app/context/BenefitsContext';
+import {
+  readDesktopLayoutMode,
+  writeDesktopLayoutMode,
+  type DesktopLayoutMode,
+} from '@/app/lib/desktopLayoutPreference';
 import {
   DHE_AFFIDAVIT_ACTION_STATUS,
   benefits,
@@ -118,7 +123,12 @@ function getSingleBenefitNoMatchSummary(benefit: Benefit): string {
 export default function ResultsPage() {
   const { answers, matchedBenefits, screeningBenefitFilters } = useBenefits();
   const isMobile = useIsMobile();
-  const [desktopLayoutMode, setDesktopLayoutMode] = useState<'single' | 'double'>('single');
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === 'undefined' ? 1440 : window.innerWidth
+  );
+  const [desktopLayoutMode, setDesktopLayoutMode] = useState<DesktopLayoutMode>(
+    readDesktopLayoutMode
+  );
   const [mobileOpenDetails, setMobileOpenDetails] = useState<Record<string, boolean>>(
     {}
   );
@@ -152,11 +162,13 @@ export default function ResultsPage() {
 
   const hasNotMatchedBenefits = notMatchedBenefits.length > 0;
   const totalResultCards = matchedBenefits.length + notMatchedBenefits.length;
+  const canShowLayoutControl = viewportWidth >= 860;
   const shouldShowBackToTop = isMobile || totalResultCards >= 3;
-  const shouldShowLayoutControl = !isMobile && totalResultCards >= 2;
+  const shouldShowLayoutControl = canShowLayoutControl && totalResultCards >= 2;
+  const isDesktopDoubleLayout = canShowLayoutControl && desktopLayoutMode === 'double';
   const desktopResultsListClassName =
     desktopLayoutMode === 'double'
-      ? 'grid gap-6 md:grid-cols-2'
+      ? 'grid grid-cols-2 items-start gap-8 xl:gap-10'
       : 'space-y-6';
   const singleScreenedBenefitId =
     screeningBenefitFilters.length === 1 ? screeningBenefitFilters[0] : null;
@@ -228,6 +240,19 @@ export default function ResultsPage() {
       [benefitId]: !current[benefitId],
     }));
   };
+
+  useEffect(() => {
+    writeDesktopLayoutMode(desktopLayoutMode);
+  }, [desktopLayoutMode]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportWidth(window.innerWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleBackToTopClick = () => {
     window.scrollTo({
@@ -339,9 +364,11 @@ export default function ResultsPage() {
       <main
         id="main-content"
         tabIndex={-1}
-        className="container mx-auto max-w-4xl px-6 py-8 sm:py-12"
+        className={`container mx-auto px-6 py-8 sm:py-12 ${
+          isDesktopDoubleLayout ? 'max-w-[86rem]' : 'max-w-4xl'
+        }`}
       >
-        <div className="relative mb-8 sm:mb-14">
+        <div className="relative mx-auto mb-8 max-w-[53rem] sm:mb-14">
           <motion.div
             initial={heroEnterInitial}
             animate={{ opacity: 1, y: 0 }}
@@ -386,26 +413,28 @@ export default function ResultsPage() {
         </div>
 
         {shouldShowLayoutControl ? (
-          <div className="mb-6 flex justify-center md:justify-end">
-            <div className="inline-flex items-center gap-3 rounded-full border border-[#1e3a5f]/10 bg-white/85 px-4 py-2 shadow-sm dark:border-sky-200/12 dark:bg-slate-900/82">
+          <div className="mb-6 flex justify-center">
+            <div className="inline-flex min-w-[15.5rem] items-center justify-center gap-3 rounded-full border border-[#1e3a5f]/12 bg-[linear-gradient(90deg,rgba(255,255,255,0.98)_0%,rgba(239,246,255,0.95)_45%,rgba(255,247,237,0.96)_100%)] px-4 py-2 shadow-[0_16px_34px_-22px_rgba(15,23,42,0.22)] backdrop-blur-sm dark:border-sky-200/12 dark:bg-[linear-gradient(90deg,rgba(15,23,42,0.92)_0%,rgba(15,23,42,0.88)_50%,rgba(30,41,59,0.9)_100%)] dark:shadow-[0_18px_40px_-24px_rgba(2,6,23,0.88)]">
               <span className="text-sm font-semibold text-[#1e3a5f] dark:text-sky-100">
-                Layout
+                Change Layout
               </span>
-              <div className="inline-flex items-center gap-1 rounded-full bg-[#f8fafc] p-1 dark:bg-slate-950/80">
+              <div className="inline-flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setDesktopLayoutMode('single')}
                   aria-pressed={desktopLayoutMode === 'single'}
                   aria-label="Use one-column layout"
-                  className={`inline-flex h-9 w-10 cursor-pointer items-center justify-center rounded-full transition-colors ${
+                  className={`inline-flex h-9 w-10 cursor-pointer items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/20 dark:focus-visible:ring-sky-200/25 ${
                     desktopLayoutMode === 'single'
-                      ? 'bg-[#1e3a5f] text-white dark:bg-sky-200 dark:text-slate-950'
-                      : 'text-[#355b8a] hover:bg-[#e2e8f0] dark:text-sky-100 dark:hover:bg-slate-800'
+                      ? 'text-[#1e3a5f] dark:text-sky-100'
+                      : 'text-[#355b8a]/45 hover:text-[#1e3a5f] dark:text-sky-100/45 dark:hover:text-sky-100'
                   }`}
                 >
-                  <span className="flex flex-col gap-1" aria-hidden="true">
-                    <span className="h-2 w-4 rounded-sm border border-current" />
-                    <span className="h-2 w-4 rounded-sm border border-current" />
+                  <span
+                    className="flex h-[16px] w-[18px] items-center justify-center"
+                    aria-hidden="true"
+                  >
+                    <span className="box-border h-[14px] w-[12px] rounded-[4px] border-[1.5px] border-current" />
                   </span>
                 </button>
                 <button
@@ -413,15 +442,18 @@ export default function ResultsPage() {
                   onClick={() => setDesktopLayoutMode('double')}
                   aria-pressed={desktopLayoutMode === 'double'}
                   aria-label="Use two-column layout"
-                  className={`inline-flex h-9 w-10 cursor-pointer items-center justify-center rounded-full transition-colors ${
+                  className={`inline-flex h-9 w-10 cursor-pointer items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/20 dark:focus-visible:ring-sky-200/25 ${
                     desktopLayoutMode === 'double'
-                      ? 'bg-[#1e3a5f] text-white dark:bg-sky-200 dark:text-slate-950'
-                      : 'text-[#355b8a] hover:bg-[#e2e8f0] dark:text-sky-100 dark:hover:bg-slate-800'
+                      ? 'text-[#1e3a5f] dark:text-sky-100'
+                      : 'text-[#355b8a]/45 hover:text-[#1e3a5f] dark:text-sky-100/45 dark:hover:text-sky-100'
                   }`}
                 >
-                  <span className="flex items-center gap-1" aria-hidden="true">
-                    <span className="h-4 w-[0.42rem] rounded-sm border border-current" />
-                    <span className="h-4 w-[0.42rem] rounded-sm border border-current" />
+                  <span
+                    className="flex h-[16px] w-[18px] items-center justify-between"
+                    aria-hidden="true"
+                  >
+                    <span className="box-border h-[14px] w-[7px] rounded-[4px] border-[1.5px] border-current" />
+                    <span className="box-border h-[14px] w-[7px] rounded-[4px] border-[1.5px] border-current" />
                   </span>
                 </button>
               </div>
@@ -519,7 +551,11 @@ export default function ResultsPage() {
             </section>
           ) : (
             <section aria-labelledby="results-heading">
-              <Accordion type="multiple" className={desktopResultsListClassName}>
+              <Accordion
+                type={isDesktopDoubleLayout ? 'single' : 'multiple'}
+                collapsible={isDesktopDoubleLayout}
+                className={desktopResultsListClassName}
+              >
                 {matchedBenefits.map((benefit, index) => {
                   const statuses =
                     benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
@@ -530,17 +566,15 @@ export default function ResultsPage() {
                       initial={heroEnterInitial}
                       animate={{ opacity: 1, y: 0 }}
                       transition={benefitCardTransition(index)}
-                      className={desktopLayoutMode === 'double' ? 'h-full' : undefined}
+                      className={isDesktopDoubleLayout ? 'self-start' : undefined}
                     >
                       <AccordionItem
                         value={benefit.id}
-                        className={`rounded-[1.5rem] border-none ${
-                          desktopLayoutMode === 'double' ? 'h-full' : ''
-                        }`}
+                        className="rounded-[1.5rem] border-none"
                       >
                         <Card
                           className={`${MATCHED_DESKTOP_CARD_CLASSNAME} ${
-                            desktopLayoutMode === 'double' ? 'h-full' : ''
+                            isDesktopDoubleLayout ? 'flex min-h-[21rem] flex-col self-start' : ''
                           }`}
                         >
                           <CardHeader className="gap-3 px-5 pt-5 sm:gap-4 sm:px-6 sm:pt-6">
@@ -550,7 +584,7 @@ export default function ResultsPage() {
                                   {benefit.category}
                                 </span>
 
-                                <CardTitle className="text-xl font-bold sm:text-2xl">
+                                <CardTitle className="truncate whitespace-nowrap text-xl font-bold sm:text-2xl">
                                   {benefit.title}
                                 </CardTitle>
 
@@ -559,7 +593,7 @@ export default function ResultsPage() {
                                     {statuses.map((status) => (
                                       <div
                                         key={`${benefit.id}-${status}`}
-                                        className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${
+                                        className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-[0.7rem] font-semibold sm:text-xs ${
                                           isPositiveActionStatus(status)
                                             ? 'bg-green-100 text-green-800 dark:bg-emerald-400/18 dark:text-emerald-200 dark:ring-1 dark:ring-inset dark:ring-emerald-300/30'
                                             : 'bg-red-100 text-red-700 dark:bg-[#ff0000]/22 dark:text-[#fff3f3] dark:ring-1 dark:ring-inset dark:ring-[#ff4d4d]/55'
@@ -580,13 +614,19 @@ export default function ResultsPage() {
                             </div>
                           </CardHeader>
 
-                          <CardContent className="px-5 pb-5 sm:px-6 sm:pb-6">
+                          <CardContent
+                            className={`px-5 pb-5 sm:px-6 sm:pb-6 ${
+                              isDesktopDoubleLayout ? 'flex-1' : ''
+                            }`}
+                          >
                             <CardDescription className="text-sm leading-relaxed text-gray-600 dark:text-slate-300 sm:text-base">
                               {benefit.description}
                             </CardDescription>
                           </CardContent>
 
-                          <div className="border-t border-gray-100 bg-gray-50/60 dark:border-white/10 dark:bg-slate-950/60">
+                          <div className={`border-t border-gray-100 bg-gray-50/60 dark:border-white/10 dark:bg-slate-950/60 ${
+                            isDesktopDoubleLayout ? 'mt-auto' : ''
+                          }`}>
                             <AccordionTrigger className="px-5 py-3.5 text-left text-sm font-semibold text-[#355b8a] transition-colors hover:no-underline sm:px-6 sm:py-4 dark:text-sky-200 [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-[#355b8a] dark:[&>svg]:text-sky-200">
                               <span>More Details</span>
                             </AccordionTrigger>
@@ -841,24 +881,26 @@ export default function ResultsPage() {
                 </p>
               </div>
 
-              <Accordion type="multiple" className={desktopResultsListClassName}>
+              <Accordion
+                type={isDesktopDoubleLayout ? 'single' : 'multiple'}
+                collapsible={isDesktopDoubleLayout}
+                className={desktopResultsListClassName}
+              >
                 {notMatchedBenefits.map((benefit, index) => (
-                  <motion.div
-                    key={`${benefit.id}-not-matched`}
-                    initial={heroEnterInitial}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={benefitCardTransition(index)}
-                    className={desktopLayoutMode === 'double' ? 'h-full' : undefined}
-                  >
+                    <motion.div
+                      key={`${benefit.id}-not-matched`}
+                      initial={heroEnterInitial}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={benefitCardTransition(index)}
+                      className={isDesktopDoubleLayout ? 'self-start' : undefined}
+                    >
                     <AccordionItem
                       value={`not-matched-${benefit.id}`}
-                      className={`rounded-[1.5rem] border-none ${
-                        desktopLayoutMode === 'double' ? 'h-full' : ''
-                      }`}
+                      className="rounded-[1.5rem] border-none"
                     >
                       <Card
                         className={`${NOT_MATCHED_DESKTOP_CARD_CLASSNAME} ${
-                          desktopLayoutMode === 'double' ? 'h-full' : ''
+                          isDesktopDoubleLayout ? 'flex min-h-[24rem] flex-col self-start' : ''
                         }`}
                       >
                         <CardHeader className="gap-3 px-5 pt-5 sm:gap-4 sm:px-6 sm:pt-6">
@@ -868,7 +910,7 @@ export default function ResultsPage() {
                                 {benefit.category}
                               </span>
 
-                              <CardTitle className="text-xl font-bold sm:text-2xl">
+                              <CardTitle className="truncate whitespace-nowrap text-xl font-bold sm:text-2xl">
                                 {benefit.title}
                               </CardTitle>
                             </div>
@@ -881,11 +923,17 @@ export default function ResultsPage() {
                           </div>
                         </CardHeader>
 
-                        <CardContent className="px-5 pb-5 sm:px-6 sm:pb-6">
+                        <CardContent
+                          className={`px-5 pb-5 sm:px-6 sm:pb-6 ${
+                            isDesktopDoubleLayout ? 'flex-1' : ''
+                          }`}
+                        >
                           {renderIneligibilityReasons(benefit.title, benefit.ineligibilityReasons)}
                         </CardContent>
 
-                        <div className="border-t border-gray-100 bg-gray-50/60 dark:border-white/10 dark:bg-slate-950/60">
+                        <div className={`border-t border-gray-100 bg-gray-50/60 dark:border-white/10 dark:bg-slate-950/60 ${
+                          isDesktopDoubleLayout ? 'mt-auto' : ''
+                        }`}>
                           <AccordionTrigger className="px-5 py-3.5 text-left text-sm font-semibold text-[#355b8a] transition-colors hover:no-underline sm:px-6 sm:py-4 dark:text-sky-200 [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-[#355b8a] dark:[&>svg]:text-sky-200">
                             <span>More Details</span>
                           </AccordionTrigger>

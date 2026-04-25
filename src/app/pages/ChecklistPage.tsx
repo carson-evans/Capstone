@@ -20,6 +20,11 @@ import {
 import { useIsMobile } from '../components/ui/use-mobile';
 import { generatePacketRequest } from '../../lib/api';
 import { SiteFooter } from '../components/layout/SiteFooter';
+import {
+  readDesktopLayoutMode,
+  writeDesktopLayoutMode,
+  type DesktopLayoutMode,
+} from '../lib/desktopLayoutPreference';
 
 const desktopChecklistItemTransition = {
   type: 'spring' as const,
@@ -98,7 +103,12 @@ export default function ChecklistPage() {
   const { matchedBenefits, answers, checklistProgress, setChecklistItemChecked } =
     useBenefits();
   const isMobile = useIsMobile();
-  const [desktopLayoutMode, setDesktopLayoutMode] = useState<'single' | 'double'>('single');
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === 'undefined' ? 1440 : window.innerWidth
+  );
+  const [desktopLayoutMode, setDesktopLayoutMode] = useState<DesktopLayoutMode>(
+    readDesktopLayoutMode
+  );
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [generationStatus, setGenerationStatus] = useState<string>('');
@@ -126,6 +136,19 @@ export default function ChecklistPage() {
     };
   }, [readyDownloadUrl]);
 
+  useEffect(() => {
+    writeDesktopLayoutMode(desktopLayoutMode);
+  }, [desktopLayoutMode]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportWidth(window.innerWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const checklistItemTransition = isMobile
     ? mobileChecklistItemTransition
     : desktopChecklistItemTransition;
@@ -136,11 +159,13 @@ export default function ChecklistPage() {
     : undefined;
 
   const checklistBenefits = matchedBenefits;
+  const canShowLayoutControl = viewportWidth >= 860;
   const shouldShowBackToTop = isMobile || checklistBenefits.length >= 3;
-  const shouldShowLayoutControl = !isMobile && checklistBenefits.length >= 2;
+  const shouldShowLayoutControl = canShowLayoutControl && checklistBenefits.length >= 2;
+  const isDesktopDoubleLayout = canShowLayoutControl && desktopLayoutMode === 'double';
   const checklistListClassName =
     desktopLayoutMode === 'double'
-      ? 'space-y-6 md:grid md:grid-cols-2 md:items-start md:gap-6 md:space-y-0 print:space-y-8'
+      ? 'space-y-6 min-[860px]:grid min-[860px]:grid-cols-2 min-[860px]:items-start min-[860px]:gap-8 min-[860px]:space-y-0 min-[860px]:[grid-auto-rows:1fr] xl:gap-10 print:space-y-8'
       : 'space-y-6 sm:space-y-12 print:space-y-8';
 
   const totalChecklistItems = checklistBenefits.reduce(
@@ -429,9 +454,11 @@ export default function ChecklistPage() {
       <main
         id="main-content"
         tabIndex={-1}
-        className="container mx-auto max-w-3xl px-6 py-6 sm:py-12 print:max-w-none print:py-0"
+        className={`container mx-auto px-6 py-6 sm:py-12 print:max-w-none print:py-0 ${
+          isDesktopDoubleLayout ? 'max-w-[86rem]' : 'max-w-3xl'
+        }`}
       >
-        <div className="relative mb-6 sm:mb-12 print:mb-8">
+        <div className="relative mx-auto mb-6 max-w-[45rem] sm:mb-12 print:mb-8">
           <PageHeroCard
             className="p-6 pb-8 sm:p-8 sm:pb-20 print:border-none print:bg-transparent print:p-0 print:pb-0 print:shadow-none"
             maskStyle={isMobile ? CHECKLIST_MOBILE_HERO_FADE_MASK_STYLE : undefined}
@@ -601,26 +628,28 @@ export default function ChecklistPage() {
         </div>
 
         {shouldShowLayoutControl ? (
-          <div className="mb-6 flex justify-center print:hidden md:justify-end">
-            <div className="inline-flex items-center gap-3 rounded-full border border-[#1e3a5f]/10 bg-white/85 px-4 py-2 shadow-sm dark:border-sky-200/12 dark:bg-slate-900/82">
+          <div className="mb-6 flex justify-center print:hidden">
+            <div className="inline-flex min-w-[15.5rem] items-center justify-center gap-3 rounded-full border border-[#1e3a5f]/12 bg-[linear-gradient(90deg,rgba(255,255,255,0.98)_0%,rgba(239,246,255,0.95)_45%,rgba(255,247,237,0.96)_100%)] px-4 py-2 text-[#1e3a5f] shadow-[0_16px_34px_-22px_rgba(15,23,42,0.22)] backdrop-blur-sm dark:border-sky-200/12 dark:bg-[linear-gradient(90deg,rgba(15,23,42,0.92)_0%,rgba(15,23,42,0.88)_50%,rgba(30,41,59,0.9)_100%)] dark:text-sky-100 dark:shadow-[0_18px_40px_-24px_rgba(2,6,23,0.88)]">
               <span className="text-sm font-semibold text-[#1e3a5f] dark:text-sky-100">
-                Layout
+                Change Layout
               </span>
-              <div className="inline-flex items-center gap-1 rounded-full bg-[#f8fafc] p-1 dark:bg-slate-950/80">
+              <div className="inline-flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setDesktopLayoutMode('single')}
                   aria-pressed={desktopLayoutMode === 'single'}
                   aria-label="Use one-column layout"
-                  className={`inline-flex h-9 w-10 cursor-pointer items-center justify-center rounded-full transition-colors ${
+                  className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/20 dark:focus-visible:ring-sky-200/25 ${
                     desktopLayoutMode === 'single'
-                      ? 'bg-[#1e3a5f] text-white dark:bg-sky-200 dark:text-slate-950'
-                      : 'text-[#355b8a] hover:bg-[#e2e8f0] dark:text-sky-100 dark:hover:bg-slate-800'
+                      ? 'text-[#1e3a5f] dark:text-sky-100'
+                      : 'text-[#355b8a]/55 hover:text-[#1e3a5f] dark:text-sky-100/45 dark:hover:text-sky-100'
                   }`}
                 >
-                  <span className="flex flex-col gap-1" aria-hidden="true">
-                    <span className="h-2 w-4 rounded-sm border border-current" />
-                    <span className="h-2 w-4 rounded-sm border border-current" />
+                  <span
+                    className="flex h-[16px] w-[18px] items-center justify-center"
+                    aria-hidden="true"
+                  >
+                    <span className="box-border h-[14px] w-[12px] rounded-[4px] border-[1.5px] border-current" />
                   </span>
                 </button>
                 <button
@@ -628,15 +657,18 @@ export default function ChecklistPage() {
                   onClick={() => setDesktopLayoutMode('double')}
                   aria-pressed={desktopLayoutMode === 'double'}
                   aria-label="Use two-column layout"
-                  className={`inline-flex h-9 w-10 cursor-pointer items-center justify-center rounded-full transition-colors ${
+                  className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/20 dark:focus-visible:ring-sky-200/25 ${
                     desktopLayoutMode === 'double'
-                      ? 'bg-[#1e3a5f] text-white dark:bg-sky-200 dark:text-slate-950'
-                      : 'text-[#355b8a] hover:bg-[#e2e8f0] dark:text-sky-100 dark:hover:bg-slate-800'
+                      ? 'text-[#1e3a5f] dark:text-sky-100'
+                      : 'text-[#355b8a]/55 hover:text-[#1e3a5f] dark:text-sky-100/45 dark:hover:text-sky-100'
                   }`}
                 >
-                  <span className="flex items-center gap-1" aria-hidden="true">
-                    <span className="h-4 w-[0.42rem] rounded-sm border border-current" />
-                    <span className="h-4 w-[0.42rem] rounded-sm border border-current" />
+                  <span
+                    className="flex h-[16px] w-[18px] items-center justify-between"
+                    aria-hidden="true"
+                  >
+                    <span className="box-border h-[14px] w-[7px] rounded-[4px] border-[1.5px] border-current" />
+                    <span className="box-border h-[14px] w-[7px] rounded-[4px] border-[1.5px] border-current" />
                   </span>
                 </button>
               </div>
@@ -658,17 +690,19 @@ export default function ChecklistPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: index * 0.1 }}
                   className={`rounded-[1.75rem] border border-white/75 bg-white/72 p-5 sm:p-8 shadow-[0_16px_32px_-24px_rgba(15,23,42,0.18)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/75 dark:shadow-[0_18px_38px_-24px_rgba(2,6,23,0.68)] md:shadow-[0_20px_55px_-38px_rgba(15,23,42,0.28)] md:dark:shadow-[0_24px_60px_-38px_rgba(2,6,23,0.95)] print:border-none print:bg-white print:p-0 print:shadow-none ${
-                    desktopLayoutMode === 'double' ? 'md:h-full' : ''
+                    isDesktopDoubleLayout
+                      ? 'min-[860px]:flex min-[860px]:h-full min-[860px]:self-start min-[860px]:flex-col'
+                      : ''
                   }`}
                 >
                   <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-start gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] text-sm font-bold text-white print:hidden">
                         {index + 1}
                       </div>
 
-                      <div>
-                        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                      <div className="min-w-0">
+                        <h2 className="whitespace-nowrap text-[1.85rem] font-bold text-slate-900 dark:text-slate-100">
                           {benefit.title}
                         </h2>
                         {positiveCompletionStatuses.length > 0 && (
@@ -676,7 +710,7 @@ export default function ChecklistPage() {
                             {positiveCompletionStatuses.map((status) => (
                               <div
                                 key={`${benefit.id}-${status}`}
-                                className="inline-block rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800 dark:bg-emerald-400/18 dark:text-emerald-200 dark:ring-1 dark:ring-inset dark:ring-emerald-300/30"
+                                className="inline-flex whitespace-nowrap rounded-full bg-green-100 px-3 py-1 text-[0.7rem] font-semibold text-green-800 dark:bg-emerald-400/18 dark:text-emerald-200 dark:ring-1 dark:ring-inset dark:ring-emerald-300/30 sm:text-xs"
                               >
                                 {renderPositiveStatusText(status, benefit.id)}
                               </div>
@@ -692,7 +726,7 @@ export default function ChecklistPage() {
                     <Button
                       asChild
                       variant="outline"
-                      className="group w-full border-[#355b8a] bg-white text-[#355b8a] shadow-sm transition-all duration-300 hover:border-[#f97316] hover:bg-[#f97316] hover:text-white hover:shadow-[0_12px_28px_-18px_rgba(249,115,22,0.4)] md:w-auto print:hidden dark:border-sky-200 dark:bg-transparent dark:text-sky-200 dark:hover:border-[#f97316] dark:hover:bg-[#f97316] dark:hover:text-white dark:hover:shadow-[0_0_24px_rgba(249,115,22,0.28)]"
+                      className="group w-full whitespace-nowrap border-[#355b8a] bg-white text-[#355b8a] shadow-sm transition-all duration-300 hover:border-[#f97316] hover:bg-[#f97316] hover:text-white hover:shadow-[0_12px_28px_-18px_rgba(249,115,22,0.4)] md:w-auto md:shrink-0 md:self-start print:hidden dark:border-sky-200 dark:bg-transparent dark:text-sky-200 dark:hover:border-[#f97316] dark:hover:bg-[#f97316] dark:hover:text-white dark:hover:shadow-[0_0_24px_rgba(249,115,22,0.28)]"
                     >
                       <a
                         href={benefit.officialUrl}
@@ -709,7 +743,11 @@ export default function ChecklistPage() {
                   </div>
 
                   <div
-                    className="space-y-3 pl-0 md:pl-11 print:pl-0"
+                    className={`space-y-3 pl-0 print:pl-0 ${
+                      isDesktopDoubleLayout
+                        ? 'min-[860px]:flex-1 min-[860px]:pl-0'
+                        : 'md:pl-11'
+                    }`}
                     style={checklistListStyle}
                   >
                     {getOrderedChecklistItems(benefit.id, benefit.checklist).map(

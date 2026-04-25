@@ -25,6 +25,7 @@ import {
   CheckSquare,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Download,
   ExternalLink,
   FileText,
@@ -583,17 +584,24 @@ export default function LandingPage() {
       return (
         <div className="space-y-4 text-left">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-              2 of 4 checklist items completed
-            </p>
-            <button
-              type="button"
-              tabIndex={-1}
-              className="inline-flex min-h-10 cursor-default items-center justify-center gap-2 rounded-md bg-[#1e3a5f] px-4 py-2 text-sm font-semibold text-white shadow-sm dark:bg-sky-300 dark:text-slate-950 dark:shadow-[0_18px_36px_-24px_rgba(125,211,252,0.55)]"
-            >
-              <Download className="h-4 w-4" aria-hidden="true" />
-              Download PDF
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                tabIndex={-1}
+                className="inline-flex min-h-10 cursor-default items-center justify-center gap-2 rounded-md bg-[#1e3a5f] px-4 py-2 text-sm font-semibold text-white shadow-sm dark:bg-sky-300 dark:text-slate-950 dark:shadow-[0_18px_36px_-24px_rgba(125,211,252,0.55)]"
+              >
+                <Download className="h-4 w-4" aria-hidden="true" />
+                Download PDF
+              </button>
+              <button
+                type="button"
+                tabIndex={-1}
+                className="inline-flex min-h-10 cursor-default items-center justify-center gap-2 rounded-md border border-[#355b8a] bg-white px-4 py-2 text-sm font-semibold text-[#355b8a] shadow-sm dark:border-sky-200/55 dark:bg-slate-950 dark:text-sky-100"
+              >
+                <Copy className="h-4 w-4" aria-hidden="true" />
+                Copy
+              </button>
+            </div>
           </div>
 
           <div>
