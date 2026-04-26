@@ -756,6 +756,25 @@ export function sortBenefitsForDisplay<T extends Pick<Benefit, 'id'>>(
     .map(({ benefit }) => benefit);
 }
 
+export function mergeBenefitWithCatalog<T extends Benefit>(benefit: T): T {
+  const catalogBenefit = benefits.find((catalogItem) => catalogItem.id === benefit.id);
+
+  if (!catalogBenefit) {
+    return benefit;
+  }
+
+  return {
+    ...catalogBenefit,
+    ...benefit,
+    title: catalogBenefit.title,
+    description: catalogBenefit.description,
+    details: catalogBenefit.details,
+    category: catalogBenefit.category,
+    officialUrl: catalogBenefit.officialUrl,
+    officialButtonLabel: catalogBenefit.officialButtonLabel,
+  } as T;
+}
+
 export function isPositiveActionStatus(actionStatus?: string): boolean {
   if (typeof actionStatus !== 'string') {
     return false;

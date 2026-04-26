@@ -291,11 +291,6 @@ export default function LandingPage() {
 
   const activeSlide = HERO_SLIDES[activeSlideIndex];
 
-  const leftBackdropImage =
-    theme === 'dark' ? bostonSkylineEveningImage : bostonDayImage;
-  const rightBackdropImage =
-    theme === 'dark' ? bostonSkylineNightImage : bostonSkylineImage;
-
   const leftBackdropAlt =
     theme === 'dark'
       ? 'Boston skyline in the evening.'
@@ -1102,9 +1097,19 @@ export default function LandingPage() {
                   <div
                     role="img"
                     aria-label={leftBackdropAlt}
-                    className="aspect-[16/10] w-full rounded-[1.5rem] bg-cover bg-center saturate-[0.9] contrast-[0.92] brightness-[0.98] blur-[0.35px]"
-                    style={{ backgroundImage: `url(${leftBackdropImage})` }}
-                  />
+                    className="relative aspect-[16/10] w-full overflow-hidden rounded-[1.5rem]"
+                  >
+                    <div
+                      aria-hidden="true"
+                      className="absolute inset-0 bg-cover bg-center saturate-[0.9] contrast-[0.92] brightness-[0.98] blur-[0.35px] opacity-100 transition-opacity duration-[260ms] ease-[cubic-bezier(0.22,1,0.36,1)] dark:opacity-0"
+                      style={{ backgroundImage: `url(${bostonDayImage})` }}
+                    />
+                    <div
+                      aria-hidden="true"
+                      className="absolute inset-0 bg-cover bg-center saturate-[0.9] contrast-[0.92] brightness-[0.98] blur-[0.35px] opacity-0 transition-opacity duration-[260ms] ease-[cubic-bezier(0.22,1,0.36,1)] dark:opacity-100"
+                      style={{ backgroundImage: `url(${bostonSkylineEveningImage})` }}
+                    />
+                  </div>
                 </motion.div>
 
                 <motion.div
@@ -1138,9 +1143,19 @@ export default function LandingPage() {
                   <div
                     role="img"
                     aria-label={rightBackdropAlt}
-                    className="aspect-[16/10] w-full rounded-[1.5rem] bg-cover bg-center saturate-[0.9] contrast-[0.92] brightness-[0.98] blur-[0.35px]"
-                    style={{ backgroundImage: `url(${rightBackdropImage})` }}
-                  />
+                    className="relative aspect-[16/10] w-full overflow-hidden rounded-[1.5rem]"
+                  >
+                    <div
+                      aria-hidden="true"
+                      className="absolute inset-0 bg-cover bg-center saturate-[0.9] contrast-[0.92] brightness-[0.98] blur-[0.35px] opacity-100 transition-opacity duration-[260ms] ease-[cubic-bezier(0.22,1,0.36,1)] dark:opacity-0"
+                      style={{ backgroundImage: `url(${bostonSkylineImage})` }}
+                    />
+                    <div
+                      aria-hidden="true"
+                      className="absolute inset-0 bg-cover bg-center saturate-[0.9] contrast-[0.92] brightness-[0.98] blur-[0.35px] opacity-0 transition-opacity duration-[260ms] ease-[cubic-bezier(0.22,1,0.36,1)] dark:opacity-100"
+                      style={{ backgroundImage: `url(${bostonSkylineNightImage})` }}
+                    />
+                  </div>
                 </motion.div>
 
                 <motion.div

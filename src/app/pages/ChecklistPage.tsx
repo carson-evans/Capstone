@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Download, ExternalLink, AlertTriangle, Copy, Check, ArrowUp } from 'lucide-react';
@@ -16,6 +16,7 @@ import {
   isBenefitApplicationCompleted,
   isPositiveActionStatus,
   MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM,
+  mergeBenefitWithCatalog,
 } from '../data/benefitsData';
 import { useIsMobile } from '../components/ui/use-mobile';
 import { generatePacketRequest } from '../../lib/api';
@@ -158,7 +159,10 @@ export default function ChecklistPage() {
     ? ({ overflowAnchor: 'none' } as const)
     : undefined;
 
-  const checklistBenefits = matchedBenefits;
+  const checklistBenefits = useMemo(
+    () => matchedBenefits.map((benefit) => mergeBenefitWithCatalog(benefit)),
+    [matchedBenefits]
+  );
   const canShowLayoutControl = viewportWidth >= 860;
   const shouldShowBackToTop = isMobile || checklistBenefits.length >= 3;
   const canUseMultiColumnLayout = canShowLayoutControl && checklistBenefits.length >= 2;
