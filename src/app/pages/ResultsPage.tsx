@@ -36,6 +36,7 @@ import {
   getBenefitRichTextSegments,
   getDisplayActionStatus,
   isPositiveActionStatus,
+  mergeBenefitWithCatalog,
   type Benefit,
 } from '@/app/data/benefitsData';
 import { useIsMobile } from '@/app/components/ui/use-mobile';
@@ -61,7 +62,7 @@ const OFFICIAL_REQUIREMENTS_URLS: Record<Benefit['id'], string> = {
   masshealth:
     'https://www.mass.gov/info-details/eligibility-for-health-care-benefits-for-masshealth-the-health-safety-net-and-childrens-medical-security-plan',
   'mbta-pass': 'https://www.mbta.com/fares/college-student-semester-passes',
-  snap: 'https://www.mass.gov/how-to/apply-for-snap-benefits-food-stamps',
+  snap: 'https://www.mass.gov/how-to/supplemental-nutrition-assistance-program-snap-formerly-known-as-food-stamps',
 };
 
 const benefitCatalogById = new Map(benefits.map((benefit) => [benefit.id, benefit]));
@@ -133,7 +134,11 @@ export default function ResultsPage() {
     {}
   );
 
-  const hasMatches = matchedBenefits.length > 0;
+  const normalizedMatchedBenefits = useMemo(
+    () => matchedBenefits.map((benefit) => mergeBenefitWithCatalog(benefit)),
+    [matchedBenefits]
+  );
+  const hasMatches = normalizedMatchedBenefits.length > 0;
   const screenedBenefits = useMemo(() => {
     const screenedBenefitIds =
       screeningBenefitFilters.length > 0
@@ -146,7 +151,9 @@ export default function ResultsPage() {
   }, [screeningBenefitFilters]);
 
   const notMatchedBenefits = useMemo<NotMatchedBenefit[]>(() => {
-    const matchedBenefitIds = new Set(matchedBenefits.map((benefit) => benefit.id));
+    const matchedBenefitIds = new Set(
+      normalizedMatchedBenefits.map((benefit) => benefit.id)
+    );
 
     return screenedBenefits
       .filter((benefit) => !matchedBenefitIds.has(benefit.id))
@@ -158,13 +165,14 @@ export default function ResultsPage() {
           screeningBenefitFilters
         ),
       }));
-  }, [answers, matchedBenefits, screenedBenefits]);
+  }, [answers, normalizedMatchedBenefits, screenedBenefits]);
 
   const hasNotMatchedBenefits = notMatchedBenefits.length > 0;
-  const totalResultCards = matchedBenefits.length + notMatchedBenefits.length;
+  const totalResultCards = normalizedMatchedBenefits.length + notMatchedBenefits.length;
   const canShowLayoutControl = viewportWidth >= 860;
   const shouldShowBackToTop = isMobile || totalResultCards >= 3;
-  const canUseMultiColumnLayout = canShowLayoutControl && matchedBenefits.length >= 2;
+  const canUseMultiColumnLayout =
+    canShowLayoutControl && normalizedMatchedBenefits.length >= 2;
   const shouldShowLayoutControl = canUseMultiColumnLayout;
   const isDesktopDoubleLayout = canUseMultiColumnLayout && desktopLayoutMode === 'double';
   const desktopResultsListClassName =
@@ -217,11 +225,11 @@ export default function ResultsPage() {
     }
 
     return hasMatches
-      ? `Based on your answers, you may qualify for ${matchedBenefits.length} benefit${
-          matchedBenefits.length === 1 ? '' : 's'
+      ? `Based on your answers, you may qualify for ${normalizedMatchedBenefits.length} benefit${
+          normalizedMatchedBenefits.length === 1 ? '' : 's'
         }.`
       : 'Based on your answers, we could not find any specific benefits matching your profile at this time.';
-  }, [hasMatches, matchedBenefits.length, singleScreenedBenefitPhrase]);
+  }, [hasMatches, normalizedMatchedBenefits.length, singleScreenedBenefitPhrase]);
 
   const heroEnterInitial = { opacity: 0, y: isMobile ? 12 : 20 };
 
@@ -465,7 +473,7 @@ export default function ResultsPage() {
         {hasMatches ? (
           isMobile ? (
             <section aria-labelledby="results-heading" className="space-y-6">
-              {matchedBenefits.map((benefit) => {
+              {normalizedMatchedBenefits.map((benefit) => {
                 const statuses =
                   benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
                 const isDetailsOpen = Boolean(mobileOpenDetails[benefit.id]);
@@ -557,7 +565,7 @@ export default function ResultsPage() {
                 collapsible={isDesktopDoubleLayout}
                 className={desktopResultsListClassName}
               >
-                {matchedBenefits.map((benefit, index) => {
+                {normalizedMatchedBenefits.map((benefit, index) => {
                   const statuses =
                     benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
 

@@ -16,11 +16,16 @@ export function Navbar() {
   const { pathname } = useLocation();
   const shouldReduceMotion = useReducedMotion();
   const lastScrollYRef = useRef(0);
+  const isMobileMenuOpenRef = useRef(false);
   const frameRef = useRef<number | null>(null);
   const [isHidden, setIsHidden] = useState(false);
   const [isFloating, setIsFloating] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isDarkMode = theme === 'dark';
+
+  useEffect(() => {
+    isMobileMenuOpenRef.current = isMobileMenuOpen;
+  }, [isMobileMenuOpen]);
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
@@ -62,7 +67,7 @@ export function Navbar() {
 
       if (isNearTop) {
         setIsHidden(false);
-      } else if (scrollDelta > directionThreshold) {
+      } else if (scrollDelta > directionThreshold && !isMobileMenuOpenRef.current) {
         setIsHidden(true);
       } else if (scrollDelta < -directionThreshold) {
         setIsHidden(false);
@@ -92,6 +97,46 @@ export function Navbar() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) {
+      return;
+    }
+
+    const directionThreshold = 6;
+    let lastScrollY = Math.max(window.scrollY, 0);
+    let frameId: number | null = null;
+
+    const updateMenuState = () => {
+      const currentScrollY = Math.max(window.scrollY, 0);
+      const scrollDelta = currentScrollY - lastScrollY;
+
+      if (scrollDelta > directionThreshold) {
+        setIsMobileMenuOpen(false);
+      }
+
+      lastScrollY = currentScrollY;
+      frameId = null;
+    };
+
+    const handleScroll = () => {
+      if (frameId !== null) {
+        return;
+      }
+
+      frameId = window.requestAnimationFrame(updateMenuState);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
+  }, [isMobileMenuOpen]);
 
   return (
     <>
@@ -124,11 +169,20 @@ export function Navbar() {
             aria-label="CommonMASS home"
             className="ml-2 flex shrink-0 items-center gap-2 text-xl font-bold tracking-tight text-[#1e3a5f] md:ml-0 dark:text-slate-100"
           >
-            <img
-              src={isDarkMode ? darkLogo : lightLogo}
-              alt="CommonMASS"
-              className="h-11 w-auto max-w-[8.25rem] transition-[filter] duration-300 sm:h-12 sm:max-w-none md:h-20"
-            />
+            <span className="inline-grid place-items-center">
+              <img
+                src={lightLogo}
+                alt=""
+                aria-hidden="true"
+                className="col-start-1 row-start-1 h-11 w-auto max-w-[8.25rem] opacity-100 transition-opacity duration-[260ms] ease-[cubic-bezier(0.22,1,0.36,1)] dark:opacity-0 sm:h-12 sm:max-w-none md:h-20"
+              />
+              <img
+                src={darkLogo}
+                alt=""
+                aria-hidden="true"
+                className="col-start-1 row-start-1 h-11 w-auto max-w-[8.25rem] opacity-0 transition-opacity duration-[260ms] ease-[cubic-bezier(0.22,1,0.36,1)] dark:opacity-100 sm:h-12 sm:max-w-none md:h-20"
+              />
+            </span>
           </Link>
 
           <div className="hidden shrink-0 items-center gap-1 sm:gap-2 md:flex md:gap-3">

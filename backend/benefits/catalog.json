@@ -55,7 +55,7 @@
       "title": "MBTA Student Pass",
       "category": "Transport",
       "description": "Discounted monthly passes for eligible students using MBTA services.",
-      "officialUrl": "https://www.mbta.com/",
+      "officialUrl": "https://www.mbta.com/fares/college-student-semester-passes",
       "checklist": [
         "Get current student ID",
         "Verify full-time enrollment status",
@@ -68,7 +68,7 @@
       "title": "SNAP (Food Stamps)",
       "category": "Food",
       "description": "Provides food purchasing assistance for low- and no-income people.",
-      "officialUrl": "https://www.mass.gov/orgs/department-of-transitional-assistance",
+      "officialUrl": "https://dtaconnect.eohhs.mass.gov/",
       "checklist": [
         "Check student eligibility requirements",
         "Gather proof of enrollment",

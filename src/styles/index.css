@@ -106,6 +106,37 @@
     text-rendering: optimizeLegibility;
   }
 
+  :root.theme-transitioning *,
+  :root.theme-transitioning *::before,
+  :root.theme-transitioning *::after {
+    transition-property:
+      background-color,
+      border-color,
+      color,
+      fill,
+      stroke,
+      box-shadow,
+      outline-color,
+      text-decoration-color;
+    transition-duration: 260ms !important;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1) !important;
+  }
+
+  :root.theme-transitioning [data-theme-transition-overlay='true'],
+  :root.theme-transitioning [data-theme-transition-overlay='true'] *,
+  :root.theme-transitioning [data-theme-transition-overlay='true'] *::before,
+  :root.theme-transitioning [data-theme-transition-overlay='true'] *::after {
+    transition-property:
+      opacity,
+      transform,
+      background-color,
+      border-color,
+      color,
+      box-shadow !important;
+    transition-duration: 320ms !important;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1) !important;
+  }
+
   img,
   svg,
   video,
