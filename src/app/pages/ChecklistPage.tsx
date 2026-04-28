@@ -374,7 +374,7 @@ export default function ChecklistPage() {
     }));
 
     const checklistText = [
-      'CommonMASS Preperation Checklist',
+      'CommonMASS Preparation Checklist',
       '',
       ...checklistSections.flatMap((section, sectionIndex) => [
         section.title,
@@ -385,7 +385,7 @@ export default function ChecklistPage() {
 
     const checklistHtml = `
       <div>
-        <p><strong>${escapeHtml('CommonMASS Preperation Checklist')}</strong></p>
+        <p><strong>${escapeHtml('CommonMASS Preparation Checklist')}</strong></p>
         ${checklistSections
           .map(
             (section) => `
