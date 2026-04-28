@@ -35,6 +35,10 @@ function withLocalChecklist(matches: Benefit[]): Benefit[] {
     return {
       ...localDefinition,
       ...match,
+      officialUrl:
+        match.id === 'snap'
+          ? localDefinition.officialUrl
+          : match.officialUrl ?? localDefinition.officialUrl,
       checklist: match.checklist ?? localDefinition.checklist,
     };
   });

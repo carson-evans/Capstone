@@ -16,6 +16,7 @@ import {
   grossIncomeTooltip,
   householdSizeTooltip,
   itinTooltip,
+  masfaTooltip,
   massHealthApplicationStepTooltip,
   massGrantPlusSchoolsTooltip,
   residencyStatusTooltip,
@@ -150,18 +151,19 @@ function shouldContinueGrantQuestions(answers: BenefitProfile): boolean {
 }
 
 function shouldAskPriorBachelorsDegree(answers: BenefitProfile): boolean {
-  if (!hasQualifyingGrantResidency(answers) || !shouldContinueGrantQuestions(answers)) {
+  if (!isStudentOrFuture(answers)) {
     return false;
   }
 
-  if (answers['student_status'] === 'full_time' || answers['student_status'] === 'future_full_time') {
+  if (answers['citizen_status'] === 'yes') {
     return true;
   }
 
-  return (
-    isMassGrantPlusEligibleSchool(answers['school_name']) &&
-    getEffectiveMassGrantPlusIncomeBand(answers) === 'under_85k'
-  );
+  if (answers['citizen_status'] === 'no') {
+    return hasQualifyingGrantResidency(answers) && shouldContinueGrantQuestions(answers);
+  }
+
+  return false;
 }
 
 function isStudentOrFuture(answers: BenefitProfile): boolean {
@@ -170,7 +172,7 @@ function isStudentOrFuture(answers: BenefitProfile): boolean {
 }
 
 function isMassGrantEnrollmentEligible(answers: BenefitProfile): boolean {
-  return answers['student_status'] === 'full_time' || answers['student_status'] === 'future_full_time';
+  return isStudentOrFuture(answers);
 }
 
 function getMassGrantPlusEnrollmentStatus(
@@ -360,9 +362,9 @@ export const benefits: Benefit[] = [
     title: 'SNAP (Food Stamps)',
     description: 'Provides food purchasing assistance for low- and no-income people.',
     details:
-      'SNAP can help eligible students and households pay for groceries, but college students sometimes need to meet extra student-specific rules. In Massachusetts, applications and case updates are commonly handled through [DTA Connect](https://dtaconnect.eohhs.mass.gov/), where you can submit documents, check notices, and track your case.',
+      'SNAP can help eligible students and households pay for groceries, but college students sometimes need to meet extra student-specific rules. In Massachusetts, applications and case updates are commonly handled through [DTA Connect](https://dtaconnect.eohhs.mass.gov), where you can submit documents, check notices, and track your case.',
     category: 'Food',
-    officialUrl: 'https://dtaconnect.eohhs.mass.gov/',
+    officialUrl: 'https://dtaconnect.eohhs.mass.gov',
     officialButtonLabel: 'Start Official Application',
     checklist: [
       'Check student eligibility requirements',
@@ -595,7 +597,7 @@ export const questions: Question[] = [
     id: 'prior_bachelors_degree',
     text: 'Have you already received a bachelor\'s degree or equivalent?',
     category: 'Education',
-    benefitIds: ['massgrant', 'massgrant-plus'],
+    benefitIds: ['pell-grant', 'massgrant', 'massgrant-plus'],
     conditions: [
       {
         questionId: 'student_status',
@@ -630,6 +632,12 @@ export function getQuestionTextSegments(question: Question, answers: BenefitProf
               ? 'Which Massachusetts college or university will you attend?'
               : 'Which Massachusetts college or university do you attend?',
         },
+      ];
+    case 'masfa_completed':
+      return [
+        { type: 'text', text: 'Have you completed the ' },
+        { type: 'tooltip', text: 'MASFA', tooltip: masfaTooltip },
+        { type: 'text', text: ' for the upcoming academic year?' },
       ];
     case 'masfa_documentation_ready':
       return [
@@ -766,12 +774,12 @@ export function mergeBenefitWithCatalog<T extends Benefit>(benefit: T): T {
   return {
     ...catalogBenefit,
     ...benefit,
-    title: catalogBenefit.title,
-    description: catalogBenefit.description,
-    details: catalogBenefit.details,
-    category: catalogBenefit.category,
-    officialUrl: catalogBenefit.officialUrl,
-    officialButtonLabel: catalogBenefit.officialButtonLabel,
+    title: benefit.title || catalogBenefit.title,
+    description: benefit.description || catalogBenefit.description,
+    details: benefit.details || catalogBenefit.details,
+    category: benefit.category || catalogBenefit.category,
+    officialUrl: benefit.officialUrl || catalogBenefit.officialUrl,
+    officialButtonLabel: benefit.officialButtonLabel || catalogBenefit.officialButtonLabel,
   } as T;
 }
 
@@ -804,6 +812,325 @@ export function getDisplayActionStatus(
   }
 
   return actionStatus;
+}
+
+function isMassGrantPartTimeVariant(answers: BenefitProfile): boolean {
+  return (
+    answers['student_status'] === 'part_time' ||
+    answers['student_status'] === 'future_part_time'
+  );
+}
+
+function needsDheAffidavit(answers: BenefitProfile): boolean {
+  return (
+    qualifiesUnderTuitionEquity(answers) &&
+    answers['masfa_documentation_ready'] === 'no' &&
+    answers['dhe_affidavit_completed'] === 'no'
+  );
+}
+
+function isNotEnrollingNextAcademicYear(
+  answers: BenefitProfile,
+  route: 'fafsa' | 'masfa'
+): boolean {
+  if (route === 'masfa') {
+    return answers['masfa_completed'] === NOT_ENROLLED_NEXT_YEAR_VALUE;
+  }
+
+  return answers['fafsa_completed'] === NOT_ENROLLED_NEXT_YEAR_VALUE;
+}
+
+function getStateAidAction(answers: BenefitProfile): Partial<Benefit> {
+  if (usesMasfaRoute(answers)) {
+    if (isNotEnrollingNextAcademicYear(answers, 'masfa')) {
+      return {
+        applicationType: 'masfa',
+        applicationCompleted: false,
+        officialUrl: MASFA_START_URL,
+        officialButtonLabel: 'View Official Site',
+      };
+    }
+
+    if (answers['masfa_completed'] === 'yes') {
+      return {
+        applicationType: 'masfa',
+        applicationCompleted: true,
+        officialUrl: MASFA_STATUS_URL,
+        officialButtonLabel: 'Check MASFA Status',
+        actionStatus: 'No Action Needed - Already Completed',
+      };
+    }
+
+    return {
+      applicationType: 'masfa',
+      applicationCompleted: false,
+      officialUrl: MASFA_START_URL,
+      officialButtonLabel: 'Start MASFA Application',
+      actionStatus: 'Action Needed, Please Complete MASFA',
+    };
+  }
+
+  if (isNotEnrollingNextAcademicYear(answers, 'fafsa')) {
+    return {
+      applicationType: 'fafsa',
+      applicationCompleted: false,
+      officialUrl: benefits.find((benefit) => benefit.id === 'massgrant')?.officialUrl ?? FAFSA_STATUS_URL,
+      officialButtonLabel: 'View Official Site',
+    };
+  }
+
+  if (answers['fafsa_completed'] === 'yes') {
+    return {
+      applicationType: 'fafsa',
+      applicationCompleted: true,
+      officialUrl: FAFSA_STATUS_URL,
+      officialButtonLabel: 'Check FAFSA Status',
+      actionStatus: 'No Action Needed - Already Completed',
+    };
+  }
+
+  return {
+    applicationType: 'fafsa',
+    applicationCompleted: false,
+    officialUrl: benefits.find((benefit) => benefit.id === 'massgrant')?.officialUrl ?? FAFSA_STATUS_URL,
+    officialButtonLabel: 'Start FAFSA Application',
+    actionStatus: 'Action needed - Complete FAFSA',
+  };
+}
+
+function getPellAction(answers: BenefitProfile): Partial<Benefit> {
+  if (isNotEnrollingNextAcademicYear(answers, 'fafsa')) {
+    return {
+      applicationType: 'fafsa',
+      applicationCompleted: false,
+      officialUrl: benefits.find((benefit) => benefit.id === 'pell-grant')?.officialUrl ?? FAFSA_STATUS_URL,
+      officialButtonLabel: 'View Official Site',
+    };
+  }
+
+  if (answers['fafsa_completed'] === 'yes') {
+    return {
+      applicationType: 'fafsa',
+      applicationCompleted: true,
+      officialUrl: FAFSA_STATUS_URL,
+      officialButtonLabel: 'Check FAFSA Status',
+      actionStatus: 'No Action Needed - Already Completed',
+    };
+  }
+
+  return {
+    applicationType: 'fafsa',
+    applicationCompleted: false,
+    officialUrl: benefits.find((benefit) => benefit.id === 'pell-grant')?.officialUrl ?? FAFSA_STATUS_URL,
+    officialButtonLabel: 'Start FAFSA Application',
+    actionStatus: 'Action needed - Complete FAFSA',
+  };
+}
+
+function getDheAffidavitChecklistItem(answers: BenefitProfile): string | null {
+  if (!qualifiesUnderTuitionEquity(answers)) {
+    return null;
+  }
+
+  if (answers['masfa_documentation_ready'] !== 'no') {
+    return null;
+  }
+
+  if (answers['dhe_affidavit_completed'] === 'yes') {
+    return PROVIDE_DHE_AFFIDAVIT_CHECKLIST_ITEM;
+  }
+
+  return COMPLETE_DHE_AFFIDAVIT_CHECKLIST_ITEM;
+}
+
+function buildMassGrantActionStatuses(answers: BenefitProfile): string[] {
+  const route = usesMasfaRoute(answers) ? 'masfa' : 'fafsa';
+
+  if (isNotEnrollingNextAcademicYear(answers, route)) {
+    return [];
+  }
+
+  const statuses: string[] = [];
+
+  if (needsDheAffidavit(answers)) {
+    statuses.push(DHE_AFFIDAVIT_ACTION_STATUS);
+  }
+
+  const actionStatus = getStateAidAction(answers).actionStatus;
+  if (actionStatus) {
+    statuses.push(actionStatus);
+  }
+
+  return statuses;
+}
+
+function buildMassGrantChecklist(answers: BenefitProfile): string[] {
+  const checklist = [
+    usesMasfaRoute(answers) ? 'Complete the MASFA' : 'Complete the FAFSA',
+    'Be a Massachusetts resident',
+    'Enroll in a Massachusetts college',
+    'Maintain satisfactory academic progress',
+  ];
+
+  const dheItem = getDheAffidavitChecklistItem(answers);
+  if (dheItem) {
+    checklist.push(dheItem);
+  }
+
+  checklist.push('Check award notification from your school');
+  return checklist;
+}
+
+function buildMassGrantPlusChecklist(answers: BenefitProfile): string[] {
+  const checklist = [
+    usesMasfaRoute(answers) ? 'Complete the MASFA' : 'Complete the FAFSA',
+    'Be a Massachusetts resident for at least 12 months for reasons other than education',
+    MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM,
+    'Not already hold a bachelor\'s degree',
+    'Review eligibility with your financial aid office',
+  ];
+
+  const dheItem = getDheAffidavitChecklistItem(answers);
+  if (dheItem) {
+    checklist.splice(checklist.length - 1, 0, dheItem);
+  }
+
+  return checklist;
+}
+
+function getMassGrantMatchedDetails(answers: BenefitProfile): string {
+  if (isMassGrantPartTimeVariant(answers)) {
+    return 'CommonMASS labels this match as MASSGrant (Part-Time) because your answers indicate a part-time enrollment path. This part-time grant path can help distinguish this result from the standard full-time MASSGrant route while still directing you to FAFSA or MASFA and your financial aid office for final review.';
+  }
+
+  return (
+    benefits.find((benefit) => benefit.id === 'massgrant')?.details ??
+    'MASSGrant is state financial aid for eligible Massachusetts residents enrolled at approved in-state colleges.'
+  );
+}
+
+function isSnapIncomeEligible(answers: BenefitProfile): boolean {
+  return (
+    answers['masshealth_income_under_limit'] === 'yes' ||
+    answers['snap_income_under_limit'] === 'yes'
+  );
+}
+
+export function evaluateEligibilityLocally(
+  profile: Record<string, string>,
+  selectedBenefitIds: string[] = []
+): Benefit[] {
+  const answers = profile as BenefitProfile;
+  const matches: Benefit[] = [];
+  const catalogById = new Map(benefits.map((benefit) => [benefit.id, benefit]));
+
+  const addMatch = (benefit: Benefit) => {
+    if (!matches.some((match) => match.id === benefit.id)) {
+      matches.push(benefit);
+    }
+  };
+
+  if (
+    isStudentOrFuture(answers) &&
+    answers['citizen_status'] === 'yes' &&
+    answers['prior_bachelors_degree'] === 'no'
+  ) {
+    const catalog = catalogById.get('pell-grant');
+    if (catalog) {
+      const action = getPellAction(answers);
+      addMatch({
+        ...catalog,
+        ...action,
+        actionStatuses: action.actionStatus ? [action.actionStatus] : [],
+      });
+    }
+  }
+
+  if (
+    isMassGrantEnrollmentEligible(answers) &&
+    hasStateAidPath(answers) &&
+    hasQualifyingGrantResidency(answers) &&
+    answers['prior_bachelors_degree'] === 'no'
+  ) {
+    const catalog = catalogById.get('massgrant');
+    if (catalog) {
+      const action = getStateAidAction(answers);
+      addMatch({
+        ...catalog,
+        title: isMassGrantPartTimeVariant(answers) ? 'MASSGrant (Part-Time)' : catalog.title,
+        details: getMassGrantMatchedDetails(answers),
+        ...action,
+        actionStatuses: buildMassGrantActionStatuses(answers),
+        checklist: buildMassGrantChecklist(answers),
+        dheAffidavitRequired: needsDheAffidavit(answers),
+      });
+    }
+  }
+
+  if (
+    hasStateAidPath(answers) &&
+    hasQualifyingGrantResidency(answers) &&
+    answers['prior_bachelors_degree'] === 'no' &&
+    isMassGrantPlusEligibleSchool(answers['school_name']) &&
+    isMassGrantPlusEnrollmentEligible(answers)
+  ) {
+    const catalog = catalogById.get('massgrant-plus');
+    if (catalog) {
+      const action = getStateAidAction(answers);
+      addMatch({
+        ...catalog,
+        ...action,
+        actionStatuses: buildMassGrantActionStatuses(answers),
+        checklist: buildMassGrantPlusChecklist(answers),
+        dheAffidavitRequired: needsDheAffidavit(answers),
+      });
+    }
+  }
+
+  if (
+    hasMassachusettsResidency(answers) &&
+    answers['citizen_status'] === 'yes' &&
+    isSnapIncomeEligible(answers)
+  ) {
+    const catalog = catalogById.get('snap');
+    if (catalog) {
+      addMatch({
+        ...catalog,
+        actionStatuses: [],
+      });
+    }
+  }
+
+  if (
+    hasMassachusettsResidency(answers) &&
+    answers['citizen_status'] === 'yes' &&
+    answers['masshealth_income_under_limit'] === 'yes'
+  ) {
+    const catalog = catalogById.get('masshealth');
+    if (catalog) {
+      addMatch({
+        ...catalog,
+        actionStatuses: [],
+      });
+    }
+  }
+
+  if (isStudentOrFuture(answers) && isMbtaEligibleSchool(answers['school_name'])) {
+    const catalog = catalogById.get('mbta-pass');
+    if (catalog) {
+      addMatch({
+        ...catalog,
+        actionStatuses: [],
+      });
+    }
+  }
+
+  const filteredMatches =
+    selectedBenefitIds.length > 0
+      ? matches.filter((match) => selectedBenefitIds.includes(match.id))
+      : matches;
+
+  return sortBenefitsForDisplay(filteredMatches, answers);
 }
 
 function getSelectedSchoolName(answers: BenefitProfile): string | null {
@@ -1131,10 +1458,13 @@ export function getBenefitIneligibilityReasons(
     case 'pell-grant':
       pushReason(getStudentStatusIneligibilityReason('the Pell Grant', answers));
       pushReason(getCitizenshipIneligibilityReason('the Pell Grant', answers));
+      if (wasQuestionShown('prior_bachelors_degree', answers)) {
+        pushReason(getPriorBachelorsIneligibilityReason('the Pell Grant', answers));
+      }
       break;
 
     case 'massgrant':
-      pushReason(getStudentStatusIneligibilityReason('MASSGrant', answers, { requireFullTime: true }));
+      pushReason(getStudentStatusIneligibilityReason('MASSGrant', answers));
       pushReason(
         getMassachusettsResidencyIneligibilityReason('MASSGrant', answers, {
           requireTwelveMonths: true,

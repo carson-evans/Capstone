@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0 --port 4173"
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
+    "generate:chatbot-knowledge": "node scripts/generate-chatbot-knowledge.mjs",
+    "verify:chatbot-answers": "node scripts/verify-chatbot-answers.mjs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

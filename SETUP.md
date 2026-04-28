@@ -119,6 +119,10 @@ Copy-Item .env.example .env
 
 Update `.env` as needed for local development.
 
+If `VITE_ELIGIBILITY_API_URL` is not set, the Vite dev server proxies `/api/*` requests to `https://commonmass.org` by default. That means local frontend testing can still use the deployed eligibility backend unless you point the app at a different API URL in `.env`.
+
+If you want to bypass the API temporarily and use the built-in frontend eligibility mock for local testing, set `VITE_USE_LOCAL_ELIGIBILITY_MOCK=true` in `.env`. Leave it `false` to keep using the real API path.
+
 ---
 
 ## Run the Project Locally

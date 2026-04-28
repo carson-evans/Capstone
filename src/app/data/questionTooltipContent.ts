@@ -14,6 +14,16 @@ export const eligibleNonCitizenTooltip: InlineTooltipDefinition = {
     'Exact rules vary by benefit program and final eligibility is decided by the agency reviewing the application. Students who are not able to use federal aid rules may still have a separate Massachusetts state-aid path through MASFA and the Tuition Equity Law.',
 };
 
+export const masfaTooltip: InlineTooltipDefinition = {
+  title: 'MASFA',
+  paragraphs: [
+    'MASFA stands for the Massachusetts Application for State Financial Aid.',
+    'It is the Massachusetts state-aid application for some students who cannot complete the FAFSA because of immigration or citizenship status.',
+  ],
+  note:
+    'Students should complete only one application, FAFSA or MASFA, based on which path they are eligible to use.',
+};
+
 export const residencyStatusTooltip: InlineTooltipDefinition = {
   title: 'Massachusetts residency status',
   paragraphs: [

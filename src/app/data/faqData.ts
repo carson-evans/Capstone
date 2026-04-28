@@ -30,8 +30,8 @@ export const faqData: FAQItem[] = [
     id: '2',
     question: 'What is MASSGrant and how do I qualify?',
     answer:
-      'MASSGrant is Massachusetts need-based aid for eligible undergraduate students. In general, you must be a Massachusetts resident, file the [FAFSA](https://studentaid.gov/h/apply-for-aid/fafsa) or [MASFA](https://www.mass.edu/osfa/students/masfa.asp) each year by the applicable deadline, attend an eligible school, enroll full time in an eligible program, show financial need, and meet satisfactory academic progress requirements. Students who cannot use the FAFSA because of immigration or citizenship status may still be reviewed through MASFA under the [Tuition Equity Law](https://www.mass.edu/tuitionequity/) if they meet the Massachusetts high-school-completer and documentation rules.',
-    keywords: ['massgrant', 'state grant', 'resident', 'full-time', 'osfa', 'massachusetts aid'],
+      'MASSGrant is Massachusetts need-based aid for eligible undergraduate students. In general, you must be a Massachusetts resident, file the [FAFSA](https://studentaid.gov/h/apply-for-aid/fafsa) or [MASFA](https://www.mass.edu/osfa/students/masfa.asp) each year by the applicable deadline, attend an eligible school, enroll in an eligible program, show financial need, and meet satisfactory academic progress requirements. Depending on the state-aid path, full-time and some part-time students can have different enrollment rules. In CommonMASS, when your answers fit the part-time path, the match is labeled `MASSGrant (Part-Time)` so it is easier to distinguish on the results and checklist screens. Students who cannot use the FAFSA because of immigration or citizenship status may still be reviewed through MASFA under the [Tuition Equity Law](https://www.mass.edu/tuitionequity/) if they meet the Massachusetts high-school-completer and documentation rules.',
+    keywords: ['massgrant', 'massgrant part-time', 'state grant', 'resident', 'full-time', 'part-time', 'osfa', 'massachusetts aid'],
     relatedBenefitIds: ['massgrant'],
     officialUrl: 'https://studentaid.gov/h/apply-for-aid/fafsa',
   },
@@ -220,7 +220,7 @@ export const faqData: FAQItem[] = [
     id: '22',
     question: 'Can part-time students still get aid?',
     answer:
-      'Yes, but eligibility depends on the program. Some aid, such as Pell, can depend on enrollment status, while some Massachusetts programs have full-time requirements and others may not. Review your aid offer and ask your financial aid office which programs match your enrollment level.',
+      'Yes, but eligibility depends on the program. Some aid, such as Pell, can depend on enrollment status, while some Massachusetts programs have full-time requirements and others may not. In CommonMASS, a part-time MASSGrant-style match is labeled `MASSGrant (Part-Time)` so you can tell it apart from the standard full-time MASSGrant path. Review your aid offer and ask your financial aid office which programs match your enrollment level.',
     keywords: ['part-time', 'half-time', 'less than full-time', 'enrollment status', 'reduced course load'],
     relatedBenefitIds: ['pell-grant', 'massgrant', 'massgrant-plus'],
   },
