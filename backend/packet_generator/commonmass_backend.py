@@ -320,9 +320,9 @@ FALLBACK_CATALOG = {
         "id": "snap",
         "title": "SNAP (Food Stamps)",
         "description": "Provides food purchasing assistance for low- and no-income people.",
-        "details": "SNAP can help eligible students and households pay for groceries, but college students sometimes need to meet extra student-specific rules. In Massachusetts, applications and case updates are commonly handled through [DTA Connect](https://dtaconnect.eohhs.mass.gov/), where you can submit documents, check notices, and track your case.",
+        "details": "SNAP can help eligible students and households pay for groceries, but college students sometimes need to meet extra student-specific rules. In Massachusetts, applications and case updates are commonly handled through [DTA Connect](https://dtaconnect.eohhs.mass.gov), where you can submit documents, check notices, and track your case.",
         "category": "Food",
-        "officialUrl": "https://dtaconnect.eohhs.mass.gov/",
+        "officialUrl": "https://dtaconnect.eohhs.mass.gov",
         "officialButtonLabel": "Start Official Application",
         "checklist": [
             "Check student eligibility requirements",
@@ -651,8 +651,29 @@ def is_student_or_future(profile: dict) -> bool:
     )
 
 
+def is_massgrant_part_time_variant(profile: dict) -> bool:
+    return profile.get("student_status") in ("part_time", "future_part_time")
+
+
 def is_massgrant_enrollment_eligible(profile: dict) -> bool:
-    return profile.get("student_status") in ("full_time", "future_full_time")
+    return is_student_or_future(profile)
+
+
+def get_massgrant_details(profile: dict) -> str:
+    if is_massgrant_part_time_variant(profile):
+        return (
+            "CommonMASS labels this match as MASSGrant (Part-Time) because your answers indicate a "
+            "part-time enrollment path. This result is intended to help distinguish the part-time "
+            "state-aid route from the standard full-time MASSGrant path while still pointing you to "
+            "the FAFSA or MASFA process and your school's financial aid office for final review."
+        )
+
+    return (
+        "MASSGrant is state financial aid for eligible Massachusetts residents enrolled at approved "
+        "in-state colleges. Depending on your eligibility, schools may review you through the FAFSA "
+        "or the MASFA. Students using MASFA may need the DHE Tuition Equity Form and Affidavit if "
+        "they cannot provide the other listed documentation."
+    )
 
 
 def get_massgrant_plus_enrollment_status(profile: dict) -> str | None:
@@ -894,14 +915,15 @@ def match_benefits(profile: dict) -> list[dict]:
     matches: list[dict] = []
 
     if is_student_or_future(a) and a.get("citizen_status") == "yes":
-        pell_action = get_pell_action(a)
-        matches.append(
-            {
-                "id": "pell-grant",
-                **pell_action,
-                "actionStatuses": [pell_action["actionStatus"]] if pell_action.get("actionStatus") else [],
-            }
-        )
+        if a.get("prior_bachelors_degree") == "no":
+            pell_action = get_pell_action(a)
+            matches.append(
+                {
+                    "id": "pell-grant",
+                    **pell_action,
+                    "actionStatuses": [pell_action["actionStatus"]] if pell_action.get("actionStatus") else [],
+                }
+            )
 
     if (
         is_massgrant_enrollment_eligible(a)
@@ -913,6 +935,8 @@ def match_benefits(profile: dict) -> list[dict]:
         matches.append(
             {
                 "id": "massgrant",
+                "title": "MASSGrant (Part-Time)" if is_massgrant_part_time_variant(a) else "MASSGrant",
+                "details": get_massgrant_details(a),
                 **state_aid_action,
                 "actionStatuses": build_massgrant_action_statuses(a),
                 "checklist": build_massgrant_checklist(a),

@@ -35,6 +35,7 @@ import {
   getQuestionTextSegments,
   getQuestionsForBenefitFilters,
   getVisibleQuestions,
+  NOT_ENROLLED_NEXT_YEAR_VALUE,
   pruneHiddenAnswers,
   questions,
   type Question,
@@ -91,12 +92,21 @@ export default function QuestionnairePage() {
 
   const getQuestionOptions = useCallback(
     (question: Question, questionAnswers: Record<string, string>) => {
-      if (question.id === 'school_name') {
-        const isFutureStudent =
-          questionAnswers.student_status === 'future_full_time' ||
-          questionAnswers.student_status === 'future_part_time';
+      const isFutureStudent =
+        questionAnswers.student_status === 'future_full_time' ||
+        questionAnswers.student_status === 'future_part_time';
 
+      if (question.id === 'school_name') {
         return getMassachusettsSchoolOptions(isFutureStudent);
+      }
+
+      if (
+        isFutureStudent &&
+        (question.id === 'fafsa_completed' || question.id === 'masfa_completed')
+      ) {
+        return (question.options ?? []).filter(
+          (option) => option.value !== NOT_ENROLLED_NEXT_YEAR_VALUE
+        );
       }
 
       return question.options ?? [];
@@ -181,9 +191,16 @@ export default function QuestionnairePage() {
     ? getQuestionHelperText(currentQuestion, answers)
     : '';
 
-  const currentQuestionOptions = currentQuestion
-    ? getQuestionOptions(currentQuestion, answers)
-    : [];
+  const currentQuestionOptions = useMemo(() => {
+    if (!currentQuestion) {
+      return [];
+    }
+
+    return getQuestionOptions(currentQuestion, answers);
+  }, [answers, currentQuestion, getQuestionOptions]);
+  const currentQuestionOptionsSignature = currentQuestionOptions
+    .map((option) => option.value)
+    .join('|');
 
   useEffect(() => {
     if (currentQuestion?.id === 'school_name') {
@@ -463,7 +480,14 @@ export default function QuestionnairePage() {
   };
 
   const renderMeasurementInput = (question: Question) => {
-    const questionOptions = getQuestionOptions(question, DEFAULT_QUESTION_MEASUREMENT_ANSWERS);
+    const measurementAnswers =
+      question.id === 'fafsa_completed' || question.id === 'masfa_completed'
+        ? {
+            ...DEFAULT_QUESTION_MEASUREMENT_ANSWERS,
+            student_status: 'full_time',
+          }
+        : DEFAULT_QUESTION_MEASUREMENT_ANSWERS;
+    const questionOptions = getQuestionOptions(question, measurementAnswers);
 
     if (question.control === 'select' && question.id === 'school_name') {
       return (
@@ -804,6 +828,7 @@ export default function QuestionnairePage() {
     return (
       <div className="space-y-3">
         <RadioGroup
+          key={`${question.id}:${questionOptions.map((option) => option.value).join('|')}`}
           value={selectedOption}
           onValueChange={setSelectedOption}
           aria-labelledby="current-question-heading"
@@ -919,7 +944,7 @@ export default function QuestionnairePage() {
           >
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
-                key={currentQuestion.id}
+                key={`${currentQuestion.id}:${currentQuestionOptionsSignature}`}
                 initial={isMobile ? { opacity: 0, x: 16 } : { opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={isMobile ? { opacity: 0, x: -16 } : { opacity: 0, x: -20 }}

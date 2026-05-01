@@ -1,4 +1,7 @@
-import type { Benefit } from '../app/data/benefitsData';
+import {
+  evaluateEligibilityLocally,
+  type Benefit,
+} from '../app/data/benefitsData';
 
 export type AnswerMap = Record<string, string>;
 export type ChecklistProgressMap = Record<string, boolean[]>;
@@ -20,6 +23,7 @@ export type PacketResult = {
 type ApiObject = Record<string, unknown>;
 
 const DEFAULT_API_TIMEOUT_MS = 15_000;
+let hasLoggedLocalEligibilityMode = false;
 
 function isApiObject(value: unknown): value is ApiObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -133,6 +137,10 @@ function getPacketApiUrl(): string {
   );
 }
 
+function isLocalEligibilityMockEnabled(): boolean {
+  return import.meta.env.VITE_USE_LOCAL_ELIGIBILITY_MOCK?.trim().toLowerCase() === 'true';
+}
+
 async function readApiPayload(
   response: Response,
   apiName: string
@@ -223,6 +231,17 @@ export async function evaluateEligibilityRequest(
   profile: AnswerMap,
   selectedBenefits: string[] = []
 ): Promise<Benefit[]> {
+  if (import.meta.env.DEV && isLocalEligibilityMockEnabled()) {
+    if (!hasLoggedLocalEligibilityMode) {
+      console.info(
+        '[eligibility] Using local eligibility mock because VITE_USE_LOCAL_ELIGIBILITY_MOCK=true.'
+      );
+      hasLoggedLocalEligibilityMode = true;
+    }
+
+    return evaluateEligibilityLocally(profile, selectedBenefits);
+  }
+
   const requestPayload =
     selectedBenefits.length > 0
       ? { profile, selectedBenefits }
