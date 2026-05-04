@@ -348,7 +348,7 @@ export const benefits: Benefit[] = [
       'The MBTA student pass is usually coordinated through participating colleges, not just through an individual checkout page. Start with your school\'s transportation page or transportation office instructions, then check the [official MBTA student pass page](https://www.mbta.com/fares/college-student-semester-passes) to confirm the steps your campus requires.',
     category: 'Transport',
     officialUrl: 'https://www.mbta.com/fares/college-student-semester-passes',
-    officialButtonLabel: 'Visit Official Site',
+    officialButtonLabel: 'Visit Official Website',
     checklist: [
       'Get current student ID',
       'Verify enrollment status',

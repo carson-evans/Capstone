@@ -355,6 +355,10 @@ export default function ChecklistPage() {
     const checklistSections = checklistBenefits.map((benefit) => ({
       title: benefit.title,
       officialUrl: benefit.officialUrl,
+      officialButtonLabel: getOfficialButtonLabel(
+        benefit.id,
+        benefit.officialButtonLabel
+      ),
       items: getOrderedChecklistItems(benefit.id, benefit.checklist).map(
         ({ item, checked, originalIndex }) => ({
           checked,
@@ -379,7 +383,7 @@ export default function ChecklistPage() {
       '',
       ...checklistSections.flatMap((section, sectionIndex) => [
         section.title,
-        `Apply: ${section.officialUrl}`,
+        `${section.officialButtonLabel}: ${section.officialUrl}`,
         ...section.items.map(({ checked, text }) => `${checked ? '☑' : '☐'} ${text}`),
         ...(sectionIndex < checklistSections.length - 1 ? [''] : []),
       ]),
@@ -393,7 +397,7 @@ export default function ChecklistPage() {
             (section) => `
               <div style="margin-top: 18px;">
                 <p><strong>${escapeHtml(section.title)}</strong></p>
-                <p style="margin: 4px 0 0 0;"><strong>Apply:</strong> <a href="${escapeHtml(section.officialUrl)}">${escapeHtml(section.officialUrl)}</a></p>
+                <p style="margin: 4px 0 0 0;"><strong>${escapeHtml(section.officialButtonLabel)}:</strong> <a href="${escapeHtml(section.officialUrl)}">${escapeHtml(section.officialUrl)}</a></p>
                 <div style="margin-top: 8px;">
                   ${section.items
                     .map(
