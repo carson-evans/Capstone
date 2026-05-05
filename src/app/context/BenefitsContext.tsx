@@ -9,8 +9,7 @@ import React, {
 
 import {
   benefits as localBenefitCatalog,
-  isPositiveActionStatus,
-  MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM,
+  getBenefitApplicationType,
   sortBenefitsForDisplay,
   type Benefit,
 } from '../data/benefitsData';
@@ -65,45 +64,47 @@ function uniqueBenefitIds(values: Benefit['id'][]): Benefit['id'][] {
   return Array.from(new Set(values));
 }
 
-function shouldDefaultChecklistItemToChecked(benefitId: string, item: string): boolean {
-  return (
-    benefitId === 'massgrant-plus' && item === MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM
-  );
+const grantBenefitIds = new Set(['pell-grant', 'massgrant', 'massgrant-plus']);
+
+function getGrantApplicationStatus(
+  benefitId: string,
+  answers: AnswerMap
+): string | null {
+  if (!grantBenefitIds.has(benefitId)) {
+    return null;
+  }
+
+  const applicationType = getBenefitApplicationType(benefitId, answers);
+
+  if (applicationType === 'fafsa') {
+    return answers.fafsa_completed ?? null;
+  }
+
+  if (applicationType === 'masfa') {
+    return answers.masfa_completed ?? null;
+  }
+
+  return null;
 }
 
 function buildChecklistProgress(
   matches: Benefit[],
-  previousProgress: ChecklistProgressMap
+  previousProgress: ChecklistProgressMap,
+  answers: AnswerMap
 ): ChecklistProgressMap {
   return matches.reduce<ChecklistProgressMap>((accumulator, benefit) => {
-    const statuses =
-      benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
+    const grantApplicationStatus = getGrantApplicationStatus(benefit.id, answers);
 
-    const hasAlreadyCompletedStatus = statuses.some(
-      (status) =>
-        isPositiveActionStatus(status) &&
-        status.toLowerCase().includes('already completed')
+    if (grantApplicationStatus) {
+      accumulator[benefit.id] = benefit.checklist.map(
+        () => grantApplicationStatus === 'yes'
+      );
+      return accumulator;
+    }
+
+    accumulator[benefit.id] = benefit.checklist.map(
+      (_item, index) => previousProgress[benefit.id]?.[index] ?? false
     );
-
-    const allStatusesPositive =
-      statuses.length > 0 &&
-      statuses.every((status) => isPositiveActionStatus(status));
-
-    const shouldAutoCheckAllItems =
-      hasAlreadyCompletedStatus && allStatusesPositive;
-
-    accumulator[benefit.id] = benefit.checklist.map((item, index) => {
-      if (shouldAutoCheckAllItems) {
-        return true;
-      }
-
-      const savedProgress = previousProgress[benefit.id]?.[index];
-      if (savedProgress !== undefined) {
-        return savedProgress;
-      }
-
-      return shouldDefaultChecklistItemToChecked(benefit.id, item);
-    });
 
     return accumulator;
   }, {});
@@ -134,9 +135,9 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     setChecklistProgress((previousProgress) =>
-      buildChecklistProgress(matchedBenefits, previousProgress)
+      buildChecklistProgress(matchedBenefits, previousProgress, answers)
     );
-  }, [matchedBenefits]);
+  }, [answers, matchedBenefits]);
 
   const setAnswer = (questionId: string, answer: string) => {
     setAnswersState((previousAnswers) => ({
