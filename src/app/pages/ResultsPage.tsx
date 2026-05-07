@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'framer-motion';
 import { ChevronDown, ExternalLink, CheckSquare, ArrowUp } from 'lucide-react';
@@ -122,7 +122,7 @@ function getSingleBenefitNoMatchSummary(benefit: Benefit): string {
 }
 
 export default function ResultsPage() {
-  const { answers, matchedBenefits, screeningBenefitFilters } = useBenefits();
+  const { answers, matchedBenefits, screeningBenefitFilters, reset } = useBenefits();
   const isMobile = useIsMobile();
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === 'undefined' ? 1440 : window.innerWidth
@@ -657,7 +657,7 @@ export default function ResultsPage() {
               We could not find any specific benefits matching your profile at this time.
             </p>
             <Button asChild variant="outline">
-              <Link to="/">Start Over</Link>
+              <Link to="/" onClick={reset}>Start Over</Link>
             </Button>
           </div>
         ) : null}
@@ -970,7 +970,7 @@ export default function ResultsPage() {
               variant="outline"
               className="border-[#355b8a] bg-white/92 px-6 text-[#1e3a5f] shadow-sm transition-all duration-300 hover:border-[#1e3a5f] hover:bg-white dark:border-sky-200/55 dark:bg-slate-900/82 dark:text-sky-100 dark:hover:border-sky-200 dark:hover:bg-slate-900"
             >
-              <Link to="/">Start Over</Link>
+              <Link to="/" onClick={reset}>Start Over</Link>
             </Button>
           </motion.div>
         )}
@@ -1022,13 +1022,3 @@ export default function ResultsPage() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
