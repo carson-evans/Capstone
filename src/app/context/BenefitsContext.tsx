@@ -61,8 +61,22 @@ interface BenefitsContextType {
 
 const BenefitsContext = createContext<BenefitsContextType | undefined>(undefined);
 
+type ChecklistState = {
+  progress: ChecklistProgressMap;
+  autoCheckedBenefits: Record<string, boolean>;
+  itemsByBenefit: Record<string, string[]>;
+};
+
 function uniqueBenefitIds(values: Benefit['id'][]): Benefit['id'][] {
   return Array.from(new Set(values));
+}
+
+function createEmptyChecklistState(): ChecklistState {
+  return {
+    progress: {},
+    autoCheckedBenefits: {},
+    itemsByBenefit: {},
+  };
 }
 
 function shouldDefaultChecklistItemToChecked(benefitId: string, item: string): boolean {
@@ -71,11 +85,11 @@ function shouldDefaultChecklistItemToChecked(benefitId: string, item: string): b
   );
 }
 
-function buildChecklistProgress(
+function buildChecklistState(
   matches: Benefit[],
-  previousProgress: ChecklistProgressMap
-): ChecklistProgressMap {
-  return matches.reduce<ChecklistProgressMap>((accumulator, benefit) => {
+  previousState: ChecklistState
+): ChecklistState {
+  return matches.reduce<ChecklistState>((accumulator, benefit) => {
     const statuses =
       benefit.actionStatuses ?? (benefit.actionStatus ? [benefit.actionStatus] : []);
 
@@ -92,21 +106,36 @@ function buildChecklistProgress(
     const shouldAutoCheckAllItems =
       hasAlreadyCompletedStatus && allStatusesPositive;
 
-    accumulator[benefit.id] = benefit.checklist.map((item, index) => {
+    const previousItems = previousState.itemsByBenefit[benefit.id] ?? [];
+    const previousProgress = previousState.progress[benefit.id] ?? [];
+    const previousProgressByItem = new Map(
+      previousItems.map((item, index) => [item, previousProgress[index]])
+    );
+    const shouldResetAutoCheckedProgress =
+      previousState.autoCheckedBenefits[benefit.id] && !shouldAutoCheckAllItems;
+
+    accumulator.progress[benefit.id] = benefit.checklist.map((item) => {
       if (shouldAutoCheckAllItems) {
         return true;
       }
 
-      const savedProgress = previousProgress[benefit.id]?.[index];
+      // Reset auto-completed FAFSA or MASFA checkmarks once the answer changes back.
+      if (shouldResetAutoCheckedProgress) {
+        return shouldDefaultChecklistItemToChecked(benefit.id, item);
+      }
+
+      const savedProgress = previousProgressByItem.get(item);
       if (savedProgress !== undefined) {
         return savedProgress;
       }
 
       return shouldDefaultChecklistItemToChecked(benefit.id, item);
     });
+    accumulator.autoCheckedBenefits[benefit.id] = shouldAutoCheckAllItems;
+    accumulator.itemsByBenefit[benefit.id] = [...benefit.checklist];
 
     return accumulator;
-  }, {});
+  }, createEmptyChecklistState());
 }
 
 export const useBenefits = () => {
@@ -125,7 +154,10 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
   const [screeningBenefitFilters, setScreeningBenefitFiltersState] = useState<Benefit['id'][]>([]);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evaluationError, setEvaluationError] = useState<string | null>(null);
-  const [checklistProgress, setChecklistProgress] = useState<ChecklistProgressMap>({});
+  const [checklistState, setChecklistState] = useState<ChecklistState>(
+    createEmptyChecklistState
+  );
+  const checklistProgress = checklistState.progress;
 
   const matchedBenefits = useMemo(
     () => sortBenefitsForDisplay(withLocalChecklist(serverMatchedBenefits), answers),
@@ -133,8 +165,8 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
   );
 
   useEffect(() => {
-    setChecklistProgress((previousProgress) =>
-      buildChecklistProgress(matchedBenefits, previousProgress)
+    setChecklistState((previousState) =>
+      buildChecklistState(matchedBenefits, previousState)
     );
   }, [matchedBenefits]);
 
@@ -191,13 +223,16 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
     itemIndex: number,
     checked: boolean
   ) => {
-    setChecklistProgress((previousProgress) => {
-      const nextBenefitProgress = [...(previousProgress[benefitId] || [])];
+    setChecklistState((previousState) => {
+      const nextBenefitProgress = [...(previousState.progress[benefitId] || [])];
       nextBenefitProgress[itemIndex] = checked;
 
       return {
-        ...previousProgress,
-        [benefitId]: nextBenefitProgress,
+        ...previousState,
+        progress: {
+          ...previousState.progress,
+          [benefitId]: nextBenefitProgress,
+        },
       };
     });
   };
@@ -205,7 +240,7 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
   const reset = () => {
     setAnswersState({});
     setServerMatchedBenefits([]);
-    setChecklistProgress({});
+    setChecklistState(createEmptyChecklistState());
     setScreeningBenefitFiltersState([]);
     setEvaluationError(null);
   };
