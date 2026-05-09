@@ -66,6 +66,12 @@ interface BenefitsContextType {
 
 const BenefitsContext = createContext<BenefitsContextType | undefined>(undefined);
 
+type ChecklistState = {
+  progress: ChecklistProgressMap;
+  autoCheckedBenefits: Record<string, boolean>;
+  itemsByBenefit: Record<string, string[]>;
+};
+
 function uniqueBenefitIds(values: Benefit['id'][]): Benefit['id'][] {
   return Array.from(new Set(values));
 }
@@ -93,7 +99,7 @@ function getGrantApplicationStatus(
   return null;
 }
 
-function buildChecklistProgress(
+function buildChecklistState(
   matches: Benefit[],
   previousProgress: ChecklistProgressMap,
   answers: AnswerMap
@@ -114,7 +120,7 @@ function buildChecklistProgress(
     );
 
     return accumulator;
-  }, {});
+  }, createEmptyChecklistState());
 }
 
 export const useBenefits = () => {
