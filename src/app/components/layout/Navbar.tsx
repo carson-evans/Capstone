@@ -5,7 +5,6 @@ import { ExternalLink, Moon, Sun } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
 import { useTheme } from '@/app/context/ThemeContext';
-import { useBenefits } from '@/app/context/BenefitsContext';
 import { Button } from '@/app/components/ui/button';
 import darkLogo from '@/assets/CommonDark.png';
 import lightLogo from '@/assets/Common.png';
@@ -14,7 +13,6 @@ const FEEDBACK_SURVEY_URL = 'https://forms.gle/x6J4fDrvWmUz6vFu9';
 
 export function Navbar() {
   const { theme, toggleTheme } = useTheme();
-  const { reset } = useBenefits();
   const { pathname } = useLocation();
   const shouldReduceMotion = useReducedMotion();
   const lastScrollYRef = useRef(0);
@@ -168,7 +166,6 @@ export function Navbar() {
         <div className="container mx-auto flex h-[4.75rem] items-center justify-between px-2.5 sm:px-3 md:h-24 md:pl-2 md:pr-8">
           <Link
             to="/"
-            onClick={reset}
             aria-label="CommonMASS home"
             className="ml-2 flex shrink-0 items-center gap-2 text-xl font-bold tracking-tight text-[#1e3a5f] md:ml-0 dark:text-slate-100"
           >
