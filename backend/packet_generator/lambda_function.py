@@ -1,4 +1,4 @@
-﻿﻿import base64
+﻿import base64
 import os
 import re
 import uuid
@@ -263,23 +263,11 @@ def _profile_summary_items(profile: dict) -> list[tuple[str, str]]:
     return rows
 
 
-def _get_grant_application_status(profile: dict, benefit_id: str) -> str | None:
-    if benefit_id not in {"pell-grant", "massgrant", "massgrant-plus"}:
-        return None
-
-    application_type = _benefit_application_type(profile, benefit_id)
-
-    if application_type == "fafsa":
-        return profile.get("fafsa_completed")
-
-    if application_type == "masfa":
-        return profile.get("masfa_completed")
-
-    return None
+def _should_default_checklist_item_to_checked(benefit_id: str, item: str) -> bool:
+    return benefit_id == "massgrant-plus" and item == MASSGRANT_PLUS_SCHOOL_CHECKLIST_ITEM
 
 
 def _normalize_checklist_progress(
-    profile: dict,
     checklist_progress: dict,
     matches: list[dict],
 ) -> dict[str, list[bool]]:
@@ -294,23 +282,10 @@ def _normalize_checklist_progress(
         if not isinstance(raw_progress, list):
             raw_progress = []
 
-        grant_application_status = _get_grant_application_status(profile, benefit_id)
-
-        if grant_application_status:
-            normalized[benefit_id] = [
-                grant_application_status == "yes" for _item in checklist
-            ]
-            continue
-
-        normalized_progress: list[bool] = []
-
-        for index, item in enumerate(checklist):
-            if index < len(raw_progress):
-                normalized_progress.append(bool(raw_progress[index]))
-            else:
-                normalized_progress.append(False)
-
-        normalized[benefit_id] = normalized_progress
+        normalized[benefit_id] = [
+            bool(raw_progress[index]) if index < len(raw_progress) else _should_default_checklist_item_to_checked(benefit_id, item)
+            for index, item in enumerate(checklist)
+        ]
 
     return normalized
 
@@ -1131,11 +1106,7 @@ def lambda_handler(event, context):
     matches = _strip_state_aid_statuses_for_not_enrolling(safe_profile, matches)
     matches = _sort_matches_for_display(safe_profile, matches)
 
-    normalized_progress = _normalize_checklist_progress(
-        safe_profile,
-        checklist_progress,
-        matches,
-    )
+    normalized_progress = _normalize_checklist_progress(checklist_progress, matches)
 
     run_id = str(uuid.uuid4())
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
