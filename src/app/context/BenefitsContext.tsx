@@ -57,6 +57,7 @@ interface BenefitsContextType {
   checklistProgress: ChecklistProgressMap;
   setChecklistItemChecked: (benefitId: string, itemIndex: number, checked: boolean) => void;
   reset: () => void;
+  startNewScreening: () => void;
 }
 
 const BenefitsContext = createContext<BenefitsContextType | undefined>(undefined);
@@ -138,15 +139,23 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
     );
   }, [matchedBenefits]);
 
+  const clearEvaluationState = () => {
+    setServerMatchedBenefits([]);
+    setChecklistProgress({});
+    setEvaluationError(null);
+  };
+
   const setAnswer = (questionId: string, answer: string) => {
     setAnswersState((previousAnswers) => ({
       ...previousAnswers,
       [questionId]: answer,
     }));
+    clearEvaluationState();
   };
 
   const setAnswers = (nextAnswers: AnswerMap) => {
     setAnswersState(nextAnswers);
+    clearEvaluationState();
   };
 
   const setScreeningBenefitFilters = (nextFilters: Benefit['id'][]) => {
@@ -167,6 +176,7 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
       const nextMatches = withLocalChecklist(apiMatches);
 
       setServerMatchedBenefits(nextMatches);
+      setChecklistProgress(buildChecklistProgress(nextMatches, {}));
       setEvaluationError(null);
 
       return nextMatches;
@@ -202,12 +212,16 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const reset = () => {
+  const startNewScreening = () => {
     setAnswersState({});
     setServerMatchedBenefits([]);
     setChecklistProgress({});
-    setScreeningBenefitFiltersState([]);
     setEvaluationError(null);
+  };
+
+  const reset = () => {
+    startNewScreening();
+    setScreeningBenefitFiltersState([]);
   };
 
   return (
@@ -225,6 +239,7 @@ export const BenefitsProvider = ({ children }: { children: ReactNode }) => {
         checklistProgress,
         setChecklistItemChecked,
         reset,
+        startNewScreening,
       }}
     >
       {children}
