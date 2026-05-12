@@ -214,7 +214,11 @@ const BENEFIT_SPOTLIGHTS = [
 
 export default function LandingPage() {
   const { theme } = useTheme();
-  const { screeningBenefitFilters, setScreeningBenefitFilters } = useBenefits();
+  const {
+    screeningBenefitFilters,
+    setScreeningBenefitFilters,
+    startNewScreening,
+  } = useBenefits();
   const shouldReduceMotion = useReducedMotion();
   const isMobile = useIsMobile();
 
@@ -1027,7 +1031,7 @@ export default function LandingPage() {
                   transition={{ duration: 0.55, delay: 0.2 }}
                   className="mt-5 sm:mt-7 md:mt-10"
                 >
-                  <Link to="/screener">
+                  <Link to="/screener" onClick={startNewScreening}>
                     <Button
                       size="lg"
                       className="group min-h-12 cursor-pointer rounded-full bg-[#f97316] px-9 py-5.5 text-[1.12rem] text-white shadow-[0_10px_26px_-10px_rgba(249,115,22,0.52)] transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:bg-[#ea580c] hover:shadow-[0_24px_36px_-12px_rgba(249,115,22,0.58)] sm:px-10 sm:py-7 sm:text-xl dark:shadow-[0_14px_34px_-14px_rgba(251,146,60,0.6)] dark:hover:shadow-[0_24px_40px_-16px_rgba(251,146,60,0.76)] md:px-12 md:py-8 md:text-[1.35rem]"
@@ -1641,7 +1645,7 @@ export default function LandingPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-3">
-                    <Link to="/screener">
+                    <Link to="/screener" onClick={startNewScreening}>
                       <Button className="min-h-11 rounded-full bg-[#1e3a5f] px-6 py-5 text-white hover:bg-[#16304f] dark:bg-sky-200 dark:text-slate-950 dark:hover:bg-sky-100">
                         Go to Screener
                       </Button>
